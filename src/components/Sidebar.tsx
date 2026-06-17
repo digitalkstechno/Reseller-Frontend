@@ -93,10 +93,6 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
   }
 
-  if (canViewTask) {
-    menuItems.push({ icon: CheckSquare, label: "Tasks", path: "/tasks" });
-  }
-
   // Always allow viewing Resellers for now or if they have permission
   menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
 

@@ -57,7 +57,7 @@ interface FormSelectProps {
   name?: string;
   value: string;
   onChange: (value: string) => void;
-  onBlur?: () => void;
+  onBlur?: (e?: any) => void;
   options: SelectOption[];
   placeholder?: string;
   error?: string;
@@ -100,7 +100,12 @@ export const FormSelect: React.FC<FormSelectProps> = ({
 
         setIsOpen(false);
         setIsFocused(false);
-        onBlur?.();
+        if (onBlur) {
+          onBlur({
+            target: { name: name || "" },
+            persist: () => {},
+          });
+        }
       }
     };
     if (isOpen) document.addEventListener("mousedown", handler);
@@ -118,7 +123,12 @@ export const FormSelect: React.FC<FormSelectProps> = ({
     onChange(option.value);
     setIsOpen(false);
     setIsFocused(false);
-    onBlur?.();
+    if (onBlur) {
+      onBlur({
+        target: { name: name || "" },
+        persist: () => {},
+      });
+    }
   };
 
   const triggerClasses = `

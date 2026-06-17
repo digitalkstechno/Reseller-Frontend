@@ -21,8 +21,8 @@ import { FieldSettingsContent } from './field-settings';
 export default function Setup() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    'Role Management' | 'Staff Management' | 'Lead Sources' | 'Lead Status' | 'Kanban Status' | 'Lead Labels' | 'Teams' | 'Organizations' | 'Task Status' | 'Field Settings'
-  >('Role Management');
+    'Lead Sources' | 'Lead Status' | 'Kanban Status' | 'Lead Labels' | 'Field Settings'
+  >('Lead Sources');
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
   const [permissions, setPermissions] = useState<any>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
@@ -31,7 +31,7 @@ export default function Setup() {
   useEffect(() => {
     if (router.query.tab) {
       const tab = router.query.tab as string;
-      const validTabs = ['Role Management', 'Staff Management', 'Lead Sources', 'Lead Status', 'Kanban Status', 'Lead Labels', 'Teams', 'Organizations', 'Task Status', 'Field Settings'];
+      const validTabs = ['Lead Sources', 'Lead Status', 'Kanban Status', 'Lead Labels', 'Field Settings'];
       if (validTabs.includes(tab)) {
         setActiveTab(tab as any);
       }
@@ -39,7 +39,7 @@ export default function Setup() {
   }, [router.query.tab]);
 
   // Handle tab change and update URL
-  const handleTabChange = (tab: 'Role Management' | 'Staff Management' | 'Lead Sources' | 'Lead Status' | 'Kanban Status' | 'Lead Labels' | 'Teams' | 'Organizations' | 'Task Status' | 'Field Settings') => {
+  const handleTabChange = (tab: 'Lead Sources' | 'Lead Status' | 'Kanban Status' | 'Lead Labels' | 'Field Settings') => {
     setActiveTab(tab);
     router.push({
       pathname: router.pathname,
@@ -185,31 +185,19 @@ export default function Setup() {
     }
   };
 
-  // FIXED: Always define all useMemo hooks, regardless of loading state
-  const canViewRole = useMemo(() => !!(permissions?.role?.readAll || permissions?.setup?.readAll), [permissions]);
-  const canViewStaff = useMemo(() => !!(permissions?.staff?.readAll || permissions?.setup?.readAll), [permissions]);
   const canViewLeadSource = useMemo(() => !!(permissions?.leadSource?.readAll || permissions?.setup?.readAll), [permissions]);
   const canViewLeadStatus = useMemo(() => !!(permissions?.leadStatus?.readAll || permissions?.setup?.readAll), [permissions]);
   const canViewLeadLabel = useMemo(() => !!(permissions?.leadLabel?.readAll || permissions?.setup?.readAll), [permissions]);
-  const canViewTeams = useMemo(() => !!(permissions?.teams?.readAll), [permissions]);
-  const canViewOrgs = useMemo(() => !!(permissions?.organizations?.readAll), [permissions]);
-  const canViewTaskStatus = useMemo(() => !!(permissions?.taskStatus?.readAll || permissions?.setup?.readAll), [permissions]);
-
   const menuItems = useMemo(() => {
     const items = [
-      { name: "Role Management", icon: Settings, visible: canViewRole },
-      { name: "Staff Management", icon: Users, visible: canViewStaff },
       { name: "Lead Sources", icon: Link2, visible: canViewLeadSource },
       { name: "Lead Status", icon: Flag, visible: canViewLeadStatus },
       { name: "Kanban Status", icon: Settings2, visible: true },
       { name: "Lead Labels", icon: Tag, visible: canViewLeadLabel },
-      { name: "Task Status", icon: Settings, visible: canViewTaskStatus },
-      { name: "Teams", icon: UsersRound, visible: canViewTeams },
-      { name: "Organizations", icon: Building2, visible: canViewOrgs },
       { name: "Field Settings", icon: Settings2, visible: true },
     ];
     return items.filter(i => i.visible);
-  }, [canViewRole, canViewStaff, canViewLeadSource, canViewLeadStatus, canViewLeadLabel, canViewTeams, canViewOrgs, canViewTaskStatus]);
+  }, [canViewLeadSource, canViewLeadStatus, canViewLeadLabel]);
 
   // Handle access restriction - FIXED: Check if current tab is valid
   useEffect(() => {
@@ -274,14 +262,9 @@ export default function Setup() {
 
           <div className="md:col-span-9">
             <div className="rounded-md border border-gray-200 bg-white p-6">
-              {activeTab === 'Role Management' && <RolesContent />}
-              {activeTab === 'Staff Management' && <StaffManagementContent />}
               {activeTab === 'Lead Sources' && <LeadSourcesContent />}
               {activeTab === 'Lead Status' && <LeadStatusContent />}
               {activeTab === 'Lead Labels' && <LeadLabelsContent />}
-              {activeTab === 'Teams' && <TeamsContent />}
-              {activeTab === 'Organizations' && <OrganizationsContent />}
-              {activeTab === 'Task Status' && <TaskStatusContent />}
               {activeTab === 'Field Settings' && <FieldSettingsContent />}
               {activeTab === 'Kanban Status' && (
                 <div className="space-y-6">
