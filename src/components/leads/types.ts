@@ -34,6 +34,8 @@ export type ApiLead = {
   customerContact?: string;
   email: string;
   customerEmail?: string;
+  product?: string;
+  paymentAmount?: number | string;
   leadStatus?: ApiStatus;
   assignedTo?: ApiUser;
   priority?: 'High' | 'Medium' | 'Low' | 'high' | 'medium' | 'low';
@@ -66,15 +68,11 @@ export type AddLeadForm = {
   address?: string;
   phone: string;
   email: string;
+  product?: string;
+  paymentAmount?: string;
   status: string;
   staff: string;
-  priority: 'High' | 'Medium' | 'Low';
-  lastFollowUp: string;
-  nextFollowupDate?: string;
-  nextFollowupTime?: string;
-  note?: string;
   isActive?: boolean;
-  attachments?: File[];
 };
 
 export type LeadCountSummary = {

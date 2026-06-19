@@ -26,10 +26,12 @@ const validationSchema = Yup.object().shape({
     .trim()
     .email('Invalid email format')
     .required('Customer Email is required'),
-  CustomerContact: Yup.string()
+  customerContact: Yup.string()
     .trim()
     .matches(/^[0-9]{10}$/, 'Customer Contact must be exactly 10 digits')
     .required('Customer Contact is required'),
+  companyName: Yup.string().trim(),
+  assignedTo: Yup.string().trim(),
   product: Yup.string().trim().required('Product is required'),
   address: Yup.string().trim().required('Address is required'),
   paymentAmount: Yup.number()
@@ -50,6 +52,7 @@ export default function LeadAddDialog({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
+  const [staffMembers, setStaffMembers] = useState<{ _id: string; fullName: string }[]>([]);
   const token = getAuthToken;
 
   useEffect(() => {
@@ -63,18 +66,30 @@ export default function LeadAddDialog({
         console.error('Failed to fetch lead statuses:', err);
       }
     };
+    const fetchStaff = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${token()}` };
+        const res = await axios.get(baseUrl.getAllStaff, { headers });
+        setStaffMembers(res.data?.data || res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch staff members:', err);
+      }
+    };
     fetchStatuses();
+    fetchStaff();
   }, [isOpen]);
 
   const formik = useFormik({
     initialValues: {
       customerName: '',
       customerEmail: '',
-      CustomerContact: '',
+      customerContact: '',
+      companyName: '',
       product: '',
       address: '',
       paymentAmount: '',
       leadStatus: '',
+      assignedTo: '',
       isActive: true,
     },
     validationSchema,
@@ -86,11 +101,13 @@ export default function LeadAddDialog({
         const payload = {
           customerName: values.customerName.trim(),
           customerEmail: values.customerEmail.trim().toLowerCase(),
-          CustomerContact: values.CustomerContact.trim(),
+          customerContact: values.customerContact.trim(),
+          companyName: values.companyName?.trim() || "",
           product: values.product.trim(),
           address: values.address.trim(),
           paymentAmount: Number(values.paymentAmount),
           leadStatus: values.leadStatus,
+          assignedTo: values.assignedTo,
           isActive: values.isActive,
         };
 
@@ -132,11 +149,13 @@ export default function LeadAddDialog({
         formik.setValues({
           customerName: (initialData as any).customerName || initialData.fullName || '',
           customerEmail: (initialData as any).customerEmail || initialData.email || '',
-          CustomerContact: (initialData as any).CustomerContact || initialData.contact || '',
+          customerContact: (initialData as any).customerContact || (initialData as any).CustomerContact || initialData.contact || '',
+          companyName: initialData.companyName || '',
           product: (initialData as any).product || '',
           address: (initialData as any).address || '',
           paymentAmount: (initialData as any).paymentAmount != null ? String((initialData as any).paymentAmount) : '',
           leadStatus: typeof initialData.leadStatus === 'object' ? initialData.leadStatus?._id || '' : (initialData.leadStatus || ''),
+          assignedTo: typeof initialData.assignedTo === 'object' ? initialData.assignedTo?._id || '' : (initialData.assignedTo || ''),
           isActive: initialData.isActive ?? true,
         });
       } else {
@@ -222,13 +241,24 @@ export default function LeadAddDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Customer Contact"
-              name="CustomerContact"
-              value={formik.values.CustomerContact}
+              name="customerContact"
+              value={formik.values.customerContact}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              error={getFieldError('CustomerContact')}
+              error={getFieldError('customerContact')}
               required
             />
+            <FormInput
+              label="Company Name"
+              name="companyName"
+              value={formik.values.companyName}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={getFieldError('companyName')}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Product Name"
               name="product"
@@ -238,9 +268,6 @@ export default function LeadAddDialog({
               error={getFieldError('product')}
               required
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Address"
               name="address"
@@ -250,6 +277,9 @@ export default function LeadAddDialog({
               error={getFieldError('address')}
               required
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Payment Amount"
               name="paymentAmount"
@@ -261,7 +291,7 @@ export default function LeadAddDialog({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormSelect
               label="Lead Status"
               name="leadStatus"
@@ -275,6 +305,19 @@ export default function LeadAddDialog({
               error={getFieldError('leadStatus')}
               required
               placeholder="Select Status"
+            />
+            <FormSelect
+              label="Assigned Staff"
+              name="assignedTo"
+              value={formik.values.assignedTo}
+              onChange={(val) => {
+                formik.setFieldValue('assignedTo', val);
+                formik.setFieldTouched('assignedTo', true, false);
+              }}
+              onBlur={formik.handleBlur}
+              options={staffMembers.map((s) => ({ value: s._id, label: s.fullName }))}
+              error={getFieldError('assignedTo')}
+              placeholder="Select Staff (Optional)"
             />
           </div>
 

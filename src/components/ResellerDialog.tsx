@@ -18,11 +18,6 @@ interface Reseller {
   phone: string;
   password?: string;
   role: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  commissionRate: number;
   status: string;
   profileImage?: string;
 }
@@ -48,14 +43,6 @@ const createValidationSchema = Yup.object({
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
-  address: Yup.string().required('Street address is required'),
-  city: Yup.string().required('City is required'),
-  state: Yup.string().required('State is required'),
-  pincode: Yup.string().required('PIN Code is required').matches(/^[0-9]{5,6}$/, 'PIN Code must be 5 or 6 digits'),
-  commissionRate: Yup.number()
-    .required('Commission rate is required')
-    .min(0, 'Commission rate cannot be negative')
-    .max(100, 'Commission rate cannot exceed 100'),
   status: Yup.string().required('Status is required'),
 });
 
@@ -71,14 +58,6 @@ const updateValidationSchema = Yup.object({
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
   password: Yup.string().notRequired().min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
-  address: Yup.string().required('Street address is required'),
-  city: Yup.string().required('City is required'),
-  state: Yup.string().required('State is required'),
-  pincode: Yup.string().required('PIN Code is required').matches(/^[0-9]{5,6}$/, 'PIN Code must be 5 or 6 digits'),
-  commissionRate: Yup.number()
-    .required('Commission rate is required')
-    .min(0, 'Commission rate cannot be negative')
-    .max(100, 'Commission rate cannot exceed 100'),
   status: Yup.string().required('Status is required'),
 });
 
@@ -112,11 +91,6 @@ export default function ResellerDialog({
       phone: '',
       password: '',
       role: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      commissionRate: 10,
       status: 'active',
     },
     validationSchema: isUpdate ? updateValidationSchema : createValidationSchema,
@@ -144,11 +118,6 @@ export default function ResellerDialog({
         phone: initialData.phone || '',
         password: '',
         role: initialData.role || '',
-        address: initialData.address || '',
-        city: initialData.city || '',
-        state: initialData.state || '',
-        pincode: initialData.pincode || '',
-        commissionRate: initialData.commissionRate ?? 10,
         status: initialData.status || 'active',
       });
 
@@ -216,11 +185,6 @@ export default function ResellerDialog({
       if (values.role) {
         payload.append('role', values.role);
       }
-      payload.append('address', values.address);
-      payload.append('city', values.city);
-      payload.append('state', values.state);
-      payload.append('pincode', values.pincode);
-      payload.append('commissionRate', String(values.commissionRate));
       payload.append('status', values.status);
 
       if (values.password.trim()) {
@@ -369,66 +333,6 @@ export default function ResellerDialog({
               </div>
             </div>
 
-            {/* ADDRESS DETAILS CARD */}
-            <div className="border border-gray-100 rounded-xl bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-50 text-blue-600 font-semibold text-sm uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                ADDRESS DETAILS
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-3">
-                  <FormInput
-                    label="Street Address"
-                    name="address"
-                    type="text"
-                    value={formik.values.address}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.address && formik.errors.address ? formik.errors.address : undefined}
-                    required
-                    placeholder="123, MG Road, Near City Center"
-                  />
-                </div>
-
-                <FormInput
-                  label="City"
-                  name="city"
-                  type="text"
-                  value={formik.values.city}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.city && formik.errors.city ? formik.errors.city : undefined}
-                  required
-                  placeholder="Mumbai"
-                />
-
-                <FormInput
-                  label="State"
-                  name="state"
-                  type="text"
-                  value={formik.values.state}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.state && formik.errors.state ? formik.errors.state : undefined}
-                  required
-                  placeholder="Maharashtra"
-                />
-
-                <FormInput
-                  label="PIN Code"
-                  name="pincode"
-                  type="text"
-                  value={formik.values.pincode}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.pincode && formik.errors.pincode ? formik.errors.pincode : undefined}
-                  required
-                  placeholder="400001"
-                />
-              </div>
-            </div>
-
           </div>
 
           {/* Right Column: Image and settings */}
@@ -473,28 +377,14 @@ export default function ResellerDialog({
               </div>
             </div>
 
-            {/* COMMISSION & SETTINGS CARD */}
+            {/* SETTINGS CARD */}
             <div className="border border-gray-100 rounded-xl bg-white p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-50 text-blue-600 font-semibold text-sm uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                COMMISSION & SETTINGS
+                SETTINGS
               </div>
 
               <div className="space-y-4">
-                <div className="relative">
-                  <FormInput
-                    label="Commission Rate (%)"
-                    name="commissionRate"
-                    type="number"
-                    value={formik.values.commissionRate}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.commissionRate && formik.errors.commissionRate ? formik.errors.commissionRate : undefined}
-                    required
-                    placeholder="10"
-                  />
-                  <span className="absolute right-3 top-[38px] text-gray-500 font-medium text-sm">%</span>
-                </div>
 
                 <div className="space-y-2">
                   <span className="block text-sm font-medium text-gray-700">Status</span>

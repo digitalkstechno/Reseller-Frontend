@@ -36,19 +36,19 @@ type ApiStatus = {
 type ApiLead = {
   _id: string;
   fullName: string;
+  customerName?: string;
   companyName?: string;
   address?: string;
   contact: string;
+  customerContact?: string;
   email: string;
+  customerEmail?: string;
   leadSource?: ApiSource;
+  product?: string;
+  paymentAmount?: number | string;
 
   leadStatus?: ApiStatus;
   assignedTo?: ApiUser;
-  priority?: "High" | "Medium" | "Low";
-  lastFollowUp?: string;
-  nextFollowupDate?: string;
-  nextFollowupTime?: string;
-  note?: string;
   isActive?: boolean;
   attachments?: { name: string; url?: string }[];
   isLost?: boolean;
@@ -72,17 +72,11 @@ type AddLeadForm = {
   address?: string;
   phone: string;
   email: string;
-  source: string;
-
+  product?: string;
+  paymentAmount?: string;
   status: string;
   staff: string;
-  priority: "High" | "Medium" | "Low";
-  lastFollowUp: string;
-  nextFollowupDate?: string;
-  nextFollowupTime?: string;
-  note?: string;
   isActive?: boolean;
-  attachments?: File[];
 };
 
 export default function LeadsPage() {
@@ -117,17 +111,11 @@ export default function LeadsPage() {
     address: "",
     phone: "",
     email: "",
-    source: "",
-
+    product: "",
+    paymentAmount: "",
     status: "",
     staff: "",
-    priority: "Medium",
-    lastFollowUp: new Date().toISOString().split("T")[0],
-    nextFollowupDate: "",
-    nextFollowupTime: "",
-    note: "",
     isActive: true,
-    attachments: [],
   });
 
   // View dialog edit states
@@ -315,10 +303,8 @@ export default function LeadsPage() {
     if (requiredFields.includes('address') && !addForm.address) missingFields.push('Address');
     if (requiredFields.includes('contact') && !addForm.phone) missingFields.push('Phone');
     if (requiredFields.includes('email') && !addForm.email) missingFields.push('Email');
-    if (requiredFields.includes('leadSource') && !addForm.source) missingFields.push('Source');
     if (requiredFields.includes('leadStatus') && !addForm.status && !editingLead) missingFields.push('Status');
     if (requiredFields.includes('assignedTo') && !addForm.staff) missingFields.push('Assigned Staff');
-    if (requiredFields.includes('priority') && !addForm.priority) missingFields.push('Priority');
 
 
     if (missingFields.length > 0) {
@@ -335,21 +321,16 @@ export default function LeadsPage() {
         address: addForm.address?.trim() || "",
         customerContact: addForm.phone.trim(),
         customerEmail: addForm.email.trim().toLowerCase(),
-        leadSource: addForm.source,
+        product: addForm.product?.trim() || "",
+        paymentAmount: Number(addForm.paymentAmount) || 0,
         leadStatus: addForm.status,
         assignedTo: addForm.staff,
-        priority: addForm.priority.toLowerCase(),
-        lastFollowUp: addForm.lastFollowUp,
-        nextFollowupDate: addForm.nextFollowupDate || null,
-        nextFollowupTime: addForm.nextFollowupTime || null,
-        note: addForm.note?.trim() || "",
         isActive: addForm.isActive ?? true,
-
       };
 
       if (editingLead) {
         // Edit mode - don't include status and next follow-up date
-        const { leadStatus, nextFollowupDate, ...editPayload } = payload;
+        const { leadStatus, ...editPayload } = payload;
         await axios.put(`${baseUrl.updateLead}/${editingLead._id}`, editPayload, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -385,17 +366,11 @@ export default function LeadsPage() {
       address: "",
       phone: "",
       email: "",
-      source: "",
-
+      product: "",
+      paymentAmount: "",
       status: "",
       staff: "",
-      priority: "Medium",
-      lastFollowUp: new Date().toISOString().split("T")[0],
-      nextFollowupDate: "",
-      nextFollowupTime: "",
-      note: "",
       isActive: true,
-      attachments: [],
     });
   };
 
@@ -411,22 +386,16 @@ export default function LeadsPage() {
 
     setEditingLead(lead);
     setAddForm({
-      name: lead.fullName || "",
+      name: lead.customerName || lead.fullName || "",
       companyName: lead.companyName || "",
       address: lead.address || "",
-      phone: lead.contact || "",
-      email: lead.email || "",
-      source: lead.leadSource?._id || "",
-
+      phone: lead.customerContact || lead.contact || "",
+      email: lead.customerEmail || lead.email || "",
+      product: lead.product || "",
+      paymentAmount: lead.paymentAmount ? String(lead.paymentAmount) : "",
       status: lead.leadStatus?._id || "",
       staff: lead.assignedTo?._id || "",
-      priority: lead.priority || "Medium",
-      lastFollowUp: lead.lastFollowUp || new Date().toISOString().split("T")[0],
-      nextFollowupDate: lead.nextFollowupDate || "",
-      nextFollowupTime: lead.nextFollowupTime || "",
-      note: lead.note || "",
       isActive: lead.isActive ?? true,
-      attachments: [],
     });
     setShowAddDialog(true);
   };
@@ -441,38 +410,9 @@ export default function LeadsPage() {
 
     setViewLead(lead);
     // Initialize edit states with current values
-    setEditingStatus(lead.leadStatus?._id || "");
-    setEditingNextFollowupDate(lead.nextFollowupDate || "");
-    setEditingNextFollowupTime(lead.nextFollowupTime || "");
   };
 
-  const handleSaveViewChanges = async () => {
-    if (!viewLead) return;
 
-    try {
-      const token = getAuthToken();
-      const payload: any = {
-        leadStatus: editingStatus,
-        nextFollowupDate: editingNextFollowupDate || null,
-        nextFollowupTime: editingNextFollowupTime || null,
-      };
-
-      await axios.put(`${baseUrl.updateLead}/${viewLead._id}`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      toast.success("Lead updated successfully");
-
-      // Refresh all lead lists
-      fetchLeads();
-      fetchLostLeads();
-      fetchWonLeads();
-      setViewLead(null);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to update lead");
-    }
-  };
 
   const markLost = async (id: string) => {
     try {
@@ -1175,23 +1115,31 @@ export default function LeadsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700">
-                  Source {requiredFields.includes('leadSource') && <span className="text-red-500">*</span>}
+                  Product Name
                 </label>
-                <select
-                  value={addForm.source}
+                <input
+                  type="text"
+                  value={addForm.product ?? ""}
                   onChange={(e) =>
-                    setAddForm((p) => ({ ...p, source: e.target.value }))
+                    setAddForm((p) => ({ ...p, product: e.target.value }))
                   }
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Source</option>
-                  {sources.map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Payment Amount
+                </label>
+                <input
+                  type="number"
+                  value={addForm.paymentAmount ?? ""}
+                  onChange={(e) =>
+                    setAddForm((p) => ({ ...p, paymentAmount: e.target.value }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
               {/* Status field only shown in add mode */}
               {!editingLead && (
                 <div>
@@ -1233,112 +1181,6 @@ export default function LeadsPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Priority {requiredFields.includes('priority') && <span className="text-red-500">*</span>}
-                </label>
-                <select
-                  value={addForm.priority}
-                  onChange={(e) =>
-                    setAddForm((p) => ({
-                      ...p,
-                      priority: e.target.value as AddLeadForm["priority"],
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>High</option>
-                  <option>Medium</option>
-                  <option>Low</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Last Follow-Up
-              </label>
-              <input
-                type="date"
-                value={addForm.lastFollowUp}
-                onChange={(e) =>
-                  setAddForm((p) => ({ ...p, lastFollowUp: e.target.value }))
-                }
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            {/* Next Follow-up fields only shown in add mode */}
-            {!editingLead && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">
-                    Next Follow-Up Date
-                  </label>
-                  <input
-                    type="date"
-                    value={addForm.nextFollowupDate ?? ""}
-                    onChange={(e) =>
-                      setAddForm((p) => ({
-                        ...p,
-                        nextFollowupDate: e.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">
-                    Next Follow-Up Time
-                  </label>
-                  <input
-                    type="time"
-                    value={addForm.nextFollowupTime ?? ""}
-                    onChange={(e) =>
-                      setAddForm((p) => ({
-                        ...p,
-                        nextFollowupTime: e.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Note
-              </label>
-              <textarea
-                rows={3}
-                value={addForm.note ?? ""}
-                onChange={(e) =>
-                  setAddForm((p) => ({ ...p, note: e.target.value }))
-                }
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Attachments
-              </label>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => {
-                  const files = e.target.files
-                    ? Array.from(e.target.files)
-                    : [];
-                  setAddForm((p) => ({ ...p, attachments: files }));
-                }}
-                className="mt-1 block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {addForm?.attachments && addForm.attachments.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                  {addForm.attachments.map((file, index) => (
-                    <li key={index}>📎 {file.name}</li>
-                  ))}
-                </ul>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -1373,12 +1215,6 @@ export default function LeadsPage() {
               >
                 Close
               </button>
-              <button
-                onClick={handleSaveViewChanges}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-secondary"
-              >
-                Save Changes
-              </button>
             </>
           }
         >
@@ -1402,64 +1238,19 @@ export default function LeadsPage() {
                   <div className="text-sm text-gray-600">Source</div>
                   <div>{viewLead.leadSource?.name || "-"}</div>
                 </div>
-                {/* Status Selection Boxes */}
                 <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">
-                  <div className="text-sm text-gray-600 mb-3">Status</div>
-                  <div className="flex flex-wrap gap-2">
-                    {statuses.map((s) => (
-                      <button
-                        key={s._id}
-                        onClick={() => setEditingStatus(s._id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${editingStatus === s._id
-                          ? 'bg-secondary text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                      >
-                        {s.name}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="text-sm text-gray-600">Status</div>
+                  <div className="font-medium text-gray-900 mt-1">{viewLead.leadStatus?.name || "-"}</div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600">Assigned Staff</div>
-                  <div>{viewLead.assignedTo?.fullName || "-"}</div>
+                  <div className="text-sm text-gray-600">Product</div>
+                  <div>{viewLead.product || "-"}</div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600">Priority</div>
-                  <div>{viewLead.priority || "-"}</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600">Last Follow-Up</div>
-                  <div>{viewLead.lastFollowUp || "-"}</div>
+                  <div className="text-sm text-gray-600">Payment Amount</div>
+                  <div>{viewLead.paymentAmount || "-"}</div>
                 </div>
               </div>
-              {/* Editable Next Follow-up */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">Next Follow-Up Date</div>
-                  <input
-                    type="date"
-                    value={editingNextFollowupDate}
-                    onChange={(e) => setEditingNextFollowupDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">Next Follow-Up Time</div>
-                  <input
-                    type="time"
-                    value={editingNextFollowupTime}
-                    onChange={(e) => setEditingNextFollowupTime(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              {viewLead.note && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600">Note</div>
-                  <div>{viewLead.note}</div>
-                </div>
-              )}
               {viewLead.attachments && viewLead.attachments.length > 0 && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="text-sm text-gray-600">Attachments</div>

@@ -429,7 +429,7 @@ export default function LeadsKanbanView({
                             {
                                 label: 'Payment',
                                 icon: <span className="text-xs font-bold">₹</span>,
-                                color: 'emerald',
+                                color: 'green',
                                 onClick: async (row) => {
                                     const { value: amount } = await Swal.fire({
                                         title: 'Add Payment',
