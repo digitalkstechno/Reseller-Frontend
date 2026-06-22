@@ -66,17 +66,8 @@ export default function LeadAddDialog({
         console.error('Failed to fetch lead statuses:', err);
       }
     };
-    const fetchStaff = async () => {
-      try {
-        const headers = { Authorization: `Bearer ${token()}` };
-        const res = await axios.get(baseUrl.getAllStaff, { headers });
-        setStaffMembers(res.data?.data || res.data || []);
-      } catch (err) {
-        console.error('Failed to fetch staff members:', err);
-      }
-    };
+
     fetchStatuses();
-    fetchStaff();
   }, [isOpen]);
 
   const formik = useFormik({
@@ -243,7 +234,10 @@ export default function LeadAddDialog({
               label="Customer Contact"
               name="customerContact"
               value={formik.values.customerContact}
-              onChange={formik.handleChange}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                formik.setFieldValue('customerContact', val);
+              }}
               onBlur={formik.handleBlur}
               error={getFieldError('customerContact')}
               required

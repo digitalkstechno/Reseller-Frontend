@@ -51,8 +51,6 @@ export default function Header({ toggleSidebar }: HeaderProps) {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
-        // show custom UI first (button, modal etc.)
-        console.log("Ask user via button");
       } else {
         setNotificationPermission(Notification.permission);
       }
@@ -432,12 +430,12 @@ export default function Header({ toggleSidebar }: HeaderProps) {
         {/* Alerts / Notifications */}
         <div className="relative" ref={dropdownRef}>
           <button
-            onClick={() => {
-              if (!showNotifications) {
-                fetchNotifications();
-              }
-              setShowNotifications(!showNotifications);
-            }}
+            // onClick={() => {
+            //   if (!showNotifications) {
+            //     fetchNotifications();
+            //   }
+            //   setShowNotifications(!showNotifications);
+            // }}
             className="relative flex items-center justify-center h-10 w-10 rounded-full hover:bg-gray-100 transition-colors"
           >
             <Bell className="h-5 w-5 text-gray-600" />
@@ -462,7 +460,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
                   {/* Permission status indicator and request button */}
                   {notificationPermission !== 'granted' && (
                     <button
-                      onClick={requestNotificationPermission}
+                      // onClick={requestNotificationPermission}
                       className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer bg-blue-50 px-2 py-1 rounded"
                     >
                       {notificationPermission === 'denied' ? 'Enable Notifications' : 'Allow Notifications'}
@@ -483,7 +481,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
               <div className="max-h-[70vh] overflow-y-auto">
                 {unreadNotifications.length === 0 ? (
                   <div className="px-4 py-6 text-center text-sm text-gray-500">
-                    {totalCount === 0 ? 'No notifications' : 'No new notifications'}
+                    {/* {totalCount === 0 ? 'No notifications' : 'No new notifications'} */}
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100 max-h-[30vh] overflow-y-auto">

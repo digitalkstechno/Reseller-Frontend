@@ -50,7 +50,7 @@ export default function KanbanCard({
             )}
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                    <div className="font-semibold text-gray-900 truncate">{lead.fullName}</div>
+                    <div className="font-semibold text-gray-900 truncate">{lead.customerName}</div>
                     <div className="text-xs text-gray-500 truncate">{lead.companyName || '-'}</div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -76,23 +76,14 @@ export default function KanbanCard({
             <div className="mt-2 space-y-1.5 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                     <FiPhone className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{lead.contact}</span>
+                    <span className="truncate">{lead.customerContact}</span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                     <FiMail className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{lead.email}</span>
+                    <span className="truncate">{lead.customerEmail}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        {lead.assignedTo?.avatar ? (
-                            <img src={lead.assignedTo.avatar} className="h-5 w-5 rounded-full object-cover flex-shrink-0" alt="" />
-                        ) : (
-                            <div className="h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-purple-300 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-                                {lead.assignedTo?.fullName?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                        )}
-                        <span className="truncate text-xs">{lead.assignedTo?.fullName || 'Unassigned'}</span>
-                    </div>
+        
                     {lead.priority && (
                         <span className={`px-2 py-0.5 text-xs font-semibold rounded-full flex-shrink-0 ${lead.priority.toLowerCase() === 'high'
                             ? 'bg-red-100 text-red-600'

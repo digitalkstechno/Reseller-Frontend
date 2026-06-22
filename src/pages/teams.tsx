@@ -159,8 +159,6 @@ export function TeamsContent() {
   };
 
   const handleAdd = () => {
-    console.log('Add button clicked', setupPermissions); // Debug log
-    // Check if user has create permission
     if (setupPermissions?.create === false) {
       toast.warning("You don't have permission to create teams");
       return;
