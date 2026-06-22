@@ -54,7 +54,25 @@ export function ResellersContent() {
   const debouncedSearch = useDebounce(search, 500);
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
 
+  const getUserRole = useCallback((): string => {
+    if (!token) return '';
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(window.atob(parts[1]));
+        return payload?.role?.roleName?.toLowerCase() || '';
+      }
+    } catch (e) {
+      console.error('Failed to parse token payload:', e);
+    }
+    return '';
+  }, [token]);
+
   const fetchResellers = useCallback(async () => {
+    if (getUserRole() === 'reseller') {
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await axios.get(baseUrl.getAllResellers, {
@@ -112,7 +130,7 @@ export function ResellersContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, debouncedSearch, token]);
+  }, [page, limit, debouncedSearch, token, getUserRole]);
 
   useEffect(() => {
     fetchResellers();
@@ -175,9 +193,8 @@ export function ResellersContent() {
       label: 'STATUS',
       render: (value) => (
         <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-            value === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}
+          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${value === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}
         >
           {value}
         </span>
@@ -315,7 +332,7 @@ export function ResellersContent() {
       >
         <div className="py-4">
           <p className="text-gray-700">
-            Are you sure you want to delete reseller "{resellerToDelete?.fullName}"? 
+            Are you sure you want to delete reseller "{resellerToDelete?.fullName}"?
             This action cannot be undone.
           </p>
         </div>
@@ -334,11 +351,6 @@ export function ResellersContent() {
           email: editingReseller.email,
           phone: editingReseller.phone,
           role: editingReseller.role,
-          address: editingReseller.address,
-          city: editingReseller.city,
-          state: editingReseller.state,
-          pincode: editingReseller.pincode,
-          commissionRate: editingReseller.commissionRate,
           status: editingReseller.status,
           profileImage: editingReseller.image,
         } : null}
