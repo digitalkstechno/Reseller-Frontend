@@ -102,6 +102,10 @@ export default function ResellerDialog({
     enableReinitialize: true,
   });
 
+  useEffect(() => {
+    if (error) setError(null);
+  }, [formik.values, selectedFile]);
+
   const resetForm = () => {
     formik.resetForm();
     setSelectedFile(null);
@@ -196,8 +200,7 @@ export default function ResellerDialog({
       }
 
       const headers = { 
-        Authorization: `Bearer ${token || getAuthToken()}`,
-        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token || getAuthToken()}`
       };
 
       const response = isUpdate
@@ -290,7 +293,10 @@ export default function ResellerDialog({
                   name="phone"
                   type="tel"
                   value={formik.values.phone}
-                  onChange={formik.handleChange}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    formik.setFieldValue('phone', val);
+                  }}
                   onBlur={formik.handleBlur}
                   error={formik.touched.phone && formik.errors.phone ? formik.errors.phone : undefined}
                   required
