@@ -20,7 +20,7 @@ interface Reseller {
   city: string;
   state: string;
   pincode: string;
-  commissionRate: number;
+  commissionRate: string;
 }
 
 // Debounce hook
@@ -112,7 +112,7 @@ export function ResellersContent() {
         city: item.city || '',
         state: item.state || '',
         pincode: item.pincode || '',
-        commissionRate: item.commissionRate ?? 10,
+        commissionRate: String(item.commissionRate ?? '0'),
       }));
 
       setResellersData(formatted);
@@ -228,7 +228,7 @@ export function ResellersContent() {
         city: item.city || '',
         state: item.state || '',
         pincode: item.pincode || '',
-        commissionRate: item.commissionRate ?? 10,
+        commissionRate: String(item.commissionRate ?? '0'),
       };
 
       setEditingReseller(formatted);
@@ -364,6 +364,7 @@ export function ResellersContent() {
           role: editingReseller.role,
           status: editingReseller.status,
           profileImage: editingReseller.image,
+          commissionRate: editingReseller.commissionRate,
         } : null}
       />
     </>

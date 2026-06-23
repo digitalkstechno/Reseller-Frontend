@@ -20,6 +20,7 @@ interface Reseller {
   role: string;
   status: string;
   profileImage?: string;
+  commissionRate?: string;
 }
 
 interface ResellerDialogProps {
@@ -44,6 +45,7 @@ const createValidationSchema = Yup.object({
     .min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required'),
+  commissionRate: Yup.string().required('Commission percentage is required'),
 });
 
 const updateValidationSchema = Yup.object({
@@ -59,6 +61,7 @@ const updateValidationSchema = Yup.object({
   password: Yup.string().notRequired().min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required'),
+  commissionRate: Yup.string().required('Commission percentage is required'),
 });
 
 export default function ResellerDialog({
@@ -92,10 +95,11 @@ export default function ResellerDialog({
       password: '',
       role: '',
       status: 'active',
+      commissionRate: '',
     },
     validationSchema: isUpdate ? updateValidationSchema : createValidationSchema,
-    validateOnChange: true,
-    validateOnBlur: true,
+    validateOnChange: false,
+    validateOnBlur: false,
     onSubmit: async (values) => {
       await handleSubmit(values);
     },
@@ -123,6 +127,7 @@ export default function ResellerDialog({
         password: '',
         role: initialData.role || '',
         status: initialData.status || 'active',
+        commissionRate: (initialData as any).commissionRate || '',
       });
 
       if (initialData.profileImage) {
@@ -190,6 +195,7 @@ export default function ResellerDialog({
         payload.append('role', values.role);
       }
       payload.append('status', values.status);
+      payload.append('commissionRate', values.commissionRate);
 
       if (values.password.trim()) {
         payload.append('password', values.password);
@@ -323,6 +329,18 @@ export default function ResellerDialog({
                     {/* {showPassword ? 'Hide' : 'Show'} */}
                   </button>
                 </div>
+
+                <FormInput
+                  label="Commission (%)"
+                  name="commissionRate"
+                  type="text"
+                  value={formik.values.commissionRate}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={formik.touched.commissionRate && formik.errors.commissionRate ? formik.errors.commissionRate : undefined}
+                  required
+                  placeholder="e.g. 10"
+                />
 
                 {/* <div className="md:col-span-2">
                   <FormSelect

@@ -44,6 +44,7 @@ type TableLead = {
   paymentMode?: string;
   paymentProof?: string;
   paymentStatus?: string;
+  commissionAmount?: string;
   _raw?: any;
 };
 
@@ -105,6 +106,7 @@ function mapLead(item: any): TableLead {
     paymentMode: item.paymentMode,
     paymentProof: item.paymentProof,
     paymentStatus: item.paymentStatus,
+    commissionAmount: item.commissionAmount,
     _raw: item,
   };
 }
@@ -221,6 +223,11 @@ export default function LeadsListView({
       key: 'paymentAmount',
       label: 'AMOUNT',
       render: (v) => (v ? <span className="font-bold text-emerald-600">₹{v.toLocaleString()}</span> : <span className="text-gray-400">-</span>)
+    },
+    {
+      key: 'commissionAmount',
+      label: 'COMMISSION',
+      render: (v) => (v && v !== '0' ? <span className="font-bold text-blue-600">₹{v}</span> : <span className="text-gray-400">-</span>)
     },
   ];
 
