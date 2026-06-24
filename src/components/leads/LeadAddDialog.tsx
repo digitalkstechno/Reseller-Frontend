@@ -3,6 +3,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { DefaultEditor } from 'react-simple-wysiwyg';
 import Dialog from '@/components/Dialog';
 import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead } from './types';
@@ -37,6 +38,7 @@ const validationSchema = Yup.object().shape({
     .required('Payment Amount is required')
     .min(0, 'Payment Amount cannot be negative'),
   leadStatus: Yup.string().required('Lead Status is required'),
+  remarks: Yup.string().optional(),
   isActive: Yup.boolean(),
 });
 
@@ -79,6 +81,7 @@ export default function LeadAddDialog({
       paymentAmount: '',
       leadStatus: '',
       assignedTo: '',
+      remarks: '',
       isActive: true,
     },
     validationSchema,
@@ -97,6 +100,7 @@ export default function LeadAddDialog({
           paymentAmount: Number(values.paymentAmount),
           leadStatus: values.leadStatus,
           assignedTo: values.assignedTo,
+          remarks: values.remarks,
           isActive: values.isActive,
         };
 
@@ -145,6 +149,7 @@ export default function LeadAddDialog({
           paymentAmount: (initialData as any).paymentAmount != null ? String((initialData as any).paymentAmount) : '',
           leadStatus: typeof initialData.leadStatus === 'object' ? initialData.leadStatus?._id || '' : (initialData.leadStatus || ''),
           assignedTo: typeof initialData.assignedTo === 'object' ? initialData.assignedTo?._id || '' : (initialData.assignedTo || ''),
+          remarks: (initialData as any).remarks || '',
           isActive: initialData.isActive ?? true,
         });
       } else {
@@ -318,6 +323,27 @@ export default function LeadAddDialog({
               error={getFieldError('assignedTo')}
               placeholder="Select Staff (Optional)"
             /> */}
+          </div>
+
+          <div className="w-full">
+            <label className="block mb-1.5 text-sm font-semibold text-gray-700">
+              Remarks
+            </label>
+            <div className={`rounded-xl border overflow-hidden ${formik.touched.remarks && formik.errors.remarks ? 'border-red-500' : 'border-gray-300'}`}>
+              <DefaultEditor
+                value={formik.values.remarks}
+                onChange={(e) => {
+                  formik.setFieldValue('remarks', e.target.value);
+                  if (formik.errors.remarks) {
+                    formik.setFieldError('remarks', undefined);
+                  }
+                }}
+                onBlur={() => formik.setFieldTouched('remarks', true)}
+              />
+            </div>
+            {getFieldError('remarks') && (
+              <p className="mt-1 text-xs text-red-500">{getFieldError('remarks')}</p>
+            )}
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">

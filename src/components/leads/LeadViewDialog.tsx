@@ -241,32 +241,23 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
 
             {/* Info grid */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <InfoCard label="Product" value={(lead as any).product} />
               <InfoCard label="Phone" value={formatContactNumber((lead as any).customerContact || lead.contact)} />
               <InfoCard label="Email" value={(lead as any).customerEmail || lead.email} />
               <InfoCard label="Payment Amount" value={(lead as any).paymentAmount ? `₹${(lead as any).paymentAmount.toLocaleString()}` : undefined} />
-              <InfoCard label="Assigned Staff" value={lead.assignedTo?.fullName} />
-              <InfoCard
-                label="Priority"
-                value={
-                  lead.priority ? (
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${lead.priority.toLowerCase() === 'high'
-                      ? 'bg-red-100 text-red-600'
-                      : lead.priority.toLowerCase() === 'medium'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
-                      }`}>
-                      {lead.priority}
-                    </span>
-                  ) : '-'
-                }
-              />
+              
               <InfoCard label="Last Follow-Up" value={lead.lastFollowUp} />
               <InfoCard label="Active" value={lead.isActive ? 'Yes' : 'No'} />
             </div>
 
-            {/* Address */}
-            {((lead as any).address || lead.address) && <InfoCard label="Address" value={(lead as any).address || lead.address} />}
+            {(lead as any).remarks && (
+              <div className="rounded-lg bg-gray-50 p-4">
+                <div className="mb-2 text-sm font-medium text-gray-600">Remarks</div>
+                <div
+                  className="prose prose-sm max-w-none text-gray-800"
+                  dangerouslySetInnerHTML={{ __html: (lead as any).remarks }}
+                />
+              </div>
+            )}
 
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="mb-3 text-sm font-medium text-gray-600">Status</div>

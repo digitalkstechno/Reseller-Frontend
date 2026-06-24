@@ -43,6 +43,7 @@ export type ApiLead = {
   nextFollowupDate?: string;
   nextFollowupTime?: string;
   note?: string;
+  remarks?: string;
   isActive?: boolean;
   followUps?: ApiFollowUp[];
   attachments?: {

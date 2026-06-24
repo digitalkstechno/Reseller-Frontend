@@ -1163,7 +1163,7 @@ export default function LeadsPage() {
                   </select>
                 </div>
               )}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-slate-700">
                   Assigned Staff {requiredFields.includes('assignedTo') && <span className="text-red-500">*</span>}
                 </label>
@@ -1181,7 +1181,7 @@ export default function LeadsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -1252,6 +1252,15 @@ export default function LeadsPage() {
                   <div>{viewLead.paymentAmount || "-"}</div>
                 </div>
               </div>
+              {(viewLead as any).remarks && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-2">Remarks</div>
+                  <div
+                    className="prose prose-sm max-w-none text-gray-800"
+                    dangerouslySetInnerHTML={{ __html: (viewLead as any).remarks }}
+                  />
+                </div>
+              )}
               {viewLead.attachments && viewLead.attachments.length > 0 && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="text-sm text-gray-600">Attachments</div>

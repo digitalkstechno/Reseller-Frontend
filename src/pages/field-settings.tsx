@@ -12,7 +12,7 @@ const LEAD_FIELDS = [
   { id: 'email', label: 'Email' },
   { id: 'leadSource', label: 'Source' },
   { id: 'leadStatus', label: 'Status' },
-  { id: 'assignedTo', label: 'Assigned Staff' },
+  // { id: 'assignedTo', label: 'Assigned Staff' },
   { id: 'priority', label: 'Priority' },
   { id: 'labels', label: 'Lead Labels' },
 ];
