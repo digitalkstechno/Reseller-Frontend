@@ -26,6 +26,7 @@ export function SettlementsContent() {
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [selectedReseller, setSelectedReseller] = useState<Settlement | null>(null);
   const [payAmount, setPayAmount] = useState<string>('');
+  const [payError, setPayError] = useState<string>('');
   const [payNote, setPayNote] = useState<string>('');
   const [isPaying, setIsPaying] = useState(false);
 
@@ -77,7 +78,13 @@ export function SettlementsContent() {
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPayError('');
     if (!selectedReseller || !payAmount) return;
+
+    if (parseFloat(payAmount) > selectedReseller.pendingCommission) {
+      setPayError(`Settlement amount cannot exceed pending commission (₹${selectedReseller.pendingCommission.toLocaleString('en-IN')})`);
+      return;
+    }
 
     setIsPaying(true);
     try {
@@ -284,13 +291,18 @@ export function SettlementsContent() {
                     <input
                       type="number"
                       min="0.01"
+                      max={selectedReseller.pendingCommission}
                       step="0.01"
                       required
                       className="block w-full rounded-xl border border-gray-300 pl-9 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                       value={payAmount}
-                      onChange={(e) => setPayAmount(e.target.value)}
+                      onChange={(e) => {
+                        setPayAmount(e.target.value);
+                        setPayError('');
+                      }}
                     />
                   </div>
+                  {payError && <p className="mt-1 text-sm text-red-500">{payError}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Note (Optional)</label>

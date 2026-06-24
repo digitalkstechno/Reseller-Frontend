@@ -39,6 +39,8 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
     proofFile?: File;
   } | null>(null);
 
+  const [errors, setErrors] = useState<{ amount?: string; date?: string; mode?: string }>({});
+
   if (!isOpen) return null;
 
   // Derive display values — prefer savedData (just submitted), else lead data
@@ -67,16 +69,20 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
   };
 
   const handleSubmit = async () => {
+    const newErrors: { amount?: string; date?: string; mode?: string } = {};
+
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
+      newErrors.amount = 'Please enter a valid amount';
     }
     if (!paymentDate) {
-      toast.error('Please select a payment date');
-      return;
+      newErrors.date = 'Please select a payment date';
     }
     if (!paymentMode) {
-      toast.error('Please select a payment mode');
+      newErrors.mode = 'Please select a payment mode';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -243,10 +249,14 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                 <input
                   type="number"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+                  }}
                   placeholder="Enter amount"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]"
+                  className={`w-full border ${errors.amount ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]`}
                 />
+                {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
               </div>
 
               {/* Payment Date */}
@@ -257,9 +267,13 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                 <input
                   type="date"
                   value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]"
+                  onChange={(e) => {
+                    setPaymentDate(e.target.value);
+                    if (errors.date) setErrors((prev) => ({ ...prev, date: undefined }));
+                  }}
+                  className={`w-full border ${errors.date ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]`}
                 />
+                {errors.date && <p className="mt-1 text-xs text-red-500">{errors.date}</p>}
               </div>
 
               {/* Payment Mode */}
@@ -271,17 +285,23 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                   {['Cash', 'GPay', 'Bank Transfer'].map((m) => (
                     <button
                       key={m}
-                      onClick={() => setPaymentMode(m)}
+                      onClick={() => {
+                        setPaymentMode(m);
+                        if (errors.mode) setErrors((prev) => ({ ...prev, mode: undefined }));
+                      }}
                       className={`py-2 text-sm font-medium rounded-md border cursor-pointer transition-colors ${
                         paymentMode === m
                           ? 'border-[#3B82F6] text-[#3B82F6] bg-blue-50'
-                          : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                          : errors.mode
+                            ? 'border-red-500 text-red-500 hover:bg-red-50'
+                            : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {m}
                     </button>
                   ))}
                 </div>
+                {errors.mode && <p className="mt-1 text-xs text-red-500">{errors.mode}</p>}
               </div>
 
               {/* Payment Proof */}
