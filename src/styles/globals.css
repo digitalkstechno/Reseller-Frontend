@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --primary: #071323;
-  --secondary: #0a2352;
-  --scrollbar-track: #f5f5f5;
-  --scrollbar-thumb: #eeeeee;
-  --scrollbar-thumb-hover: #dddddd;
+ --background: #ffffff;
+--foreground: #3B82F6;
+--primary: #3B82F6;
+--secondary: #2563EB;
+--scrollbar-track: #EFF6FF;
+--scrollbar-thumb: #BFDBFE;
+--scrollbar-thumb-hover: #93C5FD;
 }
 
 @theme inline {

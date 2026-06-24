@@ -16,7 +16,13 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
   // view mode when already paid; form mode when adding new payment
   const [mode, setMode] = useState<'view' | 'form'>(isPaid ? 'view' : 'form');
 
-  const [amount, setAmount] = useState(lead?.paidAmount?.toString() || lead?.paymentAmount?.toString() || '');
+  const [amount, setAmount] = useState(() => {
+    const pAmt = lead?.paidAmount;
+    if (pAmt && pAmt > 0) return pAmt.toString();
+    const pAmt2 = lead?.paymentAmount;
+    if (pAmt2 && pAmt2 > 0) return pAmt2.toString();
+    return '';
+  });
   const [paymentDate, setPaymentDate] = useState(() => {
     if (lead?.paymentDate?.startDate) {
       return new Date(lead.paymentDate.startDate).toISOString().split('T')[0];
@@ -248,9 +254,18 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={amount}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === 'e' || e.key === '+' || e.key === 'E') {
+                      e.preventDefault();
+                    }
+                  }}
                   onChange={(e) => {
-                    setAmount(e.target.value);
+                    const val = e.target.value;
+                    if (Number(val) < 0) return;
+                    setAmount(val);
                     if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
                   }}
                   placeholder="Enter amount"
