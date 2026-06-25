@@ -108,6 +108,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   }
   if (userRole) {
     menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
+    menuItems.push({ icon: CheckSquare, label: "Ledger", path: "/ledger" });
   }
 
   const hasAnySetupPerm = canViewStaff || canViewRole || canViewLeadStatus || canViewLeadSource;

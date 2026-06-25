@@ -5,6 +5,7 @@ import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { FiSearch, FiCalendar } from 'react-icons/fi';
 import { IndianRupee } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 interface SettlementLeadsListProps {
   resellerId: string;
@@ -20,9 +21,53 @@ export default function SettlementLeadsList({ resellerId }: SettlementLeadsListP
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [totalRecords, setTotalRecords] = useState(0);
 
+  const [selectedLeads, setSelectedLeads] = useState<any[]>([]);
+  const [settling, setSettling] = useState(false);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useRef<HTMLTableRowElement | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedLeads(leads);
+    } else {
+      setSelectedLeads([]);
+    }
+  };
+
+  const handleSelectLead = (lead: any, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads((prev) => [...prev, lead]);
+    } else {
+      setSelectedLeads((prev) => prev.filter((l) => l.id !== lead.id));
+    }
+  };
+
+  const handleSettleLeads = async () => {
+    if (selectedLeads.length === 0) return;
+    setSettling(true);
+    try {
+      const leadIds = selectedLeads.map(l => l.id);
+      await axios.post(
+        baseUrl.settleLeads,
+        { leadIds },
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      toast.success('Leads settled successfully!');
+      setSelectedLeads([]);
+      setPage(1);
+      fetchLeads(1, search, month, year, true);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to settle leads');
+    } finally {
+      setSettling(false);
+    }
+  };
+
+  const totalSettlementAmount = selectedLeads.reduce((sum, lead) => {
+    return sum + (Number(lead.commissionAmount) || 0);
+  }, 0);
 
   const fetchLeads = async (currentPage: number, currentSearch: string, currentMonth: string, currentYear: string, reset: boolean) => {
     if (loading) return;
@@ -159,10 +204,38 @@ export default function SettlementLeadsList({ resellerId }: SettlementLeadsListP
         </div>
       </div>
 
+      {selectedLeads.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between shadow-sm">
+          <div>
+            <h3 className="text-blue-800 font-semibold text-sm">
+              {selectedLeads.length} Lead{selectedLeads.length > 1 ? 's' : ''} Selected
+            </h3>
+            <p className="text-blue-600 text-xs mt-1">
+              Total Commission: <span className="font-bold text-sm">₹{totalSettlementAmount.toLocaleString('en-IN')}</span>
+            </p>
+          </div>
+          <button
+            onClick={handleSettleLeads}
+            disabled={settling}
+            className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded shadow hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {settling ? 'Processing...' : 'Settle Leads'}
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-gray-200 max-h-[400px] overflow-y-auto">
         <table className="min-w-full divide-y divide-gray-200 relative">
           <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
+              <th className="px-6 py-3 text-left w-12">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                  onChange={handleSelectAll}
+                  checked={leads.length > 0 && selectedLeads.length === leads.length}
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead Details</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment Mode</th>
@@ -180,8 +253,17 @@ export default function SettlementLeadsList({ resellerId }: SettlementLeadsListP
             )}
             {leads.map((lead, index) => {
               const isLast = index === leads.length - 1;
+              const isSelected = selectedLeads.some((l) => l.id === lead.id);
               return (
                 <tr key={lead.id || index} ref={isLast ? lastElementRef : null} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={isSelected}
+                      onChange={(e) => handleSelectLead(lead, e.target.checked)}
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">{lead.customerName}</div>
                     {lead.paymentDate && (

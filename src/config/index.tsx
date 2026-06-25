@@ -65,6 +65,7 @@ export const baseUrl = {
   settlementHistory: `${API}settlement/history`,
   settingsRequiredFields: `${API}settings/required-fields`,
   settingsLeadFields: `${API}settings/lead-fields`,
+  settleLeads: `${API}settlement/settle-leads`,
   getBaseUrl: API,
   getImageUrl: process.env.NEXT_PUBLIC_IMAGE_URL,
 };

@@ -62,6 +62,10 @@ interface DataTableProps<T> {
     show?: (row: T) => boolean;
   }[];
   expandableContent?: (row: T) => React.ReactNode;
+  selectable?: boolean;
+  selectedRows?: T[];
+  onSelectionChange?: (selectedRows: T[]) => void;
+  isRowSelectable?: (row: T) => boolean;
 }
 
 export default function DataTable<T extends Record<string, any>>({
@@ -91,6 +95,10 @@ export default function DataTable<T extends Record<string, any>>({
   onExport,
   extraActions,
   expandableContent,
+  selectable = false,
+  selectedRows = [],
+  onSelectionChange,
+  isRowSelectable = () => true,
 }: DataTableProps<T>) {
   const [searchValue, setSearchValue] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -242,6 +250,25 @@ export default function DataTable<T extends Record<string, any>>({
         <table className="w-full divide-y divide-gray-100">
           <thead className="bg-gray-100">
             <tr>
+              {selectable && (
+                <th className="px-6 py-4 text-left w-12">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    onChange={(e) => {
+                      if (onSelectionChange) {
+                        const allSelectableRows = data.filter(isRowSelectable);
+                        if (e.target.checked) {
+                          onSelectionChange(allSelectableRows);
+                        } else {
+                          onSelectionChange([]);
+                        }
+                      }
+                    }}
+                    checked={data.length > 0 && selectedRows.length === data.filter(isRowSelectable).length}
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
@@ -299,8 +326,28 @@ export default function DataTable<T extends Record<string, any>>({
                       ${striped && index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}
                       ${hoveredRow === index ? 'bg-blue-50/30' : ''}
                       ${!expandedRows[index] ? 'border-b border-gray-50 last:border-0' : 'border-b-0'}
+                      ${selectedRows.includes(row) ? 'bg-blue-50/50' : ''}
                     `}
                   >
+                    {selectable && (
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isRowSelectable(row)}
+                          checked={selectedRows.includes(row)}
+                          onChange={(e) => {
+                            if (onSelectionChange) {
+                              if (e.target.checked) {
+                                onSelectionChange([...selectedRows, row]);
+                              } else {
+                                onSelectionChange(selectedRows.filter(r => r !== row));
+                              }
+                            }
+                          }}
+                        />
+                      </td>
+                    )}
                     {columns.map((column) => (
                     <td
                       key={String(column.key)}
