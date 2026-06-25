@@ -3,10 +3,12 @@ import type { AppProps } from "next/app";
 import { Poppins } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import axios from "axios";
+import { clearAuthToken } from "@/config";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -16,8 +18,26 @@ const poppins = Poppins({
 
 export default function App({ Component, pageProps }: AppProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const pathName = usePathname()
+  const pathName = usePathname();
+  const router = useRouter();
   const isLoginPage = pathName === "/login";
+
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          clearAuthToken();
+          router.replace("/");
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [router]);
 
   const getLabel = () => {
     if (pathName === "/") return "Dashboard"

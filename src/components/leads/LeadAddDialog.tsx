@@ -200,7 +200,7 @@ export default function LeadAddDialog({
             type="button"
             onClick={() => formik.handleSubmit()}
             disabled={formik.isSubmitting}
-            className="rounded-lg cursor-pointer bg-[#0b2a55] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a2447] disabled:opacity-60"
+            className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {formik.isSubmitting
               ? 'Saving...'
