@@ -45,7 +45,12 @@ const createValidationSchema = Yup.object({
     .min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required'),
-  commissionRate: Yup.string().required('Commission percentage is required'),
+  commissionRate: Yup.number()
+    .typeError('Commission must be a number')
+    .integer('Commission must be an integer')
+    .min(0, 'Commission cannot be less than 0')
+    .max(100, 'Commission cannot exceed 100')
+    .required('Commission percentage is required'),
 });
 
 const updateValidationSchema = Yup.object({
@@ -61,7 +66,12 @@ const updateValidationSchema = Yup.object({
   password: Yup.string().notRequired().min(6, 'Password must be at least 6 characters'),
   // role: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required'),
-  commissionRate: Yup.string().required('Commission percentage is required'),
+  commissionRate: Yup.number()
+    .typeError('Commission must be a number')
+    .integer('Commission must be an integer')
+    .min(0, 'Commission cannot be less than 0')
+    .max(100, 'Commission cannot exceed 100')
+    .required('Commission percentage is required'),
 });
 
 export default function ResellerDialog({
@@ -334,7 +344,10 @@ export default function ResellerDialog({
                 <FormInput
                   label="Commission (%)"
                   name="commissionRate"
-                  type="text"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
                   value={formik.values.commissionRate}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}

@@ -190,15 +190,7 @@ export function ResellersContent() {
         </a>
       ),
     },
-    {
-      key: 'address',
-      label: 'ADDRESS',
-      render: (_, row) => (
-        <span className="text-xs text-gray-600">
-          {[row.address, row.city, row.state, row.pincode].filter(Boolean).join(', ')}
-        </span>
-      ),
-    },
+   
     {
       key: 'commissionRate',
       label: 'COMMISSION RATE',

@@ -357,6 +357,9 @@ interface FormInputProps {
   labelClassName?: string; // Custom class for label container
   compact?: boolean; // Compact mode
   isPhone?: boolean; // Mobile input mode
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
 }
 
 const FormInput: React.FC<FormInputProps> = ({
@@ -381,6 +384,9 @@ const FormInput: React.FC<FormInputProps> = ({
   labelClassName,
   compact,
   isPhone,
+  min,
+  max,
+  step,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -684,6 +690,9 @@ const FormInput: React.FC<FormInputProps> = ({
             onFocus={() => setIsFocused(true)}
             placeholder={placeholder}
             disabled={disabled}
+            min={min}
+            max={max}
+            step={step}
             className={getInputClasses()}
           />
         )}
