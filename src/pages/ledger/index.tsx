@@ -163,6 +163,8 @@ export default function LedgerPage() {
     new Map(transactions.filter(t => t.reseller).map(t => [t.reseller._id, t.reseller])).values()
   );
 
+  const totalFilteredAmount = filteredTransactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
       <Head>
@@ -173,6 +175,9 @@ export default function LedgerPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Ledger</h1>
           <p className="text-sm text-gray-500 mt-1">View and download your settlement transactions.</p>
+          <div className="mt-2 text-sm font-semibold text-gray-700">
+            Total Amount: <span className="text-emerald-600 font-bold ml-1 flex inline-flex items-center">₹{totalFilteredAmount.toLocaleString('en-IN')}</span>
+          </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">

@@ -48,6 +48,7 @@ export function SettlementsContent() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
 
@@ -340,6 +341,16 @@ export function SettlementsContent() {
   const totalPaid = settlementsData.reduce((acc, curr) => acc + curr.paidCommission, 0);
   const totalPending = settlementsData.reduce((acc, curr) => acc + curr.pendingCommission, 0);
 
+  const filteredSettlements = settlementsData.filter(settlement => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      settlement.resellerName?.toLowerCase().includes(query) ||
+      settlement.resellerEmail?.toLowerCase().includes(query) ||
+      settlement.commissionRate?.toString().includes(query)
+    );
+  });
+
   return (
     <>
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -392,12 +403,13 @@ export function SettlementsContent() {
           />
         ) : (
           <DataTable
-              data={settlementsData}
+              data={filteredSettlements}
               columns={columns}
               loading={isLoading}
               title="Reseller Settlements"
               subtitle="Manage commissions and record payments for your resellers."
               searchable
+              onSearch={(val) => setSearchQuery(val)}
               expandableContent={(row) => <SettlementLeadsList resellerId={row._id} />}
             />
         )}

@@ -442,7 +442,6 @@ export default function Header({ toggleSidebar }: HeaderProps) {
             <span className="text-sm font-bold text-gray-800">{userName}</span>
             {userEmail && <span className="text-xs text-gray-500">{userEmail}</span>}
           </div>
-          {console.log("userProfileImage",userProfileImage)}
           {userProfileImage && !imageError ? (
             <img
               src={userProfileImage.startsWith('http') ? userProfileImage : `${process.env.NEXT_PUBLIC_IMAGE_URL || ''}/images/ResellerProfileImages/${userProfileImage}`}
