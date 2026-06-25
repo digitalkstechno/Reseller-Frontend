@@ -3,19 +3,10 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Save, CheckCircle2, Circle } from 'lucide-react';
+import axios from 'axios';
+import { baseUrl, getAuthToken } from '@/config';
 
-const LEAD_FIELDS = [
-  { id: 'fullName', label: 'Full Name' },
-  { id: 'companyName', label: 'Company Name' },
-  { id: 'address', label: 'Address' },
-  { id: 'contact', label: 'Phone' },
-  { id: 'email', label: 'Email' },
-  { id: 'leadSource', label: 'Source' },
-  { id: 'leadStatus', label: 'Status' },
-  // { id: 'assignedTo', label: 'Assigned Staff' },
-  { id: 'priority', label: 'Priority' },
-  { id: 'labels', label: 'Lead Labels' },
-];
+// Removed hardcoded LEAD_FIELDS, fetched dynamically from backend
 
 const TASK_FIELDS = [
   { id: 'subject', label: 'Subject' },
@@ -29,55 +20,53 @@ const TASK_FIELDS = [
 ];
 
 export function FieldSettingsContent() {
+  const [leadFields, setLeadFields] = useState<{ id: string; label: string }[]>([]);
   const [requiredLeads, setRequiredLeads] = useState<string[]>([]);
-  const [requiredTasks, setRequiredTasks] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedLeads = localStorage.getItem('leadRequiredFields');
-    const savedTasks = localStorage.getItem('taskRequiredFields');
-
-    if (savedLeads) {
+    const fetchSettings = async () => {
       try {
-        setRequiredLeads(JSON.parse(savedLeads));
-      } catch (e) {
-        setRequiredLeads(['fullName', 'contact', 'email', 'leadSource', 'leadStatus', 'assignedTo']);
-      }
-    } else {
-      // Defaults
-      setRequiredLeads(['fullName', 'contact', 'email', 'leadSource', 'leadStatus', 'assignedTo']);
-    }
+        const token = getAuthToken();
+        const headers = { Authorization: `Bearer ${token}` };
 
-    if (savedTasks) {
-      try {
-        setRequiredTasks(JSON.parse(savedTasks));
-      } catch (e) {
-        setRequiredTasks(['subject', 'status', 'priority']);
+        const [fieldsRes, reqRes] = await Promise.all([
+          axios.get(baseUrl.settingsLeadFields || 'http://localhost:5005/v1/api/settings/lead-fields', { headers }),
+          axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers })
+        ]);
+
+        setLeadFields(fieldsRes.data?.data || []);
+        setRequiredLeads(reqRes.data?.data?.requiredLeads || []);
+      } catch (err) {
+        console.error('Failed to fetch field settings', err);
+        toast.error('Failed to load field settings');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // Defaults
-      setRequiredTasks(['subject', 'status', 'priority']);
-    }
+    };
+    fetchSettings();
   }, []);
 
   const handleToggleLead = (id: string) => {
+    if (id === 'customerContact') return; // Always required for resellers
     setRequiredLeads(prev =>
       prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
     );
   };
 
-  const handleToggleTask = (id: string) => {
-    setRequiredTasks(prev =>
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
-    );
-  };
+  const handleSave = async () => {
+    try {
+      const token = getAuthToken();
+      const headers = { Authorization: `Bearer ${token}` };
 
-  const handleSave = () => {
-    localStorage.setItem('leadRequiredFields', JSON.stringify(requiredLeads));
-    localStorage.setItem('taskRequiredFields', JSON.stringify(requiredTasks));
-    toast.success('Field requirements saved successfully');
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new Event('fieldSettingsUpdated'));
+      await axios.post(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { requiredLeads }, { headers });
+      toast.success('Field requirements saved successfully');
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('fieldSettingsUpdated'));
+    } catch (err) {
+      toast.error('Failed to save field settings');
+    }
   };
 
   return (
@@ -105,63 +94,42 @@ export function FieldSettingsContent() {
             Add Lead Required Fields
           </h3>
           <div className="space-y-2">
-            {LEAD_FIELDS.map(field => (
-              <label
-                key={field.id}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                  requiredLeads.includes(field.id)
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span className="font-medium">{field.label}</span>
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={requiredLeads.includes(field.id)}
-                  onChange={() => handleToggleLead(field.id)}
-                />
-                {requiredLeads.includes(field.id) ? (
-                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                ) : (
-                  <Circle className="h-5 w-5 text-gray-300" />
-                )}
-              </label>
-            ))}
+            {loading ? (
+              <p className="text-gray-500">Loading fields...</p>
+            ) : leadFields.map(field => {
+              // Ensure customerContact is always checked and disabled
+              const isContact = field.id === 'customerContact';
+              const isChecked = isContact || requiredLeads.includes(field.id);
+              
+              return (
+                <label
+                  key={field.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isContact ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
+                    isChecked
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="font-medium">{field.label} {isContact && <span className="text-xs ml-2 text-blue-600">(Mandatory)</span>}</span>
+                  <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={isChecked}
+                    disabled={isContact}
+                    onChange={() => handleToggleLead(field.id)}
+                  />
+                  {isChecked ? (
+                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-gray-300" />
+                  )}
+                </label>
+              );
+            })}
           </div>
         </div>
 
-        {/* Task Fields */}
-        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
-            Add Task Required Fields
-          </h3>
-          <div className="space-y-2">
-            {TASK_FIELDS.map(field => (
-              <label
-                key={field.id}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                  requiredTasks.includes(field.id)
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span className="font-medium">{field.label}</span>
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={requiredTasks.includes(field.id)}
-                  onChange={() => handleToggleTask(field.id)}
-                />
-                {requiredTasks.includes(field.id) ? (
-                  <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                ) : (
-                  <Circle className="h-5 w-5 text-gray-300" />
-                )}
-              </label>
-            ))}
-          </div>
-        </div>
+    
       </div>
     </div>
   );

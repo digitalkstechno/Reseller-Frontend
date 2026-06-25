@@ -19,29 +19,6 @@ interface Props {
   onLeadUpdated?: (lead: any) => void;
 }
 
-const validationSchema = Yup.object().shape({
-  customerName: Yup.string()
-    .trim()
-    .required('Customer Name is required'),
-  customerEmail: Yup.string()
-    .trim()
-    .email('Invalid email format')
-    .required('Customer Email is required'),
-  customerContact: Yup.string()
-    .trim()
-    .matches(/^[0-9]{10}$/, 'Customer Contact must be exactly 10 digits')
-    .required('Customer Contact is required'),
-  companyName: Yup.string().trim(),
-
-  paymentAmount: Yup.number()
-    .typeError('Payment Amount must be a number')
-    .required('Payment Amount is required')
-    .min(0, 'Payment Amount cannot be negative'),
-  leadStatus: Yup.string().required('Lead Status is required'),
-  leadSource: Yup.string().required('Lead Source is required'),
-  remarks: Yup.string().optional(),
-  isActive: Yup.boolean(),
-});
 
 export default function LeadAddDialog({
   isOpen,
@@ -55,6 +32,8 @@ export default function LeadAddDialog({
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
   const [sources, setSources] = useState<{ _id: string; name: string }[]>([]);
   const [staffMembers, setStaffMembers] = useState<{ _id: string; fullName: string }[]>([]);
+  const [requiredFields, setRequiredFields] = useState<string[]>([]);
+  const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
   const token = getAuthToken;
 
   useEffect(() => {
@@ -62,12 +41,49 @@ export default function LeadAddDialog({
     const fetchDropdowns = async () => {
       try {
         const headers = { Authorization: `Bearer ${token()}` };
-        const [statusRes, sourceRes] = await Promise.all([
+        const [statusRes, sourceRes, reqRes] = await Promise.all([
           axios.get(baseUrl.leadStatuses, { headers }),
           axios.get(baseUrl.leadSources, { headers }),
+          axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers })
         ]);
         setStatuses(statusRes.data?.data || statusRes.data || []);
         setSources(sourceRes.data?.data || sourceRes.data || []);
+        
+        const reqs = reqRes.data?.data?.requiredLeads || [];
+        setRequiredFields(reqs);
+
+        const schemaShape: any = {
+          customerName: Yup.string().trim(),
+          customerEmail: Yup.string().trim().email('Invalid email format'),
+          customerContact: Yup.string().trim().matches(/^[0-9]{10}$/, 'Customer Contact must be exactly 10 digits').required('Customer Contact is required'),
+          companyName: Yup.string().trim(),
+          product: Yup.string().trim(),
+          address: Yup.string().trim(),
+          paymentAmount: Yup.number().typeError('Payment Amount must be a number').min(0, 'Payment Amount cannot be negative'),
+          leadStatus: Yup.string(),
+          leadSource: Yup.string(),
+          remarks: Yup.string().optional(),
+          isActive: Yup.boolean(),
+        };
+
+        const labels: any = {
+          customerName: 'Customer Name',
+          customerEmail: 'Customer Email',
+          companyName: 'Company Name',
+          product: 'Product',
+          address: 'Address',
+          paymentAmount: 'Payment Amount',
+          leadStatus: 'Lead Status',
+          leadSource: 'Lead Source',
+          remarks: 'Remarks'
+        };
+
+        reqs.forEach((f: string) => {
+           if (schemaShape[f]) {
+             schemaShape[f] = schemaShape[f].required(`${labels[f] || f} is required`);
+           }
+        });
+        setDynamicSchema(Yup.object().shape(schemaShape));
       } catch (err) {
         console.error('Failed to fetch dropdowns:', err);
       }
@@ -91,7 +107,7 @@ export default function LeadAddDialog({
       remarks: '',
       isActive: true,
     },
-    validationSchema,
+    validationSchema: dynamicSchema,
     validateOnChange: false,
     validateOnBlur: false,
     onSubmit: async (values, { setSubmitting, setStatus }) => {
@@ -227,7 +243,7 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('customerName')}
-              required
+              required={requiredFields.includes('customerName')}
             />
             <FormInput
               label="Customer Email"
@@ -237,7 +253,7 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('customerEmail')}
-              required
+              required={requiredFields.includes('customerEmail')}
             />
           </div>
 
@@ -263,10 +279,11 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('companyName')}
+              required={requiredFields.includes('companyName')}
             />
           </div>
 
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Product Name"
               name="product"
@@ -274,7 +291,7 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('product')}
-              required
+              required={requiredFields.includes('product')}
             />
             <FormInput
               label="Address"
@@ -283,9 +300,9 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('address')}
-              required
+              required={requiredFields.includes('address')}
             />
-          </div> */}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
@@ -299,7 +316,7 @@ export default function LeadAddDialog({
               onBlur={formik.handleBlur}
               error={getFieldError('paymentAmount')}
               icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
-              required
+              required={requiredFields.includes('paymentAmount')}
             />
             <FormSelect
               label="Lead Status"
@@ -312,7 +329,7 @@ export default function LeadAddDialog({
               onBlur={formik.handleBlur}
               options={statuses.map((s) => ({ value: s._id, label: s.name }))}
               error={getFieldError('leadStatus')}
-              required
+              required={requiredFields.includes('leadStatus')}
               placeholder="Select Status"
             />
           </div>
@@ -329,7 +346,7 @@ export default function LeadAddDialog({
               onBlur={formik.handleBlur}
               options={sources.map((s) => ({ value: s._id, label: s.name }))}
               error={getFieldError('leadSource')}
-              required
+              required={requiredFields.includes('leadSource')}
               placeholder="Select Source"
             />
 
