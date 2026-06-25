@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useEffect, useState } from 'react';
 import {
   FiChevronLeft,
@@ -11,7 +12,9 @@ import {
   FiFilter,
   FiDownload,
   FiMoreVertical,
-  FiRefreshCw
+  FiRefreshCw,
+  FiChevronDown,
+  FiChevronUp
 } from 'react-icons/fi';
 
 export interface Column<T> {
@@ -58,6 +61,7 @@ interface DataTableProps<T> {
     color?: 'blue' | 'green' | 'red' | 'orange' | 'purple' | ((row: T) => 'blue' | 'green' | 'red' | 'orange' | 'purple');
     show?: (row: T) => boolean;
   }[];
+  expandableContent?: (row: T) => React.ReactNode;
 }
 
 export default function DataTable<T extends Record<string, any>>({
@@ -86,10 +90,16 @@ export default function DataTable<T extends Record<string, any>>({
   onRefresh,
   onExport,
   extraActions,
+  expandableContent,
 }: DataTableProps<T>) {
   const [searchValue, setSearchValue] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+
+  const toggleRow = (index: number) => {
+    setExpandedRows(prev => ({ ...prev, [index]: !prev[index] }));
+  };
 
   const renderCell = (column: Column<T>, row: T) => {
     const value = row[column.key as string];
@@ -240,7 +250,7 @@ export default function DataTable<T extends Record<string, any>>({
                   {column.label}
                 </th>
               ))}
-              {actions && (onView || onEdit || onDelete || extraActions) && (
+              {actions && (onView || onEdit || onDelete || extraActions || expandableContent) && (
                 <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 whitespace-nowrap">
                   Actions
                 </th>
@@ -280,18 +290,18 @@ export default function DataTable<T extends Record<string, any>>({
               </tr>
             ) : (
               data.map((row, index) => (
-                <tr
-                  key={index}
-                  onMouseEnter={() => setHoveredRow(index)}
-                  onMouseLeave={() => setHoveredRow(null)}
-                  className={`
-                    transition-all duration-200
-                    ${striped && index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}
-                    ${hoveredRow === index ? 'bg-blue-50/30' : ''}
-                    border-b border-gray-50 last:border-0
-                  `}
-                >
-                  {columns.map((column) => (
+                <React.Fragment key={index}>
+                  <tr
+                    onMouseEnter={() => setHoveredRow(index)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                    className={`
+                      transition-all duration-200
+                      ${striped && index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}
+                      ${hoveredRow === index ? 'bg-blue-50/30' : ''}
+                      ${!expandedRows[index] ? 'border-b border-gray-50 last:border-0' : 'border-b-0'}
+                    `}
+                  >
+                    {columns.map((column) => (
                     <td
                       key={String(column.key)}
                       className={`px-6 py-4 text-sm text-gray-700 whitespace-nowrap ${column.className || ''}`}
@@ -300,7 +310,7 @@ export default function DataTable<T extends Record<string, any>>({
                     </td>
                   ))}
 
-                  {actions && (onView || onEdit || onDelete || extraActions) && (
+                  {actions && (onView || onEdit || onDelete || extraActions || expandableContent) && (
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
 
@@ -348,25 +358,52 @@ export default function DataTable<T extends Record<string, any>>({
                             purple: 'text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-purple-500',
                           };
                           const colorClass = colors[evaluatedColor || 'blue'];
+
                           if (act.show && !act.show(row)) return null;
 
                           return (
                             <button
                               key={idx}
                               onClick={() => act.onClick(row)}
-                              className={`group h-9 min-w-[36px] flex items-center justify-center rounded-lg bg-gray-100 ${colorClass} px-3 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95`}
-                              title={evaluatedLabel}
+                              title={evaluatedLabel as string}
+                              className={`group h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 ${colorClass}`}
                             >
-                              {evaluatedIcon && <span className={`group-hover:text-white ${evaluatedLabel ? 'mr-1.5' : ''}`}>{evaluatedIcon}</span>}
-                              {evaluatedLabel && <span className="text-xs font-semibold group-hover:text-white">{evaluatedLabel}</span>}
+                              {evaluatedIcon ? (
+                                <span className="group-hover:scale-110 transition-transform">{evaluatedIcon}</span>
+                              ) : (
+                                <FiMoreVertical className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                              )}
                             </button>
                           );
                         })}
 
+                        {/* EXPAND ACTION */}
+                        {expandableContent && (
+                          <button
+                            onClick={() => toggleRow(index)}
+                            className="group h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-all duration-200 hover:bg-gray-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 active:scale-95 ml-auto"
+                          >
+                            {expandedRows[index] ? (
+                              <FiChevronUp className="h-4 w-4 transition-transform" />
+                            ) : (
+                              <FiChevronDown className="h-4 w-4 transition-transform" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
                 </tr>
+                {expandableContent && expandedRows[index] && (
+                  <tr key={`expand-${index}`} className="border-b border-gray-100 bg-gray-50/30">
+                    <td colSpan={columns.length + (actions ? 1 : 0)} className="p-0">
+                      <div className="overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
+                        {expandableContent(row)}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
               ))
             )}
           </tbody>

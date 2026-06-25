@@ -6,6 +6,7 @@ import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
 import { IndianRupee, ReceiptText, Users, Percent, Banknote } from 'lucide-react';
+import SettlementLeadsList from '@/components/leads/SettlementLeadsList';
 
 interface Settlement {
   _id: string; // Reseller ID
@@ -76,10 +77,10 @@ export function SettlementsContent() {
       setSettlementsData(payload);
 
       if (getUserRole() === 'reseller') {
-        const leadsRes = await axios.get(baseUrl.resellerLeadSettlements, {
+        const leadsRes = await axios.get(`${baseUrl.resellerLeadSettlements}?limit=1000`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        setResellerLeadsData(leadsRes.data?.data || []);
+        setResellerLeadsData(leadsRes.data?.data?.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
@@ -379,12 +380,14 @@ export function SettlementsContent() {
           />
         ) : (
           <DataTable
-            data={settlementsData}
-            columns={columns}
-            searchable={false}
-            pagination={false}
-            actions={false}
-          />
+              data={settlementsData}
+              columns={columns}
+              loading={isLoading}
+              title="Reseller Settlements"
+              subtitle="Manage commissions and record payments for your resellers."
+              searchable
+              expandableContent={(row) => <SettlementLeadsList resellerId={row._id} />}
+            />
         )}
       </div>
 
