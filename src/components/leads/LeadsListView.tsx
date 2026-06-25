@@ -366,6 +366,7 @@ export default function LeadsListView({
               ? <span className="text-xs">✓</span>
               : <span className="text-xs font-bold">₹</span>,
             color: (row) => row.paymentStatus === 'Paid' ? 'green' : 'blue',
+            show: (row) => row.status?.toLowerCase() === 'won' || !!row.isWon,
             onClick: (row) => {
               setPaymentTarget(row);
               setShowPayment(true);

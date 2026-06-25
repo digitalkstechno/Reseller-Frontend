@@ -270,7 +270,9 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                     if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
                   }}
                   placeholder="Enter amount"
-                  className={`w-full border ${errors.amount ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]`}
+                  disabled
+                  readOnly
+                  className={`w-full border ${errors.amount ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] bg-gray-100 cursor-not-allowed`}
                 />
                 {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
               </div>

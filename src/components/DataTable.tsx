@@ -56,6 +56,7 @@ interface DataTableProps<T> {
     onClick: (row: T) => void;
     icon?: React.ReactNode | ((row: T) => React.ReactNode);
     color?: 'blue' | 'green' | 'red' | 'orange' | 'purple' | ((row: T) => 'blue' | 'green' | 'red' | 'orange' | 'purple');
+    show?: (row: T) => boolean;
   }[];
 }
 
@@ -347,6 +348,8 @@ export default function DataTable<T extends Record<string, any>>({
                             purple: 'text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-purple-500',
                           };
                           const colorClass = colors[evaluatedColor || 'blue'];
+                          if (act.show && !act.show(row)) return null;
+
                           return (
                             <button
                               key={idx}
