@@ -150,13 +150,6 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           }
         });
 
-        // Perform logout
-        clearAuthToken();
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("auth");
-        }
-
         // Show success message
         Swal.fire({
           title: 'Logged Out!',
@@ -165,6 +158,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
+          clearAuthToken();
           router.replace("/login");
         });
       }

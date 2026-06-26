@@ -149,21 +149,21 @@ export default function LeadsPage() {
     if (userRole === 'admin') {
       setViewMode('list');
       if (typeof window !== 'undefined') {
-        localStorage.setItem('leadsView', 'list');
+        sessionStorage.setItem('leadsView', 'list');
       }
       return;
     }
     if (viewParam === 'kanban' || viewParam === 'list') {
       setViewMode(viewParam as ViewMode);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('leadsView', viewParam);
+        sessionStorage.setItem('leadsView', viewParam);
       }
     }
   }, [viewParam, userRole]);
 
   const switchView = (mode: ViewMode) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('leadsView', mode);
+      sessionStorage.setItem('leadsView', mode);
     }
     router.push(`/leads/${mode}`, undefined, { shallow: true });
   };

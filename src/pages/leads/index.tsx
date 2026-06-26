@@ -8,7 +8,7 @@ export default function LeadsIndex() {
 
   useEffect(() => {
     const savedView = typeof window !== 'undefined'
-      ? localStorage.getItem('leadsView') || 'list'
+      ? sessionStorage.getItem('leadsView') || 'list'
       : 'list';
     router.replace(`/leads/${savedView}`);
   }, []);

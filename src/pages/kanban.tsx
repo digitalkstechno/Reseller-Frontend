@@ -125,7 +125,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     const loadRequiredFields = () => {
-      const saved = localStorage.getItem('leadRequiredFields');
+      const saved = sessionStorage.getItem('leadRequiredFields');
       if (saved) {
         try {
           setRequiredFields(JSON.parse(saved));
@@ -144,7 +144,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("kanbanVisibleStatusNames");
+      const stored = window.sessionStorage.getItem("kanbanVisibleStatusNames");
       if (stored) {
         try {
           const parsed = JSON.parse(stored);

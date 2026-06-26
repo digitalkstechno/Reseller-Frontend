@@ -95,12 +95,12 @@ export default function Setup() {
     };
   }, [token]);
 
-  // Load saved kanban statuses from localStorage - FIXED: Always call useEffect
+  // Load saved kanban statuses from sessionStorage - FIXED: Always call useEffect
   useEffect(() => {
     const loadKanbanStatuses = () => {
       if (typeof window === 'undefined') return;
 
-      const stored = window.localStorage.getItem('kanbanVisibleStatusNames');
+      const stored = window.sessionStorage.getItem('kanbanVisibleStatusNames');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
@@ -143,10 +143,10 @@ export default function Setup() {
     });
   };
 
-  // Handle save to localStorage
+  // Handle save to sessionStorage
   const handleSaveKanbanStatuses = () => {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(
+      window.sessionStorage.setItem(
         'kanbanVisibleStatusNames',
         JSON.stringify(kanbanStatusNames)
       );

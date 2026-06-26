@@ -352,7 +352,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("kanbanVisibleStatusNames");
+      const stored = window.sessionStorage.getItem("kanbanVisibleStatusNames");
       if (stored) {
         try {
           const parsed = JSON.parse(stored);

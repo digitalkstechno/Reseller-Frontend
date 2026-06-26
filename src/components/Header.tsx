@@ -391,13 +391,6 @@ export default function Header({ toggleSidebar }: HeaderProps) {
             Swal.showLoading();
           }
         });
-
-        clearAuthToken();
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("auth");
-        }
-
         Swal.fire({
           title: 'Logged Out!',
           text: 'You have been successfully logged out',
@@ -405,6 +398,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
+          clearAuthToken();
           router.replace("/login");
         });
       }

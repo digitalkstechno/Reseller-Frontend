@@ -117,7 +117,7 @@ export default function TaskDialog({ isOpen, onClose, mode, initialData, onSucce
 
   useEffect(() => {
     const loadRequiredFields = () => {
-      const saved = localStorage.getItem('taskRequiredFields');
+      const saved = sessionStorage.getItem('taskRequiredFields');
       if (saved) {
         try {
           setRequiredFields(JSON.parse(saved));

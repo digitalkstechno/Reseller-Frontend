@@ -69,29 +69,36 @@ export const baseUrl = {
   getImageUrl: (process.env.NEXT_PUBLIC_IMAGE_URL || "").replace(/\/+$/, ""),
 };
 
-const TOKEN_COOKIE_NAME = "crm_token";
+import { store } from '@/store';
+import { setCredentials, logout } from '@/store/slices/authSlice';
 
 export function setAuthToken(token: string, days: number = 7) {
-  if (typeof document === "undefined") return;
-  const expires = new Date();
-  expires.setDate(expires.getDate() + days);
-  document.cookie = `${TOKEN_COOKIE_NAME}=${encodeURIComponent(
-    token,
-  )}; path=/; expires=${expires.toUTCString()}`;
+  // Sync to Redux store
+  try {
+    store.dispatch(setCredentials({
+      token,
+      user: store.getState().auth.user,
+      role: store.getState().auth.role || '',
+      permissions: store.getState().auth.permissions,
+    }));
+  } catch (e) {
+    console.error("Failed to sync auth token to Redux store:", e);
+  }
 }
 
 export function getAuthToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-  for (const c of cookies) {
-    if (c.startsWith(`${TOKEN_COOKIE_NAME}=`)) {
-      return decodeURIComponent(c.substring(TOKEN_COOKIE_NAME.length + 1));
-    }
+  try {
+    return store.getState().auth.token;
+  } catch (e) {
+    return null;
   }
-  return null;
 }
 
 export function clearAuthToken() {
-  if (typeof document === "undefined") return;
-  document.cookie = `${TOKEN_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  // Clear Redux store
+  try {
+    store.dispatch(logout());
+  } catch (e) {
+    console.error("Failed to clear auth token from Redux store:", e);
+  }
 }

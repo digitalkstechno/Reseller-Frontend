@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storage from 'redux-persist/lib/storage/session';
 import authReducer from './slices/authSlice';
 import { combineReducers } from 'redux';
 import {
@@ -15,7 +15,7 @@ import {
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth'], // only auth will be persisted
+  whitelist: [], // auth is in-memory only (not persisted in sessionStorage or localStorage)
 };
 
 const rootReducer = combineReducers({

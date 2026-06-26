@@ -86,7 +86,7 @@ export default function LeadsKanbanView({
 
     useEffect(() => {
         try {
-            const stored = localStorage.getItem('kanbanVisibleStatusNames');
+            const stored = sessionStorage.getItem('kanbanVisibleStatusNames');
             if (stored) {
                 const parsed = JSON.parse(stored);
                 setKanbanVisibleStatusNames(Array.isArray(parsed) ? parsed : []);
