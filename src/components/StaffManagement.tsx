@@ -136,7 +136,7 @@ export default function SalesExecutiveForm({
 
       if (initialData.image) {
         setPreviewImage(
-          `${process.env.NEXT_PUBLIC_IMAGE_URL}/images/StaffProfileImages/${initialData.image}`
+          `${baseUrl.getImageUrl}/images/StaffProfileImages/${initialData.image}`
         );
       }
     } else {

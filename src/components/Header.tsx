@@ -440,7 +440,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
           </div>
           {userProfileImage && !imageError ? (
             <img
-              src={userProfileImage.startsWith('http') ? userProfileImage : `${process.env.NEXT_PUBLIC_IMAGE_URL || ''}/images/ResellerProfileImages/${userProfileImage}`}
+              src={userProfileImage.startsWith('http') ? userProfileImage : `${baseUrl.getImageUrl}/images/ResellerProfileImages/${userProfileImage}`}
               alt={userName}
               className="h-10 w-10 rounded-full object-contain shadow-md border border-gray-200"
               onError={() => setImageError(true)}

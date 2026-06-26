@@ -66,7 +66,7 @@ export const baseUrl = {
   settingsLeadFields: `${API}settings/lead-fields`,
   settleLeads: `${API}settlement/settle-leads`,
   getBaseUrl: API,
-  getImageUrl: process.env.NEXT_PUBLIC_IMAGE_URL,
+  getImageUrl: (process.env.NEXT_PUBLIC_IMAGE_URL || "").replace(/\/+$/, ""),
 };
 
 const TOKEN_COOKIE_NAME = "crm_token";

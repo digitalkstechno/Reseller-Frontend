@@ -143,7 +143,7 @@ export default function ResellerDialog({
 
       if (initialData.profileImage) {
         setPreviewImage(
-          `${process.env.NEXT_PUBLIC_IMAGE_URL}/images/ResellerProfileImages/${initialData.profileImage}`
+          `${baseUrl.getImageUrl}/images/ResellerProfileImages/${initialData.profileImage}`
         );
       }
     } else {
