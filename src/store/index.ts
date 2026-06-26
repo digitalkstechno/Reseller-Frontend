@@ -15,7 +15,7 @@ import {
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: [], // auth is in-memory only (not persisted in sessionStorage or localStorage)
+  whitelist: ['auth'], // persist auth state across page refreshes
 };
 
 const rootReducer = combineReducers({
