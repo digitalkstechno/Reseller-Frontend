@@ -351,7 +351,7 @@ export function LeadStatusContent() {
           </>
         }
       >
-        <form id="lead-status-form" onSubmit={formik.handleSubmit} className="space-y-4">
+        <form noValidate id="lead-status-form" onSubmit={formik.handleSubmit} className="space-y-4">
           <FormInput
             label="Status Name"
             name="name"

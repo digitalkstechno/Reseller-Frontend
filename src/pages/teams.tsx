@@ -286,7 +286,7 @@ export function TeamsContent() {
           </>
         }
       >
-        <form id="team-form" onSubmit={formik.handleSubmit} className="space-y-4">
+        <form noValidate id="team-form" onSubmit={formik.handleSubmit} className="space-y-4">
           <FormInput
             label="Team Name"
             name="name"

@@ -381,7 +381,7 @@ export default function TaskDialog({ isOpen, onClose, mode, initialData, onSucce
   return (
     <>
       <Dialog isOpen={isOpen} onClose={onClose} title={mode === 'add' ? 'Add Task' : 'Edit Task'} size="lg">
-        <form onSubmit={formik.handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={formik.handleSubmit} className="space-y-4">
           <FormInput
             label="Name"
             name="subject"

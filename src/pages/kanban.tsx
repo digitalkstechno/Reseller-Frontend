@@ -1055,7 +1055,7 @@ export default function LeadsPage() {
             </>
           }
         >
-          <form className="space-y-4">
+          <form noValidate className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">
                 Full Name {requiredFields.includes('fullName') && <span className="text-red-500">*</span>}

@@ -93,7 +93,7 @@ export default function LoginPage() {
             <p className="mt-2 text-sm text-gray-500">Access your reseller dashboard & manage clients</p>
           </div>
 
-          <form onSubmit={formik.handleSubmit} className="space-y-5">
+          <form noValidate onSubmit={formik.handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">

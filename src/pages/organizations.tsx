@@ -286,7 +286,7 @@ export function OrganizationsContent() {
           </>
         }
       >
-        <form id="organization-form" onSubmit={formik.handleSubmit} className="space-y-4">
+        <form noValidate id="organization-form" onSubmit={formik.handleSubmit} className="space-y-4">
           <FormInput
             label="Organization Name"
             name="name"

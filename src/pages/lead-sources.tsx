@@ -305,7 +305,7 @@ export function LeadSourcesContent() {
           </>
         }
       >
-        <form id="lead-source-form" onSubmit={formik.handleSubmit} className="space-y-4">
+        <form noValidate id="lead-source-form" onSubmit={formik.handleSubmit} className="space-y-4">
           <FormInput
             label="Name"
             name="name"

@@ -382,7 +382,7 @@ export function TaskStatusContent() {
                     </>
                 }
             >
-                <form id="task-status-form" onSubmit={formik.handleSubmit} className="space-y-4">
+                <form noValidate id="task-status-form" onSubmit={formik.handleSubmit} className="space-y-4">
                     {/* Name Field */}
                     <FormInput
                         label="Status Name"

@@ -184,7 +184,7 @@ export default function RoleForm({
         </>
       }
     >
-      <form id="role-form" onSubmit={formik.handleSubmit} className="space-y-6">
+      <form noValidate id="role-form" onSubmit={formik.handleSubmit} className="space-y-6">
         <div>
           <FormInput
             label="Role Name"

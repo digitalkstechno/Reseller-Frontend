@@ -291,7 +291,7 @@ export default function LeadAddDialog({
       {loading ? (
         <p className="text-center py-10 text-slate-500">Loading options...</p>
       ) : (
-        <form id="lead-form" onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate id="lead-form" onSubmit={handleSubmit} className="space-y-4">
           {formError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
               {formError}

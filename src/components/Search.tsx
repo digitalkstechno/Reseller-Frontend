@@ -22,7 +22,7 @@ export default function Search({ onSearch, placeholder = 'Search by name, email,
   };
 
   return (
-    <form
+    <form noValidate
       onSubmit={handleSearch}
       className="mb-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:gap-3 sm:px-5"
     >

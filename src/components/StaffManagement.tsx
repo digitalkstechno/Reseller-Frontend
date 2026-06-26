@@ -270,7 +270,7 @@ export default function SalesExecutiveForm({
         </>
       }
     >
-      <form id="sales-executive-form" onSubmit={formik.handleSubmit} className="space-y-6">
+      <form noValidate id="sales-executive-form" onSubmit={formik.handleSubmit} className="space-y-6">
         {error && (
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
             {error}

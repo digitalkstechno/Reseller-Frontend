@@ -423,7 +423,7 @@ export function SettlementsContent() {
               Recording payment for <strong>{selectedReseller.resellerName}</strong>. 
               Pending balance: <span className="font-semibold text-orange-600 flex items-center inline-flex"><IndianRupee className="h-3 w-3"/>{selectedReseller.pendingCommission.toLocaleString('en-IN')}</span>
             </p>
-            <form onSubmit={handlePaySubmit}>
+            <form noValidate onSubmit={handlePaySubmit}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount (INR)</label>

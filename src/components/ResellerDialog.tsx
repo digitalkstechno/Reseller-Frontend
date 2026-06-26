@@ -37,7 +37,7 @@ const createValidationSchema = Yup.object({
     .min(2, 'Full name must be at least 2 characters'),
   email: Yup.string()
     .required('Email is required')
-    .email('Invalid email format'),
+    .matches(EMAIL_REGEX, 'Invalid email format'),
   phone: Yup.string()
     .required('Phone number is required')
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
@@ -60,7 +60,7 @@ const updateValidationSchema = Yup.object({
     .min(2, 'Full name must be at least 2 characters'),
   email: Yup.string()
     .required('Email is required')
-    .email('Invalid email format'),
+    .matches(EMAIL_REGEX, 'Invalid email format'),
   phone: Yup.string()
     .required('Phone number is required')
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
@@ -262,7 +262,7 @@ export default function ResellerDialog({
         </>
       }
     >
-      <form id="reseller-form" onSubmit={formik.handleSubmit} className="p-1 space-y-6">
+      <form noValidate id="reseller-form" onSubmit={formik.handleSubmit} className="p-1 space-y-6">
         {error && (
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
             {error}
