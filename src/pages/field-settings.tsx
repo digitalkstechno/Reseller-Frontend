@@ -140,43 +140,7 @@ export function FieldSettingsContent() {
           </div>
         </div>
 
-        {/* Task Fields */}
-        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-          <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
-            Add Task Required Fields
-          </h3>
-          <div className="space-y-2">
-            {TASK_FIELDS.map(field => {
-              const isMandatory = field.id === 'subject' || field.id === 'status' || field.id === 'priority';
-              const isChecked = isMandatory || requiredTasks.includes(field.id);
-              
-              return (
-                <label
-                  key={field.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isMandatory ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'} ${
-                    isChecked
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="font-medium">{field.label} {isMandatory && <span className="text-xs ml-2 text-blue-600">(Mandatory)</span>}</span>
-                  <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={isChecked}
-                    disabled={isMandatory}
-                    onChange={() => handleToggleTask(field.id)}
-                  />
-                  {isChecked ? (
-                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-gray-300" />
-                  )}
-                </label>
-              );
-            })}
-          </div>
-        </div>
+     
       </div>
     </div>
   );
