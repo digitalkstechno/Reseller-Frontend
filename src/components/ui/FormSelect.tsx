@@ -21,7 +21,7 @@ function getBorderClasses(hasError: boolean, isFocused: boolean, disabled: boole
 }
 
 // ─── Portal Dropdown Hook ──────────────────────────────────────────────────────
-function useDropdownPosition(ref: React.RefObject<HTMLElement>, isOpen: boolean) {
+function useDropdownPosition(ref: React.RefObject<any>, isOpen: boolean) {
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
   const updatePosition = () => {

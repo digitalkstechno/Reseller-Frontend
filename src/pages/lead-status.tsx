@@ -362,7 +362,7 @@ export function LeadStatusContent() {
             error={formik.touched.name && formik.errors.name ? formik.errors.name : undefined}
             required
             placeholder="Enter status name"
-            disabled={isSubmitting || (formik.values._id && isReserved(formik.values.originalName))}
+            disabled={isSubmitting || (!!formik.values._id && isReserved(formik.values.originalName))}
           />
           
           <FormInput
