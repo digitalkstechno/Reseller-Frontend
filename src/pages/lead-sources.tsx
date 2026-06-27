@@ -136,9 +136,11 @@ export function LeadSourcesContent() {
 
       await fetchData();
       setIsDialogOpen(false);
+      setIsSubmitting(false);
+
       formik.resetForm();
     } catch (err: any) {
-      console.error('Failed to save lead source', err);
+      console.error('Failed to save lead source', err?.message || 'Unknown error');
       const msg = err.response?.data?.message || 'Operation failed';
       if (msg.toLowerCase().includes('order')) {
         formik.setFieldTouched('order', true, false);
@@ -147,6 +149,8 @@ export function LeadSourcesContent() {
         formik.setFieldTouched('name', true, false);
         formik.setFieldError('name', msg);
       }
+      setIsSubmitting(false);
+
     } finally {
       setIsSubmitting(false);
     }
@@ -298,7 +302,7 @@ export function LeadSourcesContent() {
               type="submit"
               form="lead-source-form"
               className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || !formik.isValid}
+              disabled={isSubmitting}
             >
               {isSubmitting 
                 ? 'Saving...' 

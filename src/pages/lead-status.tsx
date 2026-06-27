@@ -157,7 +157,7 @@ export function LeadStatusContent() {
       setIsDialogOpen(false);
       formik.resetForm();
     } catch (err: any) {
-      console.error('Failed to save', err);
+      console.error('Failed to save', err?.message || 'Unknown error');
       const msg = err?.response?.data?.message || 'Operation failed';
       if (msg.toLowerCase().includes('order')) {
         formik.setFieldTouched('order', true, false);
@@ -343,7 +343,7 @@ export function LeadStatusContent() {
             <button
               type="submit"
               form="lead-status-form"
-              disabled={isSubmitting || !formik.isValid}
+              disabled={isSubmitting}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting ? (
