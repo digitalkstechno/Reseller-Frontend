@@ -325,10 +325,11 @@ export default function Header({ toggleSidebar }: HeaderProps) {
     // 📩 CUSTOM EVENTS
     // =========================
 
-    socket.on('new_task_assigned', (notif: Notification) => {
-      console.log('[Socket] 📩 new_task_assigned:', notif);
+    const handleNewNotification = (notif: Notification) => {
+      console.log(`[Socket] 📩 ${notif.title}:`, notif);
 
-      // setNotifications((prev) => [notif, ...prev]);
+      // Add notification to the dropdown list immediately
+      setNotifications((prev) => [notif, ...prev]);
 
       if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'granted') {
@@ -352,9 +353,13 @@ export default function Header({ toggleSidebar }: HeaderProps) {
                   }
                 );
               }
-              router.push(
-                notif.type === 'task' ? '/tasks' : '/leads/list'
-              );
+              if (notif.type === 'task') {
+                router.push('/tasks');
+              } else if (notif.type === 'lead') {
+                router.push('/leads/list');
+              } else {
+                router.push('/settlements');
+              }
             } catch (e) {
               console.error(e);
             }
@@ -362,17 +367,13 @@ export default function Header({ toggleSidebar }: HeaderProps) {
           };
         }
       }
-    });
+    };
 
-    socket.on('new_lead_assigned', (notif: Notification) => {
-      console.log('[Socket] 📩 new_lead_assigned:', notif);
-      // setNotifications((prev) => [notif, ...prev]);
-    });
-
-    socket.on('task_updated', (notif: Notification) => {
-      console.log('[Socket] 📩 task_updated:', notif);
-      // setNotifications((prev) => [notif, ...prev]);
-    });
+    socket.on('new_task_assigned', handleNewNotification);
+    socket.on('new_lead_assigned', handleNewNotification);
+    socket.on('task_updated', handleNewNotification);
+    socket.on('lead_won', handleNewNotification);
+    socket.on('settlement_processed', handleNewNotification);
 
     // =========================
     // 🧹 CLEANUP
@@ -383,7 +384,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
         socket.disconnect();
       }
     };
-  }, [router]);
+  }, [router, authUser]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -405,12 +406,8 @@ export default function Header({ toggleSidebar }: HeaderProps) {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Update the notification to mark it as read
-      // setNotifications(prev => prev.map(notification =>
-      //   notification._id === notifId
-      //     ? { ...notification, isRead: true }
-      //     : notification
-      // ));
+      // Remove the read notification from the list
+      setNotifications(prev => prev.filter(notification => notification._id !== notifId));
     } catch (error) {
       console.error('Failed to mark read', error);
     }
@@ -427,11 +424,8 @@ export default function Header({ toggleSidebar }: HeaderProps) {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Mark all notifications as read in the state
-      // setNotifications(prev => prev.map(notification => ({
-      //   ...notification,
-      //   isRead: true
-      // })));
+      // Clear all notifications from the dropdown
+      setNotifications([]);
     } catch (error) {
       console.error('Failed to mark all as read', error);
     } finally {
@@ -449,10 +443,8 @@ export default function Header({ toggleSidebar }: HeaderProps) {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        // Update the state to mark this notification as read
-        // setNotifications(prev => prev.map(n =>
-        //   n._id === notif._id ? { ...n, isRead: true } : n
-        // ));
+        // Remove the clicked notification from the list
+        setNotifications(prev => prev.filter(n => n._id !== notif._id));
       }
 
       setShowNotifications(false);
@@ -461,6 +453,8 @@ export default function Header({ toggleSidebar }: HeaderProps) {
         router.push(`/tasks`);
       } else if (notif.type === 'lead') {
         router.push(`/leads/list`);
+      } else {
+        router.push(`/settlements`);
       }
     } catch (error) {
       console.error('Failed to mark read', error);
@@ -572,7 +566,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
 
         {/* Alerts / Notifications */}
         <div className="relative" ref={dropdownRef}>
-          {/* <button
+          <button
             onClick={() => {
               if (!showNotifications) {
                 fetchNotifications();
@@ -587,7 +581,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </button> */}
+          </button>
 
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-lg bg-white shadow-xl overflow-hidden z-50">
