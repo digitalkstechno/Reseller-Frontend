@@ -373,6 +373,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
     socket.on('new_lead_assigned', handleNewNotification);
     socket.on('task_updated', handleNewNotification);
     socket.on('lead_won', handleNewNotification);
+    socket.on('lead_payment_done', handleNewNotification);
     socket.on('settlement_processed', handleNewNotification);
 
     // =========================
