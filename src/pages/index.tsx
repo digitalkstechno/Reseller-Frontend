@@ -52,6 +52,7 @@ import UpdateLeadStageDrawer from "@/components/leads/UpdateLeadStageDrawer";
 import DatePicker from "@/components/ui/DatePicker";
 import { formatContactNumber } from "@/utills/utill";
 import { ApiLead } from "@/components/leads/types";
+import ResellerWinRateChart from "@/components/ResellerWinRateChart";
 
 interface StatusCount {
   statusId: string;
@@ -138,6 +139,9 @@ export default function Dashboard() {
   const [greeting, setGreeting] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [chartFilter, setChartFilter] = useState("All");
+  const [chartFromDate, setChartFromDate] = useState("");
+  const [chartToDate, setChartToDate] = useState("");
 
   const token =
     typeof window !== "undefined" ? getAuthToken() : null;
@@ -397,8 +401,21 @@ export default function Dashboard() {
     if (!token) return;
     setPerformanceLoading(true);
     try {
+      const params: any = {};
+      if (chartFilter !== 'All') {
+        params.filter = chartFilter.toLowerCase();
+      }
+      if (chartFromDate || chartToDate) {
+        if (chartFromDate) params.from = chartFromDate;
+        if (chartToDate) params.to = chartToDate;
+      } else {
+        if (fromDate) params.from = fromDate;
+        if (toDate) params.to = toDate;
+      }
+
       const res = await axios.get(baseUrl.settlements, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        params
       });
       setResellerPerformance(res.data?.data || []);
     } catch (err) {
@@ -426,7 +443,7 @@ export default function Dashboard() {
         fetchResellerPerformance();
       }
     }
-  }, [token, permissions, fromDate, toDate, user]);
+  }, [token, permissions, fromDate, toDate, user, chartFilter, chartFromDate, chartToDate]);
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = window.sessionStorage.getItem("kanbanVisibleStatusNames");
@@ -831,6 +848,14 @@ export default function Dashboard() {
     </div>
   );
 
+  const winRateChartData = resellerPerformance.map((rp: any) => ({
+    name: rp.resellerName?.split(' ')[0] || 'Unknown',
+    fullName: rp.resellerName || 'Unknown Reseller',
+    won: rp.wonLeads || 0,
+    lost: rp.lostLeads || 0,
+    inProgress: Math.max(0, (rp.totalAssignedLeads || 0) - (rp.wonLeads || 0) - (rp.lostLeads || 0))
+  }));
+
   return (
     <div className="flex flex-col min-h-screen bg-[#f8fafc]">
       <div className="p-6 space-y-8 max-w-[1600px] mx-auto w-full">
@@ -1212,9 +1237,28 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Reseller Performance Table (Admin Only) */}
+        {/* Reseller Performance Table & Win Rate Chart (Admin Only) */}
         {permissions.readAll && (
-          <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col">
+          <>
+            <div className="mt-8">
+              <ResellerWinRateChart 
+                data={winRateChartData} 
+                timeFilter={chartFilter}
+                onFilterChange={(filter) => {
+                  setChartFilter(filter);
+                  if (filter !== 'Custom') {
+                    setChartFromDate("");
+                    setChartToDate("");
+                  }
+                }}
+                onCustomDateChange={(from, to) => {
+                  setChartFromDate(from);
+                  setChartToDate(to);
+                }}
+              />
+            </div>
+            
+            <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-purple-50 rounded-lg">
                 <Award className="h-5 w-5 text-purple-600" />
@@ -1265,6 +1309,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+          </>
         )}
       </div>
 

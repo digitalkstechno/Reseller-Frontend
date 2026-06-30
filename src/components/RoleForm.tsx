@@ -198,7 +198,7 @@ export default function RoleForm({
             error={formik.touched.roleName && formik.errors.roleName ? formik.errors.roleName : undefined}
             required
             placeholder="Enter role name (e.g., Admin, Manager, Staff)"
-            // helperText="Role name must be unique and descriptive"
+          // helperText="Role name must be unique and descriptive"
           />
         </div>
 
