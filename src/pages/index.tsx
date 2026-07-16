@@ -1135,7 +1135,7 @@ export default function Dashboard() {
                   <div className="h-6 w-px bg-gray-200 mx-1"></div>
 
                   <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-                    <div className="w-[130px]">
+                    <div className="w-[160px]">
                       <DatePicker
                         value={fromDate}
                         onChange={(val) => {
@@ -1146,7 +1146,7 @@ export default function Dashboard() {
                       />
                     </div>
                     <span className="text-gray-400 font-medium">-</span>
-                    <div className="w-[130px]">
+                    <div className="w-[160px]">
                       <DatePicker
                         value={toDate}
                         onChange={(val) => {
