@@ -57,7 +57,7 @@ export default function LeadAddDialog({
 
         const schemaShape: any = {
           customerName: Yup.string().trim(),
-          customerEmail: Yup.string().trim().matches(EMAIL_REGEX, { message: 'Invalid email domain', excludeEmptyString: true }),
+          customerEmail: Yup.string().trim().email('Invalid email format'),
           customerContact: Yup.string().trim().test('is-10-digits', 'Customer Contact must be exactly 10 digits', val => !val || /^[0-9]{10}$/.test(val)),
           companyName: Yup.string().trim(),
           paymentAmount: Yup.number().transform((value, originalValue) => originalValue === '' ? undefined : value).typeError('Payment Amount must be a number').min(0, 'Payment Amount cannot be negative'),
@@ -106,8 +106,8 @@ export default function LeadAddDialog({
       isActive: true,
     },
     validationSchema: dynamicSchema,
-    validateOnChange: false,
-    validateOnBlur: false,
+    validateOnChange: true,
+    validateOnBlur: true,
     onSubmit: async (values, { setSubmitting, setStatus }) => {
       setStatus(null);
       try {
@@ -290,10 +290,10 @@ export default function LeadAddDialog({
               name="leadStatus"
               value={formik.values.leadStatus}
               onChange={(val) => {
-                formik.setFieldValue('leadStatus', val);
-                formik.setFieldTouched('leadStatus', true, false);
+                formik.setFieldValue('leadStatus', val, false);
+                formik.setFieldTouched('leadStatus', false, false);
+                formik.setFieldError('leadStatus', undefined);
               }}
-              onBlur={formik.handleBlur}
               options={statuses.map((s) => ({ value: s._id, label: s.name }))}
               error={getFieldError('leadStatus')}
               required={requiredFields.includes('leadStatus')}
@@ -304,10 +304,10 @@ export default function LeadAddDialog({
               name="leadSource"
               value={formik.values.leadSource}
               onChange={(val) => {
-                formik.setFieldValue('leadSource', val);
-                formik.setFieldTouched('leadSource', true, false);
+                formik.setFieldValue('leadSource', val, false);
+                formik.setFieldTouched('leadSource', false, false);
+                formik.setFieldError('leadSource', undefined);
               }}
-              onBlur={formik.handleBlur}
               options={sources.map((s) => ({ value: s._id, label: s.name }))}
               error={getFieldError('leadSource')}
               required={requiredFields.includes('leadSource')}

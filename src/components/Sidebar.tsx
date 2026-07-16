@@ -19,6 +19,7 @@ import {
   Handshake,
   Flag,
   IndianRupee,
+  FileText,
 } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -76,6 +77,15 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   if (userRole) {
     if (userRole.toLowerCase() === 'admin') {
       menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
+      menuItems.push({ 
+        icon: FileText, 
+        label: "Reports", 
+        children: [
+          { icon: FileText, label: "Leads Report", path: "/reports/leads" },
+          { icon: IndianRupee, label: "Settlements Report", path: "/reports/settlements" },
+          { icon: Handshake, label: "Resellers Report", path: "/reports/resellers" },
+        ]
+      });
     }
     menuItems.push({ icon: CheckSquare, label: "Ledger", path: "/ledger" });
   }
@@ -235,12 +245,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                         <button
                           onClick={() => toggleExpand(item.label)}
                           className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200 group ${expanded
-                            ? 'bg-white/10 text-white'
-                            : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            ? 'text-white'
+                            : 'text-white hover:bg-white/5 hover:text-white'
                             }`}
                         >
-                          <Icon className={`h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110 ${expanded ? 'text-white' : 'text-white/70'
-                            }`} />
+                          <Icon className={`h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110 text-white`} />
                           {isOpen && (
                             <>
                               <span className="flex-1 text-sm font-medium text-left">{item.label}</span>
@@ -260,12 +269,12 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                                 <li key={child.label}>
                                   <button
                                     onClick={() => handleNavigation(child.path)}
-                                    className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 group ${isChildActive
-                                      ? 'bg-gradient-to-r from-[#0f3c70]/20 to-[#0f2f5a]/20 text-white border border-white/10'
-                                      : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                    className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 group ${isChildActive
+                                      ? 'bg-white text-[#3B82F6]'
+                                      : 'text-white hover:bg-white/5 hover:text-white'
                                       }`}
                                   >
-                                    <ChildIcon className={`h-4 w-4 flex-shrink-0 transition-transform group-hover:scale-110 ${isChildActive ? 'text-[#9f7cff]' : 'text-white/60'
+                                    <ChildIcon className={`h-4 w-4 flex-shrink-0 transition-transform group-hover:scale-110 ${isChildActive ? 'text-[#3B82F6]' : 'text-white'
                                       }`} />
                                     <span className="text-sm">{child.label}</span>
                                   </button>
