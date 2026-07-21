@@ -286,15 +286,7 @@ export default function LeadAddDialog({
               error={getFieldError('companyName')}
               required={requiredFields.includes('companyName')}
             />
-            <FormInput
-              label="Location"
-              name="address"
-              value={formik.values.address}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={getFieldError('address')}
-              required={requiredFields.includes('address')}
-            />
+
             <FormInput
               label="Payment Amount"
               name="paymentAmount"

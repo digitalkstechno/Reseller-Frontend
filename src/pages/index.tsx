@@ -69,6 +69,9 @@ interface LeadSummary {
   totalPaid?: number;
   totalPending?: number;
   totalReseller?: number;
+  totalCommission?: number;
+  paidCommission?: number;
+  pendingCommission?: number;
   statusWiseCounts: StatusCount[];
   chartType?: "weekly" | "monthly";
   chartData?: any[];
@@ -97,7 +100,7 @@ export default function Dashboard() {
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [activeRange, setActiveRange] = useState<string>("custom");
+  const [activeRange, setActiveRange] = useState<string>("year");
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -288,6 +291,9 @@ export default function Dashboard() {
         totalPaid: data.counts?.totalPaid || 0,
         totalPending: data.counts?.totalPending || 0,
         totalReseller: data.counts?.totalReseller || 0,
+        totalCommission: data.counts?.totalCommission || 0,
+        paidCommission: data.counts?.paidCommission || 0,
+        pendingCommission: data.counts?.pendingCommission || 0,
         statusWiseCounts: data.charts?.donutChart || [],
       });
       
@@ -473,23 +479,37 @@ export default function Dashboard() {
         description: "Leads in selected range"
       },
       {
-        key: "revenue",
-        label: "Total Revenue",
+        key: "lead_amount",
+        label: userRole?.toLowerCase() === 'admin' ? "Total Revenue" : "Total Lead Amount",
         value: `₹${(summary.totalRevenue || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
-        Icon: Activity,
+        Icon: IndianRupee,
         iconBg: "bg-amber-500/10",
         iconColor: "text-amber-500",
         type: "revenue",
         fill: "#F59E0B",
-        name: "Total Revenue",
-        description: "Total lead revenue"
+        name: userRole?.toLowerCase() === 'admin' ? "Total Revenue" : "Total Lead Amount",
+        description: userRole?.toLowerCase() === 'admin' ? "Total lead revenue" : "Total amount of leads created"
+      },
+      {
+        key: "commission",
+        label: "Total Commission",
+        value: `₹${(summary.totalCommission || 0).toLocaleString('en-IN')}`,
+        trend: 0,
+        tone: "neutral",
+        Icon: Activity,
+        iconBg: "bg-indigo-500/10",
+        iconColor: "text-indigo-500",
+        type: "revenue",
+        fill: "#6366F1",
+        name: "Total Commission",
+        description: "Total commission earned"
       },
       {
         key: "paid",
-        label: "Total Paid",
-        value: `₹${(summary.totalPaid || 0).toLocaleString('en-IN')}`,
+        label: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Paid Commission",
+        value: `₹${((userRole?.toLowerCase() === 'admin' ? summary.totalPaid : summary.paidCommission) || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
         Icon: CheckCircle2,
@@ -497,13 +517,13 @@ export default function Dashboard() {
         iconColor: "text-emerald-500",
         type: "paid",
         fill: "#10B981",
-        name: "Total Paid",
+        name: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Paid Commission",
         description: "Paid commissions"
       },
       {
         key: "pending",
-        label: "Total Pending Amount",
-        value: `₹${(summary.totalPending || 0).toLocaleString('en-IN')}`,
+        label: userRole?.toLowerCase() === 'admin' ? "Total Pending Amount" : "Pending Commission",
+        value: `₹${((userRole?.toLowerCase() === 'admin' ? summary.totalPending : summary.pendingCommission) || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
         Icon: Clock,
@@ -511,7 +531,7 @@ export default function Dashboard() {
         iconColor: "text-orange-500",
         type: "pending",
         fill: "#EF4444",
-        name: "Pending Amount",
+        name: userRole?.toLowerCase() === 'admin' ? "Pending Amount" : "Pending Commission",
         description: "Pending commissions"
       },
       {
@@ -529,10 +549,11 @@ export default function Dashboard() {
         description: "Resellers registered"
       }
     ].filter((card) => {
-      if (card.key === "reseller") {
-        return userRole?.toLowerCase() === "admin";
+      if (userRole?.toLowerCase() === "admin") {
+        return card.key !== "commission"; // Admin sees 5 cards (no Total Commission)
+      } else {
+        return card.key !== "reseller"; // Reseller sees 5 cards (no Total Reseller)
       }
-      return true;
     })
     : [];
 
@@ -1287,6 +1308,12 @@ export default function Dashboard() {
                     return (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
+                          <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                            <tspan x="50%" dy="-10" fontSize="14" fill="#6B7280">Total</tspan>
+                            <tspan x="50%" dy="24" fontSize="16" fontWeight="bold" fill="#111827">
+                              ₹{Number(total).toLocaleString('en-IN')}
+                            </tspan>
+                          </text>
                           <Pie
                             data={pieData}
                             cx="50%"

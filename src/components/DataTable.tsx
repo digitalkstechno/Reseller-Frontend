@@ -59,13 +59,9 @@ interface DataTableProps<T> {
   };
   onRefresh?: () => void;
   onExport?: () => void;
-  extraActions?: {
-    label?: string | ((row: T) => string);
-    onClick: (row: T) => void;
-    icon?: React.ReactNode | ((row: T) => React.ReactNode);
-    color?: 'blue' | 'green' | 'red' | 'orange' | 'purple' | ((row: T) => 'blue' | 'green' | 'red' | 'orange' | 'purple');
-    show?: (row: T) => boolean;
-  }[];
+  extraActions?: ActionItem<T>[];
+  headerActions?: React.ReactNode;
+  leftActions?: React.ReactNode;
   expandableContent?: (row: T) => React.ReactNode;
   selectable?: boolean;
   selectedRows?: T[];
@@ -104,6 +100,7 @@ export default function DataTable<T extends Record<string, any>>({
   onExport,
   extraActions,
   headerActions,
+  leftActions,
   expandableContent,
   selectable = false,
   selectedRows = [],
@@ -226,18 +223,25 @@ export default function DataTable<T extends Record<string, any>>({
   const currentData = (pagination && !serverSidePagination) ? data.slice((internalPage - 1) * internalPageSize, internalPage * internalPageSize) : data;
 
   return (
-    <div className="rounded-md bg-white border border-gray-200 transition-all duration-300 hover:shadow-2xl flex flex-col h-[calc(100vh-240px)]">
+    <div className="rounded-md bg-white border border-gray-200 transition-all duration-300 hover:shadow-2xl flex flex-col h-full flex-1 min-h-0">
       {/* Header - Premium Design */}
       <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200 px-3 py-3 rounded-t-md">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            {title && (
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                {title}
-              </h2>
-            )}
-            {subtitle && (
-              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          <div className="flex items-center gap-4 flex-1">
+            <div>
+              {title && (
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  {title}
+                </h2>
+              )}
+              {subtitle && (
+                <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              )}
+            </div>
+            {leftActions && (
+              <div className="flex flex-wrap items-center gap-3">
+                {leftActions}
+              </div>
             )}
           </div>
 

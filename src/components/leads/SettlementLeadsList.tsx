@@ -1,12 +1,9 @@
-'use client';
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { FiSearch, FiCalendar } from 'react-icons/fi';
-import { FileText } from 'lucide-react';
 import { formatIndianCurrency } from '@/utills/formatters';
-import { toast } from 'react-toastify';
+import DataTable, { Column } from '@/components/DataTable';
 
 interface SettlementLeadsListProps {
   resellerId: string;
@@ -27,23 +24,20 @@ export default function SettlementLeadsList({
 }: SettlementLeadsListProps) {
   const [leads, setLeads] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [unsettledCount, setUnsettledCount] = useState(0);
   const [settledCount, setSettledCount] = useState(0);
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const lastElementRef = useRef<HTMLTableRowElement | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      // Add all leads from this list that are not already in selectedLeads
       const newSelections = [...selectedLeads];
       leads.forEach(lead => {
         if (!newSelections.some(l => l.id === lead.id)) {
@@ -52,7 +46,6 @@ export default function SettlementLeadsList({
       });
       onSelectionChange(newSelections);
     } else {
-      // Remove all leads of this list from selectedLeads
       const leadIds = leads.map(l => l.id);
       onSelectionChange(selectedLeads.filter(l => !leadIds.includes(l.id)));
     }
@@ -70,7 +63,7 @@ export default function SettlementLeadsList({
     return sum + (Number(lead.commissionAmount) || 0);
   }, 0);
 
-  const fetchLeads = async (currentPage: number, currentSearch: string, currentMonth: string, currentYear: string, currentTab: 'unsettled' | 'settled', reset: boolean) => {
+  const fetchLeads = async (currentPage: number, currentSearch: string, currentMonth: string, currentYear: string, currentTab: 'unsettled' | 'settled') => {
     if (loading) return;
     setLoading(true);
     try {
@@ -86,10 +79,10 @@ export default function SettlementLeadsList({
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      const { data, totalPages, totalRecords: total, unsettledCount: uCount, settledCount: sCount } = res.data.data;
+      const { data, totalPages: tPages, totalRecords: total, unsettledCount: uCount, settledCount: sCount } = res.data.data;
 
-      setLeads((prev) => reset ? data : [...prev, ...data]);
-      setHasMore(currentPage < totalPages);
+      setLeads(data);
+      setTotalPages(tPages || 1);
       setTotalRecords(total);
       if (uCount !== undefined) setUnsettledCount(uCount);
       if (sCount !== undefined) setSettledCount(sCount);
@@ -100,22 +93,17 @@ export default function SettlementLeadsList({
     }
   };
 
-  // Reset and fetch when filters change
   useEffect(() => {
     setPage(1);
-    setHasMore(true);
-    setLeads([]);
-    fetchLeads(1, search, month, year, activeTab, true);
+    fetchLeads(1, search, month, year, activeTab);
   }, [search, month, year, activeTab]);
 
-  // Fetch more when page changes
   useEffect(() => {
     if (page > 1) {
-      fetchLeads(page, search, month, year, activeTab, false);
+      fetchLeads(page, search, month, year, activeTab);
     }
   }, [page]);
 
-  // Handle Search Input (Debounced)
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -123,26 +111,6 @@ export default function SettlementLeadsList({
       setSearch(val);
     }, 500);
   };
-
-  // Infinite Scroll Observer setup
-  useEffect(() => {
-    if (loading) return;
-    if (observerRef.current) observerRef.current.disconnect();
-
-    observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage((prevPage) => prevPage + 1);
-      }
-    }, { threshold: 1.0 });
-
-    if (lastElementRef.current) {
-      observerRef.current.observe(lastElementRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) observerRef.current.disconnect();
-    };
-  }, [loading, hasMore]);
 
   const months = [
     { value: '', label: 'All Months' },
@@ -163,174 +131,182 @@ export default function SettlementLeadsList({
   const currentYear = new Date().getFullYear();
   const years = [currentYear.toString(), (currentYear - 1).toString(), (currentYear - 2).toString()];
 
-  return (
-    <div className="bg-white p-6 w-full rounded-b-lg border-t border-gray-100 shadow-inner">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+  const columns: Column<any>[] = [];
+  
+  if (activeTab === 'unsettled') {
+    columns.push({
+      key: 'select',
+      label: 'Select',
+      render: (val, lead) => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            checked={selectedLeads.some((l) => l.id === lead.id)}
+            onChange={(e) => handleSelectLead(lead, e.target.checked)}
+          />
+        </div>
+      )
+    });
+  }
+
+  columns.push(
+    {
+      key: 'details',
+      label: 'Lead Details',
+      render: (val, lead) => (
         <div>
-          <h3 className="text-lg font-bold text-gray-800">
-            {activeTab === 'unsettled' ? 'Paid Leads' : 'Settled Leads'} ({totalRecords})
-          </h3>
-          <p className="text-sm text-gray-500">
-            {activeTab === 'unsettled'
-              ? 'Leads that have been paid and are awaiting settlement'
-              : 'Leads that have been successfully settled and paid out'}
-          </p>
+          <div className="font-semibold text-gray-900">{lead.customerName}</div>
+          {lead.paymentDate && (
+            <div className="text-xs text-gray-500 mt-1 font-medium">Paid on: {new Date(lead.paymentDate).toLocaleDateString()}</div>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search leads..."
-              onChange={handleSearchChange}
-              className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm transition-shadow"
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-1 sm:flex-none">
-            <div className="relative w-full sm:w-auto">
-              <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <select
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className="w-full sm:w-auto pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm appearance-none bg-white transition-shadow cursor-pointer"
-              >
-                {months.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (val, lead) => (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+          {lead.status}
+        </span>
+      )
+    },
+    {
+      key: 'paymentMode',
+      label: 'Payment Mode',
+      render: (val, lead) => <div className="text-gray-600 font-medium">{lead.paymentMode}</div>
+    },
+    {
+      key: 'paymentAmount',
+      label: 'Payment Amount',
+      render: (val, lead) => <div className="font-bold text-emerald-600">{formatIndianCurrency(lead.paymentAmount || 0)}</div>
+    },
+    {
+      key: 'commission',
+      label: 'Commission',
+      render: (val, lead) => <div className="font-extrabold text-gray-900">{formatIndianCurrency(lead.commissionAmount || 0)}</div>
+    }
+  );
+
+  return (
+    <div className="bg-white w-full rounded-b-lg flex flex-col h-full flex-1 min-h-0">
+      <div className="p-6 pb-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search leads..."
+                onChange={handleSearchChange}
+                className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm transition-shadow"
+              />
             </div>
-            {month && (
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm appearance-none bg-white transition-shadow cursor-pointer"
-              >
-                {years.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          onClick={() => {
-            onSelectionChange([]);
-            setActiveTab('unsettled');
-          }}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
-            activeTab === 'unsettled'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          Awaiting Settlement ({unsettledCount})
-        </button>
-        <button
-          onClick={() => {
-            onSelectionChange([]);
-            setActiveTab('settled');
-          }}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
-            activeTab === 'settled'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          Settled Leads ({settledCount})
-        </button>
-      </div>
-
-      {selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between shadow-sm">
-          <div>
-            <h3 className="text-blue-800 font-semibold text-sm">
-              {selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length} Lead{selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length > 1 ? 's' : ''} Selected
-            </h3>
-            <p className="text-blue-600 text-xs mt-1">
-              Total Commission: <span className="font-bold text-sm">{formatIndianCurrency(totalSettlementAmount)}</span>
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-xl border border-gray-200 max-h-[400px] overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200 relative">
-          <thead className="bg-white sticky top-0 z-10 shadow-sm">
-            <tr>
-              {activeTab === 'unsettled' && (
-                <th className="px-6 py-4 text-center w-12 border-b border-gray-100">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    onChange={handleSelectAll}
-                    checked={leads.length > 0 && leads.every(lead => selectedLeads.some(l => l.id === lead.id))}
-                  />
-                </th>
+            <div className="flex items-center gap-2 flex-1 sm:flex-none">
+              <div className="relative w-full sm:w-auto">
+                <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="w-full sm:w-auto pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm appearance-none bg-white transition-shadow cursor-pointer"
+                >
+                  {months.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              {month && (
+                <select
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm appearance-none bg-white transition-shadow cursor-pointer"
+                >
+                  {years.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
               )}
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-100">Lead Details</th>
-              <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-100">Status</th>
-              <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-100">Payment Mode</th>
-              <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-100">Payment Amount</th>
-              <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-100">Commission</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {leads.length === 0 && !loading && (
-              <tr>
-                <td colSpan={activeTab === 'unsettled' ? 6 : 5} className="px-6 py-8 text-center text-gray-500 text-sm">
-                  No paid leads found matching your criteria.
-                </td>
-              </tr>
-            )}
-            {leads.map((lead, index) => {
-              const isLast = index === leads.length - 1;
-              const isSelected = selectedLeads.some((l) => l.id === lead.id);
-              return (
-                <tr key={lead.id || index} ref={isLast ? lastElementRef : null} className="hover:bg-gray-50 transition-colors">
-                  {activeTab === 'unsettled' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        checked={isSelected}
-                        onChange={(e) => handleSelectLead(lead, e.target.checked)}
-                      />
-                    </td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-semibold text-gray-900">{lead.customerName}</div>
-                    {lead.paymentDate && (
-                      <div className="text-xs text-gray-500 mt-1 font-medium">Paid on: {new Date(lead.paymentDate).toLocaleDateString()}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium text-center">
-                    {lead.paymentMode}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-emerald-600">
-                    {formatIndianCurrency(lead.paymentAmount || 0)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-extrabold text-gray-900">
-                    {formatIndianCurrency(lead.commissionAmount || 0)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {loading && (
-          <div className="flex justify-center py-4 bg-white">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs navigation */}
+        <div className="flex border-b border-gray-200 mb-6">
+          <button
+            onClick={() => {
+              onSelectionChange([]);
+              setActiveTab('unsettled');
+            }}
+            className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
+              activeTab === 'unsettled'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Awaiting Settlement ({unsettledCount})
+          </button>
+          <button
+            onClick={() => {
+              onSelectionChange([]);
+              setActiveTab('settled');
+            }}
+            className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-all duration-200 cursor-pointer ${
+              activeTab === 'settled'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Settled Leads ({settledCount})
+          </button>
+        </div>
+
+        {activeTab === 'unsettled' && (
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="selectAll"
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                onChange={handleSelectAll}
+                checked={leads.length > 0 && leads.every(lead => selectedLeads.some(l => l.id === lead.id))}
+              />
+              <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Select All on Page
+              </label>
+            </div>
           </div>
         )}
+
+        {selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between shadow-sm">
+            <div>
+              <h3 className="text-blue-800 font-semibold text-sm">
+                {selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length} Lead{selectedLeads.filter(l => leads.some(lead => lead.id === l.id)).length > 1 ? 's' : ''} Selected
+              </h3>
+              <p className="text-blue-600 text-xs mt-1">
+                Total Commission: <span className="font-bold text-sm">{formatIndianCurrency(totalSettlementAmount)}</span>
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 px-6 pb-6 min-h-0 flex flex-col">
+        <DataTable
+          data={leads}
+          columns={columns}
+          loading={loading}
+          pagination={true}
+          serverSidePagination={true}
+          currentPage={page}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          pageSize={10}
+          onPageChange={setPage}
+          title=""
+          searchable={false}
+        />
       </div>
     </div>
   );

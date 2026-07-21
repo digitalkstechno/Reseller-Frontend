@@ -54,12 +54,12 @@ export default function SettlementDetailsPage() {
   if (!router.isReady || !resellerId) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Head>
         <title>Paid Leads | Reseller Panel</title>
       </Head>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push('/settlements')}
@@ -69,7 +69,6 @@ export default function SettlementDetailsPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Paid Leads</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage paid leads and settle commissions for this reseller.</p>
           </div>
         </div>
 
@@ -96,7 +95,7 @@ export default function SettlementDetailsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 min-h-0 flex flex-col">
         <SettlementLeadsList
           resellerId={resellerId}
           onSuccess={() => {}}

@@ -394,8 +394,8 @@ export function SettlementsContent() {
 
   return (
     <>
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">Total Leads Revenue</p>

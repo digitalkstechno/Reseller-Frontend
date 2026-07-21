@@ -190,12 +190,12 @@ export default function LeadsReport() {
   if (!isMounted) return null;
 
   return (
-    <div className="h-[calc(100vh-100px)]">
+    <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Head>
         <title>Leads Report | Reseller Panel</title>
       </Head>
 
-      <div className="h-full rounded-lg">
+      <div className="flex-1 min-h-0 flex flex-col rounded-lg">
           <DataTable
             data={filteredData}
             columns={columns}

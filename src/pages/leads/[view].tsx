@@ -458,13 +458,13 @@ export default function LeadsPage() {
     );
   }
 
-  // ── Main render ───────────────────────────────────────────────────────────
+
   return (
-    <div className="flex min-h-full flex-col gap-4 relative">
+    <div className="flex flex-col h-full gap-4 relative">
 
       {/* ── Page Header & Unified Toolbar ───────────────────────────────── */}
       {(userRole !== 'admin' || viewMode !== 'list') && (
-        <div className="rounded-md border border-gray-200 bg-white px-4 md:px-6 py-4 transition-all duration-300">
+        <div className="rounded-md border border-gray-200 bg-white px-4 md:px-6 py-4 transition-all duration-300 flex-shrink-0">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center justify-between">
               {/* Mobile View Toggle */}
@@ -525,7 +525,7 @@ export default function LeadsPage() {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────────────── */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0 flex flex-col">
         {viewMode === 'list' ? (
           <LeadsListView
             statuses={statuses}

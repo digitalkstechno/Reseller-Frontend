@@ -81,12 +81,12 @@ export default function App({ Component, pageProps }: AppProps) {
                   !isLoginPage ? (isSidebarOpen ? 'md:ml-64' : 'md:ml-20') : ''
                 }`}
               >
-                <main className="animate-in fade-in duration-300">
+                <main className="animate-in fade-in duration-300 flex flex-col h-screen">
                   {/* Only show header for non-login pages */}
                   {!isLoginPage ? (
                     <Header toggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
                   ) : null}
-                  <div className={isLoginPage ? "p-0" : "px-4 md:px-6 py-[50px]"}>
+                  <div className={isLoginPage ? "p-0 flex-1 overflow-auto" : "p-6 flex-1 overflow-auto"}>
                     <Component {...pageProps} />
                   </div>
                 </main>

@@ -218,13 +218,15 @@ export default function LeadsListView({
     },
   ];
 
-  const columns = [...baseColumns];
+  let columns = [...baseColumns];
   if (userRole === 'admin') {
     columns.splice(2, 0, {
       key: 'staff',
       label: 'RESELLER',
       render: (v) => <span className="text-gray-700">{v || '-'}</span>,
     });
+    // Remove status column for admin as requested
+    columns = columns.filter(c => c.key !== 'status');
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -335,14 +337,14 @@ export default function LeadsListView({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full flex-1 min-h-0 gap-4">
       {/* Data table */}
       <DataTable
         data={leads}
         columns={columns}
         loading={loading}
         searchable={false}
-        headerActions={headerActions}
+        leftActions={headerActions}
         pagination
         serverSidePagination={true}
         currentPage={pagination?.currentPage || 1}
