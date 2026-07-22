@@ -193,7 +193,7 @@ export default function SettlementLeadsList({
     <div className="bg-white w-full rounded-b-lg flex flex-col h-full flex-1 min-h-0">
       <div className="p-6 pb-2">
         {/* Tabs navigation */}
-        <div className="flex border-b border-gray-200 mb-6">
+        <div className="flex border-b border-gray-200 mb-4">
           <button
             onClick={() => {
               onSelectionChange([]);
@@ -222,7 +222,7 @@ export default function SettlementLeadsList({
           </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
           {/* Left side: Select All on Page (only for unsettled tab) with left padding to align with table checkboxes */}
           <div className="flex items-center gap-3 pl-6">
             {activeTab === 'unsettled' && (

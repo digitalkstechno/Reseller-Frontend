@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
 import ResellerDialog from '@/components/ResellerDialog';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
@@ -203,12 +204,10 @@ export function ResellersContent() {
       key: 'status',
       label: 'STATUS',
       render: (value) => (
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${value === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-            }`}
-        >
-          {value}
-        </span>
+        <Badge
+          label={value}
+          className={value === 'active' ? 'bg-green-50 text-green-700 border-green-200 uppercase' : 'bg-red-50 text-red-600 border-red-200 uppercase'}
+        />
       ),
     },
   ];

@@ -60,7 +60,7 @@ export default function LeadsPage() {
   const [resellerFilter, setResellerFilter] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  
+
   // Temporary state for the filter popover
   const [tempStatusFilter, setTempStatusFilter] = useState<string[]>([]);
   const [tempStaffFilter, setTempStaffFilter] = useState<string[]>([]);
@@ -293,6 +293,19 @@ export default function LeadsPage() {
     statusFilter.length > 0 || staffFilter.length > 0 || resellerFilter.length > 0 || paymentStatusFilter || fromDate || toDate || search
   );
 
+  const searchBarOnly = (
+    <div className="relative w-full sm:w-auto">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+      <input
+        type="search"
+        placeholder="Search leads..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full sm:w-64 rounded-md border border-gray-200 bg-white pl-10 pr-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 hover:border-gray-300"
+      />
+    </div>
+  );
+
   const headerActions = (
     <div className="flex flex-wrap items-center gap-3">
       {/* Search Bar */}
@@ -311,11 +324,10 @@ export default function LeadsPage() {
       <div className="relative">
         <button
           onClick={() => setShowFilterPopover(!showFilterPopover)}
-          className={`inline-flex items-center justify-center h-9 w-9 rounded-md border transition-all ${
-            showFilterPopover || hasActiveFilters
+          className={`inline-flex items-center justify-center h-9 w-9 rounded-md border transition-all ${showFilterPopover || hasActiveFilters
               ? 'bg-blue-50 text-blue-600 border-blue-200'
               : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-          }`}
+            }`}
         >
           <Filter className="h-4 w-4" />
           {hasActiveFilters && (
@@ -465,8 +477,8 @@ export default function LeadsPage() {
       {/* ── Page Header & Unified Toolbar ───────────────────────────────── */}
       {(userRole !== 'admin' || viewMode !== 'list') && (
         <div className="rounded-md border border-gray-200 bg-white px-4 md:px-6 py-4 transition-all duration-300 flex-shrink-0">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
               {/* Mobile View Toggle */}
               {userRole !== 'admin' && (
                 <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-md w-fit">
@@ -486,9 +498,10 @@ export default function LeadsPage() {
               )}
             </div>
 
-            {viewMode !== 'list' && headerActions}
-
             <div className="flex flex-wrap items-center gap-2 md:gap-3 md:ml-auto">
+              {viewMode === 'list' && headerActions}
+              {viewMode === 'kanban' && searchBarOnly}
+
               {/* Desktop View toggle */}
               {userRole !== 'admin' && (
                 <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-md h-10 w-fit">
@@ -549,7 +562,7 @@ export default function LeadsPage() {
             }}
             pagination={listPagination}
             onSearchChange={setSearch}
-            headerActions={headerActions}
+            headerActions={undefined}
           />
         ) : (
           <LeadsKanbanView

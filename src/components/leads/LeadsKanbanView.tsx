@@ -86,17 +86,34 @@ export default function LeadsKanbanView({
     const [kanbanVisibleStatusNames, setKanbanVisibleStatusNames] = useState<string[] | null>(null);
 
     useEffect(() => {
-        try {
-            const stored = sessionStorage.getItem('kanbanVisibleStatusNames');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                setKanbanVisibleStatusNames(Array.isArray(parsed) ? parsed : null);
-            } else {
-                setKanbanVisibleStatusNames(null);
+        const loadVisibility = async () => {
+            const t = getAuthToken();
+            if (!t) return;
+            try {
+                const res = await axios.get(baseUrl.settingsKanbanStatus, {
+                    headers: { Authorization: `Bearer ${t}` }
+                });
+                const statusNames = res.data?.data;
+                if (statusNames && Array.isArray(statusNames)) {
+                    setKanbanVisibleStatusNames(statusNames.filter((x: any) => typeof x === 'string'));
+                    return;
+                }
+            } catch (err) {
+                console.error('Failed to load visible kanban status names:', err);
             }
-        } catch {
+
+            try {
+                const stored = sessionStorage.getItem('kanbanVisibleStatusNames');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    setKanbanVisibleStatusNames(Array.isArray(parsed) ? parsed : null);
+                    return;
+                }
+            } catch {}
             setKanbanVisibleStatusNames(null);
-        }
+        };
+
+        loadVisibility();
     }, []);
 
     const token = () => getAuthToken();
@@ -252,7 +269,7 @@ export default function LeadsKanbanView({
         try {
             await axios.put(
                 `${baseUrl.updateKanbanStatus}/${currentDropId}/kanban-status`,
-                { 
+                {
                     leadStatus: newStatusId,
                     ...(lostReason ? { lostReason, isLost: true, lostDate: new Date().toISOString() } : {})
                 },
@@ -307,10 +324,10 @@ export default function LeadsKanbanView({
         if (!result.isConfirmed || !result.value) return;
 
         try {
-            await axios.put(`${baseUrl.updateLead}/${id}`, { 
-                isLost: true, 
+            await axios.put(`${baseUrl.updateLead}/${id}`, {
+                isLost: true,
                 lostDate: new Date().toISOString(),
-                lostReason: result.value 
+                lostReason: result.value
             }, { headers: { Authorization: `Bearer ${token()}` } });
             toast.success('Lead marked as lost');
             onRefresh();
@@ -335,7 +352,7 @@ export default function LeadsKanbanView({
             cancelButtonColor: '#d33',
             confirmButtonText: 'Yes, reactivate it!'
         });
-        
+
         if (!result.isConfirmed) return;
 
         try {
@@ -348,7 +365,6 @@ export default function LeadsKanbanView({
     const lostLeadsColumns: Column<ApiLead>[] = [
         { key: 'fullName', label: 'LEAD NAME', render: (v, row) => (<div><div className="font-semibold text-gray-900">{row.customerName || v}</div><span className="text-xs text-red-500">• Lost</span></div>) },
         { key: 'companyName', label: 'COMPANY', render: (v) => <span className="text-sm">{v || '-'}</span> },
-        { key: 'address', label: 'LOCATION', render: (v, row) => <span className="text-sm">{v || row.city || '-'}</span> },
         { key: 'contact', label: 'CONTACT', render: (v, row) => <ContactCell phone={row.customerContact || v} email={row.customerEmail || row.email} /> },
         { key: 'lostDate', label: 'LOST DATE', render: (v, row) => { const d = v || row.updatedAt; return d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A' } },
         { key: 'assignedTo', label: 'ASSIGNED TO', render: (v) => v?.fullName || '-' },
@@ -358,7 +374,6 @@ export default function LeadsKanbanView({
     const wonLeadsColumns: Column<ApiLead>[] = [
         { key: 'fullName', label: 'LEAD NAME', render: (v, row) => <span className="font-semibold text-gray-900">{row.customerName || v}</span> },
         { key: 'companyName', label: 'COMPANY', render: (v) => <span className="text-sm">{v || '-'}</span> },
-        { key: 'address', label: 'LOCATION', render: (v, row) => <span className="text-sm">{v || row.city || '-'}</span> },
         { key: 'contact', label: 'CONTACT', render: (v, row) => <ContactCell phone={row.customerContact || v} email={row.customerEmail || row.email} /> },
         { key: 'wonDate', label: 'WON DATE', render: (v, row) => { const d = v || row.updatedAt; return d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A' } },
         { key: 'assignedTo', label: 'ASSIGNED TO', render: (v) => v?.fullName || '-' },
@@ -492,6 +507,7 @@ export default function LeadsKanbanView({
                         data={lostLeads}
                         columns={lostLeadsColumns}
                         loading={false}
+                        searchable={false}
                         pagination
                         currentPage={lostPagination?.currentPage ?? 1}
                         totalPages={lostPagination?.totalPages ?? 1}
@@ -525,6 +541,7 @@ export default function LeadsKanbanView({
                         data={wonLeads}
                         columns={wonLeadsColumns}
                         loading={false}
+                        searchable={false}
                         pagination
                         currentPage={wonPagination?.currentPage ?? 1}
                         totalPages={wonPagination?.totalPages ?? 1}
@@ -566,9 +583,9 @@ export default function LeadsKanbanView({
 function ContactCell({ phone, email }: { phone: string; email: string }) {
     return (
         <div className="flex flex-col gap-1 text-sm text-gray-700">
-      {phone && (
-        <div className="flex items-center gap-1.5"><FiPhone className="h-3.5 w-3.5 text-gray-400" />{formatContactNumber(phone)}</div>
-      )}      <div className="flex items-center gap-1.5"><FiMail className="h-3.5 w-3.5 text-gray-400" />{email}</div>
+            {phone && (
+                <div className="flex items-center gap-1.5"><FiPhone className="h-3.5 w-3.5 text-gray-400" />{formatContactNumber(phone)}</div>
+            )}      <div className="flex items-center gap-1.5"><FiMail className="h-3.5 w-3.5 text-gray-400" />{email}</div>
         </div>
     );
 }

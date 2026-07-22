@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { baseUrl, getAuthToken } from '@/config';
 import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
 import { exportToExcel } from '@/utills/exportHelper';
 import FormSelect from '@/components/ui/FormSelect';
 import DatePicker from '@/components/ui/DatePicker';
@@ -151,16 +152,17 @@ export default function LedgerPage() {
       key: 'paymentMethod',
       label: 'Payment Method',
       render: (v) => {
-        let colorClass = 'bg-gray-100 text-gray-800';
-        if (v === 'UPI') colorClass = 'bg-blue-100 text-blue-800';
-        else if (v === 'Cash') colorClass = 'bg-emerald-100 text-emerald-800';
-        else if (v === 'Gpay' || v === 'GPay' || v === 'Google Pay') colorClass = 'bg-purple-100 text-purple-800';
-        else if (v === 'Bank Transfer') colorClass = 'bg-indigo-100 text-indigo-800';
+        let colorClass = 'bg-gray-100 text-gray-500 border-gray-200';
+        if (v === 'UPI') colorClass = 'bg-blue-50 text-blue-600 border-blue-200';
+        else if (v === 'Cash') colorClass = 'bg-green-50 text-green-700 border-green-200';
+        else if (v === 'Gpay' || v === 'GPay' || v === 'Google Pay') colorClass = 'bg-purple-50 text-purple-600 border-purple-200';
+        else if (v === 'Bank Transfer') colorClass = 'bg-indigo-50 text-indigo-600 border-indigo-200';
 
         return (
-          <span className={`px-2 py-1 rounded-md text-xs font-medium ${colorClass}`}>
-            {v || '-'}
-          </span>
+          <Badge
+            label={v || '-'}
+            className={colorClass}
+          />
         );
       }
     },
@@ -172,14 +174,18 @@ export default function LedgerPage() {
     {
       key: 'status',
       label: 'Status',
-      render: (v) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold
-          ${v === 'Completed' ? 'bg-green-100 text-green-800' :
-            v === 'Failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}
-        >
-          {v}
-        </span>
-      )
+      render: (v) => {
+        let colorClass = 'bg-yellow-50 text-yellow-600 border-yellow-200';
+        if (v === 'Completed') colorClass = 'bg-green-50 text-green-700 border-green-200';
+        else if (v === 'Failed') colorClass = 'bg-red-50 text-red-600 border-red-200';
+
+        return (
+          <Badge
+            label={v}
+            className={`${colorClass} font-bold`}
+          />
+        );
+      }
     },
     {
       key: 'note',

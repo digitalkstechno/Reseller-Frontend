@@ -236,12 +236,6 @@ export default function LeadAddDialog({
           className="space-y-5 p-2"
           noValidate
         >
-          {formik.status && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {formik.status}
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Customer Name"

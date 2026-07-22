@@ -59,7 +59,7 @@ export default function SettlementDetailsPage() {
         <title>Paid Leads | Reseller Panel</title>
       </Head>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white py-4.5 px-8 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push('/settlements')}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
 import DatePicker from '@/components/ui/DatePicker';
 import { RefreshCw, Download, IndianRupee, Filter, Search, MoreVertical, X, FileText, File } from 'lucide-react';
 import FormInput from '@/components/ui/Input';
@@ -212,9 +213,10 @@ export default function SettlementsReport() {
       render: (_, row) => {
         const isPaid = row.totalCommission === 0 || row.status === 'paid';
         return (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isPaid ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-            {isPaid ? 'Paid' : 'Unpaid'}
-          </span>
+          <Badge
+            label={isPaid ? 'Paid' : 'Unpaid'}
+            className={isPaid ? 'bg-green-50 text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'}
+          />
         );
       },
     }

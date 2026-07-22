@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
@@ -299,24 +300,20 @@ export function SettlementsContent() {
       key: 'paidCommission',
       label: 'PAID',
       render: (value) => (
-        <div className="flex items-center gap-1 rounded-md bg-green-100 px-2 py-1 w-max border border-green-200">
-          <IndianRupee className="h-3 w-3 text-green-700" />
-          <span className="font-bold text-green-700">
-            {value.toLocaleString('en-IN')}
-          </span>
-        </div>
+        <Badge
+          label={`₹ ${value.toLocaleString('en-IN')}`}
+          className="bg-green-50 text-green-700 border-green-200 font-bold"
+        />
       ),
     },
     {
       key: 'pendingCommission',
       label: 'PENDING',
       render: (value) => (
-        <div className="flex items-center gap-1 rounded-md bg-orange-100 px-2 py-1 w-max border border-orange-200">
-          <IndianRupee className="h-3 w-3 text-orange-700" />
-          <span className="font-bold text-orange-700">
-            {value.toLocaleString('en-IN')}
-          </span>
-        </div>
+        <Badge
+          label={`₹ ${value.toLocaleString('en-IN')}`}
+          className="bg-orange-50 text-orange-600 border-orange-200 font-bold"
+        />
       ),
     },
   ];

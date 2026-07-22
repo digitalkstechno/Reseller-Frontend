@@ -52,6 +52,7 @@ import axios from "axios";
 import { baseUrl, getAuthToken } from "@/config";
 import moment from "moment";
 import Link from 'next/link';
+import Badge from "@/components/Badge";
 import UpdateLeadStageDrawer from "@/components/leads/UpdateLeadStageDrawer";
 import DatePicker from "@/components/ui/DatePicker";
 import { formatContactNumber } from "@/utills/utill";
@@ -73,6 +74,7 @@ interface LeadSummary {
   totalCommission?: number;
   paidCommission?: number;
   pendingCommission?: number;
+  pendingCommissionUsersCount?: number;
   statusWiseCounts: StatusCount[];
   chartType?: "weekly" | "monthly";
   chartData?: any[];
@@ -159,6 +161,18 @@ export default function Dashboard() {
   const [resellerRevenue, setResellerRevenue] = useState<
     { name: string; revenue: number; leadCount: number }[]
   >([]);
+  const [recentActivity, setRecentActivity] = useState<{
+    leadName: string;
+    totalAmount: number;
+    commissionAmount: number;
+    paymentMode: string;
+    paidAt: string;
+    resellerName: string;
+    resellerEmail: string;
+    commissionRate: number | null;
+  }[]>([]);
+  const [recentActivityLoading, setRecentActivityLoading] = useState(false);
+  const [recentActivityFilter, setRecentActivityFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // Upcoming Follow-ups (paginated)
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -166,6 +180,7 @@ export default function Dashboard() {
   const [upcomingFollowups, setUpcomingFollowups] = useState<any[]>([]);
   const [upcomingLoading, setUpcomingLoading] = useState(false);
   const [visibleStatusNames, setVisibleStatusNames] = useState<string[] | null>(null);
+
   // Due Follow-ups (paginated)
   const [duePage, setDuePage] = useState(1);
   const [dueTotalPages, setDueTotalPages] = useState(1);
@@ -181,10 +196,6 @@ export default function Dashboard() {
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<ApiLead | null>(null);
-
-  // Today's Tasks
-  const [todayTasks, setTodayTasks] = useState<any[]>([]);
-  const [tasksLoading, setTasksLoading] = useState(false);
 
   const [greeting, setGreeting] = useState("");
 
@@ -222,28 +233,28 @@ export default function Dashboard() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      New: "bg-blue-100 text-blue-700 border-blue-200",
-      Contacted: "bg-purple-100 text-purple-700 border-purple-200",
-      "Follow-Up": "bg-orange-100 text-orange-700 border-orange-200",
-      Interested: "bg-green-100 text-green-700 border-green-200",
-      Qualified: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      "Not Interested": "bg-gray-100 text-gray-700 border-gray-200",
-      Lost: "bg-red-100 text-red-700 border-red-200",
-      Won: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      New: "bg-blue-50 text-blue-600 border-blue-200",
+      Contacted: "bg-purple-50 text-purple-600 border-purple-200",
+      "Follow-Up": "bg-orange-50 text-orange-600 border-orange-200",
+      Interested: "bg-green-50 text-green-700 border-green-200",
+      Qualified: "bg-green-50 text-green-700 border-green-200",
+      "Not Interested": "bg-gray-100 text-gray-500 border-gray-200",
+      Lost: "bg-red-50 text-red-600 border-red-200",
+      Won: "bg-green-50 text-green-700 border-green-200",
     };
-    return colors[status] || "bg-gray-100 text-gray-700 border-gray-200";
+    return colors[status] || "bg-gray-100 text-gray-500 border-gray-200";
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'high':
-        return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-red-50 text-red-600 border-red-200';
       case 'medium':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
+        return 'bg-orange-50 text-orange-600 border-orange-200';
       case 'low':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-blue-50 text-blue-600 border-blue-200';
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'bg-gray-100 text-gray-500 border-gray-200';
     }
   };
 
@@ -314,6 +325,7 @@ export default function Dashboard() {
         totalCommission: data.counts?.totalCommission || 0,
         paidCommission: data.counts?.paidCommission || 0,
         pendingCommission: data.counts?.pendingCommission || 0,
+        pendingCommissionUsersCount: data.counts?.pendingCommissionUsersCount || 0,
         statusWiseCounts: data.charts?.leadByStatus || [],
       });
 
@@ -355,6 +367,25 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Revenue chart error:", err);
+    }
+  };
+
+  const fetchRecentActivity = async (filter: string = 'all') => {
+    if (!token) return;
+    setRecentActivityLoading(true);
+    try {
+      const params: Record<string, string> = {};
+      if (filter !== 'all') params.filter = filter;
+      const res = await axios.get(baseUrl.recentActivity, {
+        headers: { Authorization: `Bearer ${token}` },
+        params,
+      });
+      setRecentActivity(res.data?.activity || []);
+    } catch (err) {
+      console.error("Recent activity error:", err);
+      setRecentActivity([]);
+    } finally {
+      setRecentActivityLoading(false);
     }
   };
 
@@ -442,22 +473,6 @@ export default function Dashboard() {
     }
   };
 
-  const fetchTodayTasks = async () => {
-    if (!token) return;
-    setTasksLoading(true);
-    try {
-      const res = await axios.get(baseUrl.todayTasks, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTodayTasks(res.data?.data || []);
-    } catch (err) {
-      console.error("Today tasks error:", err);
-      setTodayTasks([]);
-    } finally {
-      setTasksLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (token && userRole) {
       fetchDashboardData();
@@ -471,10 +486,18 @@ export default function Dashboard() {
         fetchUpcomingFollowups(1);
         fetchDueFollowups(1);
         fetchAllFollowups(1);
+      } else {
+        fetchRecentActivity(recentActivityFilter);
       }
-      fetchTodayTasks();
     }
   }, [token, permissions, userRole]);
+
+  // Re-fetch recent activity when filter changes (admin only)
+  useEffect(() => {
+    if (token && userRole?.toLowerCase() === 'admin') {
+      fetchRecentActivity(recentActivityFilter);
+    }
+  }, [recentActivityFilter]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -494,6 +517,20 @@ export default function Dashboard() {
   const summaryCards: any[] = summary
     ? [
       {
+        key: "reseller",
+        label: "Total Reseller",
+        value: summary.totalReseller || 0,
+        trend: 0,
+        tone: "neutral",
+        Icon: User,
+        iconBg: "bg-purple-500/10",
+        iconColor: "text-purple-500",
+        type: "resellers",
+        fill: "#8B5CF6",
+        name: "Total Resellers",
+        description: "Resellers registered"
+      },
+      {
         key: "total",
         label: "Total Leads",
         value: summary.totalLeads,
@@ -509,7 +546,7 @@ export default function Dashboard() {
       },
       {
         key: "lead_amount",
-        label: userRole?.toLowerCase() === 'admin' ? "Total Revenue" : "Total Lead Amount",
+        label: "Total Lead Amount",
         value: `₹${(summary.totalRevenue || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
@@ -518,8 +555,8 @@ export default function Dashboard() {
         iconColor: "text-amber-500",
         type: "revenue",
         fill: "#F59E0B",
-        name: userRole?.toLowerCase() === 'admin' ? "Total Revenue" : "Total Lead Amount",
-        description: userRole?.toLowerCase() === 'admin' ? "Total lead revenue" : "Total amount of leads created"
+        name: "Total Lead Amount",
+        description: "Total amount of leads created"
       },
       {
         key: "commission",
@@ -537,7 +574,7 @@ export default function Dashboard() {
       },
       {
         key: "paid",
-        label: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Paid Commission",
+        label: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Commission Received",
         value: `₹${((userRole?.toLowerCase() === 'admin' ? summary.totalPaid : summary.paidCommission) || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
@@ -546,13 +583,13 @@ export default function Dashboard() {
         iconColor: "text-emerald-500",
         type: "paid",
         fill: "#10B981",
-        name: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Paid Commission",
-        description: "Paid commissions"
+        name: userRole?.toLowerCase() === 'admin' ? "Total Paid" : "Commission Received",
+        description: "Commission Received"
       },
       {
         key: "pending",
-        label: userRole?.toLowerCase() === 'admin' ? "Total Pending Amount" : "Pending Commission",
-        value: `₹${((userRole?.toLowerCase() === 'admin' ? summary.totalPending : summary.pendingCommission) || 0).toLocaleString('en-IN')}`,
+        label: userRole?.toLowerCase() === 'admin' ? "Pending Commission" : "Pending Commission",
+        value: `₹${(summary.pendingCommission || 0).toLocaleString('en-IN')}`,
         trend: 0,
         tone: "neutral",
         Icon: Clock,
@@ -560,28 +597,31 @@ export default function Dashboard() {
         iconColor: "text-orange-500",
         type: "pending",
         fill: "#EF4444",
-        name: userRole?.toLowerCase() === 'admin' ? "Pending Amount" : "Pending Commission",
-        description: "Pending commissions"
+        name: "Pending Commission",
+        description: userRole?.toLowerCase() === 'admin' ? "Commission owed to resellers" : "Commission yet to be received"
       },
       {
-        key: "reseller",
-        label: "Total Reseller",
-        value: summary.totalReseller || 0,
+        key: "pending_users",
+        label: "Pending Commission Users",
+        value: summary.pendingCommissionUsersCount || 0,
         trend: 0,
         tone: "neutral",
-        Icon: User,
-        iconBg: "bg-purple-500/10",
-        iconColor: "text-purple-500",
-        type: "resellers",
-        fill: "#8B5CF6",
-        name: "Total Resellers",
-        description: "Resellers registered"
-      }
+        Icon: AlertCircle,
+        iconBg: "bg-rose-500/10",
+        iconColor: "text-rose-500",
+        type: "pending_users",
+        fill: "#F43F5E",
+        name: "Pending Commission Users",
+        description: "Resellers with commission due"
+      },
+      
     ].filter((card) => {
       if (userRole?.toLowerCase() === "admin") {
-        return card.key !== "commission"; // Admin sees 5 cards (no Total Commission)
+        // Admin: show reseller, total, paid, pending, pending_users — hide lead_amount and commission
+        return card.key !== "lead_amount" && card.key !== "commission";
       } else {
-        return card.key !== "reseller"; // Reseller sees 5 cards (no Total Reseller)
+        // Reseller: hide reseller count card and pending_users card
+        return card.key !== "reseller" && card.key !== "pending_users";
       }
     })
     : [];
@@ -812,12 +852,10 @@ export default function Dashboard() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
-          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${dateHeader === "Follow up Date"
-            ? "bg-blue-100 text-blue-700"
-            : "bg-red-100 text-red-700"
-            }`}>
-            {items.length} {items.length === 1 ? 'Lead' : 'Leads'}
-          </span>
+          <Badge
+            label={`${items.length} ${items.length === 1 ? 'Lead' : 'Leads'}`}
+            className={dateHeader === "Follow up Date" ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-red-50 text-red-600 border-red-200"}
+          />
         </div>
       </div>
 
@@ -855,15 +893,16 @@ export default function Dashboard() {
                           {lead.lead?.customerName || lead.customerName || "Unknown"}
                         </h4>
 
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${getStatusColor(
+                        <Badge
+                          label={
                             (typeof lead.lead?.leadStatus === 'string' ? lead.lead.leadStatus : lead.lead?.leadStatus?.name) ||
-                            (typeof lead.leadStatus === 'string' ? lead.leadStatus : lead.leadStatus?.name) || ""
-                          )}`}
-                        >
-                          {(typeof lead.lead?.leadStatus === 'string' ? lead.lead.leadStatus : lead.lead?.leadStatus?.name) ||
-                            typeof lead.leadStatus === 'string' ? lead.leadStatus : lead.leadStatus?.name || "-"}
-                        </span>
+                            ((typeof lead.leadStatus === 'string' ? lead.leadStatus : lead.leadStatus?.name) || "-")
+                          }
+                          className={`${getStatusColor(
+                            (typeof lead.lead?.leadStatus === 'string' ? lead.lead.leadStatus : lead.lead?.leadStatus?.name) ||
+                            ((typeof lead.leadStatus === 'string' ? lead.leadStatus : lead.leadStatus?.name) || "")
+                          )} text-[10px] px-2 py-0.5`}
+                        />
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -957,15 +996,17 @@ export default function Dashboard() {
                         {task.subject}
                       </h4>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${task.taskStatus?.name?.toLowerCase() === 'completed'
-                          ? 'bg-green-100 text-green-700 border-green-200'
-                          : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                          }`}>
-                          {task.taskStatus?.name || 'In Progress'}
-                        </span>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${getPriorityColor(task.priority)}`}>
-                          {task.priority?.toUpperCase() || 'MEDIUM'}
-                        </span>
+                        <Badge
+                          label={task.taskStatus?.name || 'In Progress'}
+                          className={`${task.taskStatus?.name?.toLowerCase() === 'completed'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-yellow-50 text-yellow-600 border-yellow-200'
+                          } text-[10px] px-2 py-0.5`}
+                        />
+                        <Badge
+                          label={task.priority?.toUpperCase() || 'MEDIUM'}
+                          className={`${getPriorityColor(task.priority)} text-[10px] px-2 py-0.5`}
+                        />
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -994,7 +1035,7 @@ export default function Dashboard() {
       <div className="space-y-8 mx-auto w-full">
 
         {/* Welcome Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
+        <div className="sticky top-0 z-30 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white px-6 py-4 rounded-3xl border border-gray-200 shadow-sm">
           <div>
             <h2 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
               {greeting}, {user?.fullName?.split(' ')[0] || 'User'}! 👋
@@ -1017,7 +1058,11 @@ export default function Dashboard() {
                 ].map((btn) => (
                   <button
                     key={btn.id}
-                    onClick={() => handleQuickFilter(btn.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleQuickFilter(btn.id);
+                    }}
                     className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${activeRange === btn.id
                       ? 'bg-[#3B82F6] text-white shadow-sm'
                       : 'text-gray-500 hover:text-gray-900'
@@ -1097,7 +1142,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div className="relative z-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {summaryCards.map((card) => (
             <div
               key={card.key}
@@ -1209,9 +1254,8 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-
-          {/* Total Paid Breakdown - Donut Pie Chart (2nd column) */}
-          {summary && (
+          {/* Total Paid Breakdown - Donut Pie Chart (2nd column) (Only for non-admins / resellers) */}
+          {summary && userRole?.toLowerCase() !== 'admin' && (
             <div className="bg-white rounded-3xl border border-gray-200/80 p-8 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -1229,7 +1273,7 @@ export default function Dashboard() {
                   {isMounted && (() => {
                     const paid = summary.totalPaid || 0;
                     const pending = summary.totalPending || 0;
-                    const total = summary.totalRevenue || 0;
+                    const total = paid + pending;
                     const hasData = paid > 0 || pending > 0;
                     const pieData = hasData
                       ? [
@@ -1307,11 +1351,8 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-        </div>
 
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Top 10 Resellers by Revenue - Horizontal Bar Chart */}
+          {/* Top 10 Resellers by Revenue - Horizontal Bar Chart (Only for admins) */}
           {permissions.readAll && (
             <div className="bg-white rounded-3xl border border-gray-200/80 p-8 shadow-sm hover:shadow-md transition-shadow flex flex-col">
               <div className="flex items-center justify-between mb-8">
@@ -1324,7 +1365,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="h-[420px] flex-1 focus:outline-none outline-none">
+              <div className="h-[280px] flex-1 focus:outline-none outline-none">
                 {isMounted && (
                   resellerRevenue && resellerRevenue.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%" className="focus:outline-none outline-none">
@@ -1406,85 +1447,136 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
-          {/* Leads by Source - Pie Chart */}
-          {permissions.readAll && (
-            <div className="bg-white rounded-3xl border border-gray-200/80 p-8 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Leads by Source</h3>
-                  <p className="text-sm text-gray-500 mt-1">Traffic and acquisition channels</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center flex-1">
-                <div className="h-[280px]">
-                  {isMounted && (() => {
-                    const hasSourceData = leadsBySource && leadsBySource.length > 0;
-                    const sourcePieData = hasSourceData
-                      ? leadsBySource
-                      : [{ name: "No data", value: 1, fill: "#EFF6FF" }];
-                    return (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={sourcePieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={110}
-                            paddingAngle={hasSourceData ? 8 : 0}
-                            dataKey="value"
-                            nameKey="name"
-                          >
-                            {sourcePieData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.fill}
-                                stroke={hasSourceData ? "white" : "#BFDBFE"}
-                                strokeWidth={hasSourceData ? 2 : 1.5}
-                                strokeDasharray={hasSourceData ? "none" : "4 4"}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length && payload[0].name !== "No data") {
-                                return (
-                                  <div className="bg-white border border-gray-100 p-3 rounded-xl shadow-xl">
-                                    <p className="text-sm font-bold text-gray-900">{payload[0].name}</p>
-                                    <p className="text-sm text-emerald-600 font-semibold">{payload[0].value} Leads</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    );
-                  })()}
-                </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  {leadsBySource && leadsBySource.length > 0 ? (
-                    leadsBySource.map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-50 bg-gray-50/30">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.fill }}></div>
-                        <span className="text-sm font-medium text-gray-600 flex-1 truncate">{s.name}</span>
-                        <span className="text-sm font-bold text-gray-900">{s.value}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-400 text-center py-4">No lead sources found</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
+        {/* Recent Activity Table - Admin Only */}
+        {permissions.readAll && (
+          <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
+                <p className="text-sm text-gray-500 mt-1">Latest paid & won lead transactions by resellers</p>
+              </div>
+              {/* Filter Pills */}
+              <div className="flex items-center gap-0.5 bg-gray-100/80 rounded-full py-1.5 px-2">
+                {([
+                  { id: 'all', label: 'All' },
+                  { id: 'today', label: 'Today' },
+                  { id: 'week', label: 'This Week' },
+                  { id: 'month', label: 'This Month' },
+                ] as { id: 'all' | 'today' | 'week' | 'month'; label: string }[]).map((btn) => (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setRecentActivityFilter(btn.id);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                      recentActivityFilter === btn.id
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={`relative min-h-[200px] transition-all duration-300 ${recentActivityLoading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+
+              {recentActivity.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="p-4 bg-gray-50 rounded-full">
+                    <CheckCircle2 className="h-8 w-8 text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400">No recent paid activity found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/80 border-b border-gray-100">
+                        <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reseller</th>
+                        <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+                        <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Amount</th>
+                        <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission</th>
+                        <th className="text-center px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
+                        <th className="text-center px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment Mode</th>
+                        <th className="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paid Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {recentActivity.map((item, idx) => {
+                        let payModeClass = 'bg-gray-100 text-gray-500 border-gray-200';
+                        const modeUpper = item.paymentMode?.toUpperCase();
+                        if (modeUpper === 'UPI') payModeClass = 'bg-blue-50 text-blue-600 border-blue-200';
+                        else if (modeUpper === 'CASH') payModeClass = 'bg-green-50 text-green-700 border-green-200';
+                        else if (modeUpper === 'GPAY' || modeUpper === 'GOOGLE PAY') payModeClass = 'bg-purple-50 text-purple-600 border-purple-200';
+                        else if (modeUpper === 'BANK TRANSFER' || modeUpper === 'BANK') payModeClass = 'bg-indigo-50 text-indigo-600 border-indigo-200';
+
+                        const isEven = idx % 2 === 1;
+                        const rowBg = isEven ? 'bg-blue-50/50' : 'bg-white';
+
+                        return (
+                          <tr key={idx} className={`${rowBg} transition-colors group`}>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs font-bold text-blue-600">
+                                    {item.resellerName.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-gray-900 truncate text-sm">{item.resellerName}</p>
+                                  <p className="text-xs text-gray-400 truncate">{item.resellerEmail}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Badge
+                                label={item.leadName}
+                                className="bg-green-50 text-green-700 border-green-200 font-bold"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-left">
+                              <span className="font-semibold text-gray-900">₹{item.totalAmount.toLocaleString('en-IN')}</span>
+                            </td>
+                            <td className="px-6 py-4 text-left">
+                              <span className="font-semibold text-blue-600">₹{item.commissionAmount.toLocaleString('en-IN')}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {item.commissionRate !== null ? (
+                                <Badge
+                                  label={`${item.commissionRate}%`}
+                                  className="bg-indigo-50 text-indigo-600 border-indigo-200 font-bold"
+                                />
+                              ) : (
+                                <span className="text-gray-300 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <Badge
+                                label={item.paymentMode || '—'}
+                                className={`${payModeClass} font-bold`}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className="text-xs text-gray-500">
+                                {new Date(item.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Lead Status Overview & Sales vs Commission - Only for Reseller */}
         {isReseller && (
@@ -1586,11 +1678,11 @@ export default function Dashboard() {
               {/* Legend */}
               <div className="flex items-center gap-6 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#93C5FD' }}></span>
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3B82F6' }}></span>
                   <span className="text-xs font-semibold text-gray-600">Sales</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#1067b9ff' }}></span>
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10B981' }}></span>
                   <span className="text-xs font-semibold text-gray-600">Commission</span>
                 </div>
               </div>
@@ -1619,14 +1711,14 @@ export default function Dashboard() {
                                   {d.name} {d.year ? d.year : ""}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#93C5FD' }}></span>
+                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3B82F6' }}></span>
                                   <p className="text-sm text-[#3B82F6] font-bold">
                                     Sales: ₹{Number(d.revenue).toLocaleString('en-IN')}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#1067b9ff' }}></span>
-                                  <p className="text-sm text-[#1067b9ff] font-bold">
+                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#10B981' }}></span>
+                                  <p className="text-sm text-[#10B981] font-bold">
                                     Commission: ₹{Number(d.commission).toLocaleString('en-IN')}
                                   </p>
                                 </div>
@@ -1636,8 +1728,24 @@ export default function Dashboard() {
                           return null;
                         }}
                       />
-                      <Bar dataKey="revenue" fill="#93C5FD" radius={[4, 4, 0, 0]} maxBarSize={30} name="Sales" />
-                      <Bar dataKey="commission" fill="#1067b9ff" radius={[4, 4, 0, 0]} maxBarSize={30} name="Commission" />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#3B82F6"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, stroke: '#3B82F6', strokeWidth: 1, fill: '#fff' }}
+                        activeDot={{ r: 6 }}
+                        name="Sales"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="commission"
+                        stroke="#10B981"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, stroke: '#10B981', strokeWidth: 1, fill: '#fff' }}
+                        activeDot={{ r: 6 }}
+                        name="Commission"
+                      />
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}

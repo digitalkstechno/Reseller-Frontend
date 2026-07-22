@@ -8,6 +8,7 @@ import { formatContactNumber } from "@/utills/utill";
 import { baseUrl, getAuthToken } from '@/config';
 import { ApiStatus, ApiUser, ApiLead } from './types';
 import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
 import DeleteDialog from '@/components/DeleteDialog';
 import Swal from 'sweetalert2';
 import PaymentModal from './PaymentModal';
@@ -201,9 +202,10 @@ export default function LeadsListView({
       key: 'paymentStatus',
       label: 'PAYMENT',
       render: (v) => (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${v === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-          {v === 'Paid' ? 'Paid' : 'Unpaid'}
-        </span>
+        <Badge
+          label={v === 'Paid' ? 'Paid' : 'Unpaid'}
+          className={v === 'Paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}
+        />
       )
     },
     {

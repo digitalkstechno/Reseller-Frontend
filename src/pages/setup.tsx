@@ -95,32 +95,31 @@ export default function Setup() {
     };
   }, [token]);
 
-  // Load saved kanban statuses from sessionStorage - FIXED: Always call useEffect
+  // Load saved kanban statuses from API - FIXED: Always call useEffect
   useEffect(() => {
-    const loadKanbanStatuses = () => {
-      if (typeof window === 'undefined') return;
-
-      const stored = window.sessionStorage.getItem('kanbanVisibleStatusNames');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setKanbanStatusNames(parsed.filter((x) => typeof x === 'string'));
-            return;
-          }
-        } catch {
-          // Invalid stored data, will use default
+    const loadKanbanStatuses = async () => {
+      if (!token) return;
+      try {
+        const res = await axios.get(baseUrl.settingsKanbanStatus, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const statusNames = res.data?.data;
+        if (statusNames && Array.isArray(statusNames)) {
+          setKanbanStatusNames(statusNames.filter((x: any) => typeof x === 'string'));
+          return;
         }
+      } catch (err) {
+        console.error('Failed to load kanban statuses:', err);
       }
 
-      // If no stored data and we have lead statuses, use all of them as default
+      // Fallback: If no stored data and we have lead statuses, use all of them as default
       if (leadStatuses.length > 0) {
         setKanbanStatusNames(leadStatuses.map((s) => s.name));
       }
     };
 
     loadKanbanStatuses();
-  }, [leadStatuses]);
+  }, [leadStatuses, token]);
 
   // Handle select all
   const handleSelectAll = () => {
@@ -143,14 +142,25 @@ export default function Setup() {
     });
   };
 
-  // Handle save to sessionStorage
-  const handleSaveKanbanStatuses = () => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(
-        'kanbanVisibleStatusNames',
-        JSON.stringify(kanbanStatusNames)
+  // Handle save to API
+  const handleSaveKanbanStatuses = async () => {
+    if (!token) return;
+    try {
+      await axios.post(
+        baseUrl.settingsKanbanStatus,
+        { statusNames: kanbanStatusNames },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          'kanbanVisibleStatusNames',
+          JSON.stringify(kanbanStatusNames)
+        );
+      }
       toast.success('Kanban statuses updated successfully');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to update kanban statuses';
+      toast.error(msg);
     }
   };
 

@@ -224,7 +224,8 @@ export default function DataTable<T extends Record<string, any>>({
 
   return (
     <div className="rounded-md bg-white border border-gray-200 transition-all duration-300 hover:shadow-2xl flex flex-col h-full flex-1 min-h-0">
-      {/* Header - Premium Design */}
+      {/* Header - only render when there's something to show */}
+      {(title || subtitle || leftActions || headerActions || searchable || onRefresh || addButton) && (
       <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200 px-3 py-3 rounded-t-md">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
@@ -300,6 +301,7 @@ export default function DataTable<T extends Record<string, any>>({
           </div>
         </div>
       </div>
+      )}
 
       {/* Table - Modern Design */}
       <div className="border-t border-gray-100 overflow-x-auto flex-1 overflow-y-auto custom-scrollbar">
@@ -380,7 +382,7 @@ export default function DataTable<T extends Record<string, any>>({
                     onMouseLeave={() => setHoveredRow(null)}
                     className={`
                       transition-all duration-200
-                      ${striped && index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}
+                      ${striped && index % 2 === 1 ? 'bg-blue-50/50' : 'bg-white'}
                       ${hoveredRow === index ? 'bg-blue-50/30' : ''}
                       ${!expandedRows[index] ? 'border-b border-gray-50 last:border-0' : 'border-b-0'}
                       ${selectedRows.includes(row) ? 'bg-blue-50/50' : ''}
@@ -409,7 +411,7 @@ export default function DataTable<T extends Record<string, any>>({
                     {columns.map((column) => (
                       <td
                         key={String(column.key)}
-                        className={`px-6 py-4 text-sm text-gray-700 whitespace-nowrap ${column.className || ''}`}
+                        className={`px-6 py-3.5 text-sm text-gray-700 whitespace-nowrap ${column.className || ''}`}
                       >
                         {renderCell(column, row)}
                       </td>
