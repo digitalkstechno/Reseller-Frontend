@@ -168,9 +168,6 @@ export default function TaskDialog({ isOpen, onClose, mode, initialData, onSucce
 
   // Formik setup
   const formik = useFormik<TaskFormData>({
-    validateOnChange: false,
-    validateOnBlur: false,
-    
     initialValues: defaultForm,
     validationSchema: TaskValidationSchema,
     validateOnChange: true,

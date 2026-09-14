@@ -38,6 +38,7 @@ export type ApiLead = {
   customerContact?: string;
   email: string;
   customerEmail?: string;
+  managedBy?: string;
   paymentAmount?: number | string;
   leadStatus?: ApiStatus;
   leadSource?: ApiSource;
@@ -70,6 +71,9 @@ export type ApiLead = {
   paymentDate?: any;
   paymentMode?: string;
   paymentProof?: string;
+  city?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type AddLeadForm = {

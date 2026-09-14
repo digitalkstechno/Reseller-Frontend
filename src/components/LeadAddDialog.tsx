@@ -11,6 +11,8 @@ import DatePicker from '@/components/ui/DatePicker';
 import TimePicker from '@/components/ui/TimePicker';
 import FormInput from '@/components/ui/Input';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface DropdownItem {
   _id: string;
   name?: string;

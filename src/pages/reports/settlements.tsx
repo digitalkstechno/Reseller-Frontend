@@ -21,6 +21,7 @@ interface ReportSettlement {
   totalCommission: number;
   paidCommission: number;
   pendingCommission: number;
+  status?: string;
 }
 
 export default function SettlementsReport() {
