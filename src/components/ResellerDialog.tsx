@@ -100,7 +100,7 @@ export default function ResellerDialog({
       password: '',
       role: '',
       status: 'active',
-      commissionRate: '',
+      commissionRate: '20',
       profileImage: null as File | null,
     },
     validationSchema: isUpdate ? updateValidationSchema : createValidationSchema,
@@ -117,7 +117,18 @@ export default function ResellerDialog({
   }, [formik.values]);
 
   const resetForm = () => {
-    formik.resetForm();
+    formik.resetForm({
+      values: {
+        fullName: '',
+        email: '',
+        phone: '',
+        password: '',
+        role: '',
+        status: 'active',
+        commissionRate: '20',
+        profileImage: null,
+      },
+    });
     setPreviewImage(null);
     setShowPassword(false);
     setError(null);

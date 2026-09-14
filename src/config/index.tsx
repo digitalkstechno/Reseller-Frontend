@@ -72,6 +72,12 @@ export const baseUrl = {
   settingsLeadFields: `${API}settings/lead-fields`,
   settleLeads: `${API}settlement/settle-leads`,
   exportGeneric: `${API}export`,
+  projects: `${API}project`,
+  addProject: `${API}project`,
+  getAllProjects: `${API}project`,
+  getProjectById: `${API}project`,
+  updateProject: `${API}project`,
+  deleteProject: `${API}project`,
   getBaseUrl: API,
   getImageUrl: (process.env.NEXT_PUBLIC_IMAGE_URL || "").replace(/\/+$/, ""),
 };
