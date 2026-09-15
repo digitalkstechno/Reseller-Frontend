@@ -21,6 +21,7 @@ import {
   IndianRupee,
   FileText,
   FolderKanban,
+  UserCheck,
 } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -62,24 +63,22 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const canViewLeadStatus = !!leadStatusPerms.readAll;
   const canViewLeadSource = !!leadSourcePerms.readAll;
 
-  const menuItems: MenuItem[] = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  ];
+  const isProjectManager = userRole?.toLowerCase() === 'project_manager' || userRole?.toLowerCase() === 'projectmanager';
+  const isAdmin = userRole?.toLowerCase() === 'admin';
 
-  // Always allow viewing Leads
-  menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
+  const menuItems: MenuItem[] = [];
 
-  // Lead Status menu item
-  // menuItems.push({ icon: Flag, label: "Lead Status", path: "/setup?tab=Lead+Status" });
+  if (isProjectManager) {
+    // Project Managers only see Leads
+    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
+  } else {
+    menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
+    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
 
-  // Always allow viewing Resellers for now or if they have permission
-  // menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
-  if (userRole && userRole.toLowerCase() !== 'reseller' && userRole.toLowerCase() === 'admin') {
-    menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
-    menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
-  }
-  if (userRole) {
-    if (userRole.toLowerCase() === 'admin') {
+    if (isAdmin) {
+      menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
+      menuItems.push({ icon: UserCheck, label: "Project Managers", path: "/project-managers" });
+      menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
       menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
       menuItems.push({ 
         icon: FileText, 
@@ -92,19 +91,15 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       });
     }
     menuItems.push({ icon: CheckSquare, label: "Ledger", path: "/ledger" });
-  }
 
-  const hasAnySetupPerm = canViewStaff || canViewRole || canViewLeadStatus || canViewLeadSource;
-
-  // if (hasAnySetupPerm) {
-  if (userRole?.toLowerCase() !== 'admin') {
-    menuItems.push({
-      icon: Settings,
-      label: "Setup",
-      path: "/setup",
-    });
+    if (!isAdmin) {
+      menuItems.push({
+        icon: Settings,
+        label: "Setup",
+        path: "/setup",
+      });
+    }
   }
-  // }
 
   const isActive = (path?: string) => {
     if (!path) return false;

@@ -126,7 +126,7 @@ export function ProjectsContent() {
           <span className="font-semibold text-gray-900 block">{value}</span>
           {row.projectManager && (
             <span className="text-[11px] text-blue-600 font-medium block mt-0.5">
-              Manager: {row.projectManager}
+              Manager: {typeof row.projectManager === 'object' && row.projectManager !== null ? (row.projectManager as any).fullName : row.projectManager}
             </span>
           )}
         </div>

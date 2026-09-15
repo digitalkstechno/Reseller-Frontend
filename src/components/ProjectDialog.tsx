@@ -9,12 +9,13 @@ import { toast } from 'react-toastify';
 import { DefaultEditor } from 'react-simple-wysiwyg';
 import Dialog from './Dialog';
 import FormInput from './ui/Input';
+import FormSelect from './ui/FormSelect';
 import { FiCamera, FiTrash2, FiExternalLink, FiPlus } from 'react-icons/fi';
 
 export interface Project {
   _id?: string;
   name: string;
-  projectManager?: string;
+  projectManager?: any;
   demoLink?: string;
   demoId?: string;
   demoPassword?: string;
@@ -54,6 +55,7 @@ export default function ProjectDialog({
 }: ProjectDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projectManagers, setProjectManagers] = useState<{ _id: string; fullName: string }[]>([]);
 
   // Array of 4 slots: each item is either { type: 'existing', url: string } | { type: 'new', file: File, preview: string } | null
   const [imageSlots, setImageSlots] = useState<(
@@ -93,10 +95,26 @@ export default function ProjectDialog({
   useEffect(() => {
     if (!isOpen) return;
 
+    const fetchPMs = async () => {
+      try {
+        const res = await axios.get(`${baseUrl.getAllProjectManagers}?all=true`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        setProjectManagers(res.data?.data || []);
+      } catch (err) {
+        console.error('Failed to fetch project managers:', err);
+      }
+    };
+    fetchPMs();
+
     if (initialData?._id) {
+      const pmId = typeof initialData.projectManager === 'object' && initialData.projectManager !== null
+        ? initialData.projectManager?._id || ''
+        : initialData.projectManager || '';
+
       formik.setValues({
         name: initialData.name || '',
-        projectManager: initialData.projectManager || '',
+        projectManager: pmId,
         demoLink: initialData.demoLink || '',
         demoId: initialData.demoId || '',
         demoPassword: initialData.demoPassword || '',
@@ -280,15 +298,17 @@ export default function ProjectDialog({
                   placeholder="e.g. E-Commerce Web & App"
                 />
 
-                <FormInput
-                  label="Project Manager Name"
+                <FormSelect
+                  label="Project Manager"
                   name="projectManager"
-                  type="text"
                   value={formik.values.projectManager}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
+                  onChange={(val) => formik.setFieldValue('projectManager', val)}
+                  options={projectManagers.map((pm) => ({
+                    value: pm._id,
+                    label: pm.fullName,
+                  }))}
+                  placeholder="Select Project Manager"
                   error={formik.touched.projectManager && formik.errors.projectManager ? formik.errors.projectManager : undefined}
-                  placeholder="e.g. John Doe / Digitalks Team"
                 />
               </div>
 

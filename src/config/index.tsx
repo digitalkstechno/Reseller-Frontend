@@ -80,6 +80,11 @@ export const baseUrl = {
   getProjectById: `${API}project`,
   updateProject: `${API}project`,
   deleteProject: `${API}project`,
+  addProjectManager: `${API}project-manager/create`,
+  getAllProjectManagers: `${API}project-manager`,
+  getProjectManagerById: `${API}project-manager`,
+  updateProjectManager: `${API}project-manager`,
+  deleteProjectManager: `${API}project-manager`,
   getBaseUrl: API,
   getImageUrl: (process.env.NEXT_PUBLIC_IMAGE_URL || "").replace(/\/+$/, ""),
 };

@@ -75,14 +75,14 @@ export function useLeadsData(
   const getLeadsUrl = useCallback((tab: string) => {
     const role = getUserRole();
     if (role === 'reseller') return baseUrl.myLeads;
-    if (role === 'admin') return baseUrl.getAllLeads;
+    if (role === 'admin' || role === 'project_manager' || role === 'projectmanager') return baseUrl.getAllLeads;
     return tab === 'my' ? baseUrl.myLeads : baseUrl.getAllLeads;
   }, [getUserRole]);
 
   const getLeadsCountUrl = useCallback((tab: string) => {
     const role = getUserRole();
     if (role === 'reseller') return baseUrl.myLeadCountSummary;
-    if (role === 'admin') return baseUrl.leadCountSummary;
+    if (role === 'admin' || role === 'project_manager' || role === 'projectmanager') return baseUrl.leadCountSummary;
     return tab === 'my' ? baseUrl.myLeadCountSummary : baseUrl.leadCountSummary;
   }, [getUserRole]);
 
@@ -108,12 +108,13 @@ export function useLeadsData(
   ) => {
     try {
       const useKanbanEndpoint = !!baseUrl.getKanbanData;
+      const role = getUserRole();
 
       if (useKanbanEndpoint) {
         const res = await axios.get(baseUrl.getKanbanData, {
           headers: getHeaders(),
           params: {
-            my: (tab === 'my' || getUserRole() === 'reseller') ? true : undefined,
+            my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
             search: f.search || undefined,
             status: f.status || undefined,
             staff: f.staff || undefined,
@@ -195,10 +196,11 @@ export function useLeadsData(
     page = stateRef.current.lostPage
   ) => {
     try {
+      const role = getUserRole();
       const res = await axios.get(baseUrl.getLostLeads, {
         headers: getHeaders(),
         params: {
-          my: (tab === 'my' || getUserRole() === 'reseller') ? true : undefined,
+          my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
           search: f.search || undefined,
           status: f.status || undefined,
           staff: f.staff || undefined,
@@ -228,10 +230,11 @@ export function useLeadsData(
     page = stateRef.current.wonPage
   ) => {
     try {
+      const role = getUserRole();
       const res = await axios.get(baseUrl.getWonLeads, {
         headers: getHeaders(),
         params: {
-          my: (tab === 'my' || getUserRole() === 'reseller') ? true : undefined,
+          my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
           search: f.search || undefined,
           status: f.status || undefined,
           staff: f.staff || undefined,

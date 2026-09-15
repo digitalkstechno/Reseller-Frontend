@@ -9,7 +9,7 @@ import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead } from './types';
 import FormInput from '../ui/Input';
 import FormSelect from '../ui/FormSelect';
-
+import { Trash2, Plus } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export default function LeadAddDialog({
   const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>([]);
   const [requiredFields, setRequiredFields] = useState<string[]>([]);
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
+  const [featureInput, setFeatureInput] = useState('');
   const token = getAuthToken;
 
   useEffect(() => {
@@ -53,9 +54,9 @@ export default function LeadAddDialog({
         setProjects(projectRes.data?.data || projectRes.data?.projects || []);
 
         let reqs = reqRes.data?.data?.requiredLeads || [];
-        reqs = reqs.filter((r: string) => r !== 'customerEmail');
+        reqs = reqs.filter((r: string) => r !== 'customerEmail' && r !== 'leadSource');
         if (!reqs.includes('customerContact')) reqs.push('customerContact');
-        if (!reqs.includes('paymentAmount')) reqs.push('paymentAmount');
+        if (!reqs.includes('project')) reqs.push('project');
         setRequiredFields(reqs);
 
         const schemaShape: any = {
@@ -78,15 +79,22 @@ export default function LeadAddDialog({
             'Location is required',
             (val) => !requiredFields.includes('address') || !!val
           ),
-          project: Yup.string().optional(),
+          project: Yup.string().required('Project is required'),
           paymentAmount: Yup.number()
             .transform((value, originalValue) => (originalValue === '' ? undefined : value))
             .typeError('Payment Amount must be a number')
-            .min(0, 'Payment Amount cannot be negative'),
-          leadStatus: Yup.string(),
-          leadSource: Yup.string(),
-          customLeadSource: Yup.string(),
-          remarks: Yup.string(),
+            .min(0, 'Payment Amount cannot be negative')
+            .test('req-amount', 'Project Amount is required', function (val) {
+              if (this.parent.managedBy === 'Digitalks') return true;
+              if (!requiredFields.includes('paymentAmount')) return true;
+              return val !== undefined && val !== null && !isNaN(val);
+            }),
+          leadStatus: Yup.string().optional(),
+          leadSource: Yup.string().optional(),
+          customLeadSource: Yup.string().optional(),
+          remarks: Yup.string().optional(),
+          description: Yup.string().optional(),
+          features: Yup.array().of(Yup.string()).optional(),
           isActive: Yup.boolean(),
         };
 
@@ -99,10 +107,11 @@ export default function LeadAddDialog({
           leadStatus: 'Lead Status',
           leadSource: 'Lead Source',
           remarks: 'Remarks',
+          description: 'Description',
         };
 
         reqs.forEach((f: string) => {
-          if (schemaShape[f]) {
+          if (f !== 'leadSource' && f !== 'paymentAmount' && schemaShape[f]) {
             schemaShape[f] = schemaShape[f].required(`${labels[f] || f} is required`);
           }
         });
@@ -128,7 +137,9 @@ export default function LeadAddDialog({
       leadStatus: '',
       leadSource: '',
       assignedTo: '',
+      description: '',
       remarks: '',
+      features: [] as string[],
       isActive: true,
     },
     validationSchema: dynamicSchema,
@@ -138,9 +149,10 @@ export default function LeadAddDialog({
       setStatus(null);
       try {
         const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id;
-        const finalStatus = mode === 'add'
-          ? (newLeadStatusId || values.leadStatus || statuses[0]?._id)
-          : values.leadStatus;
+        const finalStatus = values.leadStatus || (mode === 'add' ? (newLeadStatusId || statuses[0]?._id) : undefined);
+
+        const isDigitalks = values.managedBy === 'Digitalks';
+        const finalAmount = isDigitalks ? 0 : (Number(values.paymentAmount) || 0);
 
         const payload: any = {
           customerName: values.customerName.trim(),
@@ -150,12 +162,14 @@ export default function LeadAddDialog({
           address: values.address?.trim() || '',
           managedBy: values.managedBy || 'Manage by Me',
           project: values.project || undefined,
-          projectAmount: Number(values.paymentAmount) || 0,
-          paymentAmount: Number(values.paymentAmount) || 0,
+          projectAmount: finalAmount,
+          paymentAmount: finalAmount,
           leadStatus: finalStatus,
           leadSource: values.leadSource ? values.leadSource.trim() : undefined,
           assignedTo: values.assignedTo,
-          remarks: values.remarks,
+          description: values.description || values.remarks || '',
+          remarks: values.remarks || values.description || '',
+          features: values.features || [],
           isActive: values.isActive,
         };
 
@@ -211,7 +225,9 @@ export default function LeadAddDialog({
           managedBy: (initialData as any).managedBy || 'Manage by Me',
           project: projId,
           paymentAmount:
-            (initialData as any).paymentAmount != null
+            (initialData as any).managedBy === 'Digitalks'
+              ? ''
+              : (initialData as any).paymentAmount != null
               ? String((initialData as any).paymentAmount)
               : (initialData as any).projectAmount != null
               ? String((initialData as any).projectAmount)
@@ -228,9 +244,12 @@ export default function LeadAddDialog({
             typeof initialData.assignedTo === 'object'
               ? initialData.assignedTo?._id || ''
               : initialData.assignedTo || '',
-          remarks: (initialData as any).remarks || '',
+          description: (initialData as any).description || (initialData as any).remarks || '',
+          remarks: (initialData as any).remarks || (initialData as any).description || '',
+          features: Array.isArray((initialData as any).features) ? (initialData as any).features : [],
           isActive: initialData.isActive ?? true,
         });
+        setFeatureInput('');
       } else {
         formik.resetForm({
           values: {
@@ -245,10 +264,13 @@ export default function LeadAddDialog({
             leadStatus: defaultStatusId,
             leadSource: '',
             assignedTo: '',
+            description: '',
             remarks: '',
+            features: [],
             isActive: true,
           },
         });
+        setFeatureInput('');
       }
       formik.setStatus(null);
     } finally {
@@ -258,6 +280,22 @@ export default function LeadAddDialog({
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
+  };
+
+  const handleAddFeature = () => {
+    const trimmed = featureInput.trim();
+    if (!trimmed) return;
+    const current = formik.values.features || [];
+    formik.setFieldValue('features', [...current, trimmed]);
+    setFeatureInput('');
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    const current = formik.values.features || [];
+    formik.setFieldValue(
+      'features',
+      current.filter((_, i) => i !== index)
+    );
   };
 
   const getFieldError = (field: keyof typeof formik.values) => {
@@ -285,7 +323,7 @@ export default function LeadAddDialog({
             type="button"
             onClick={() => formik.handleSubmit()}
             disabled={formik.isSubmitting}
-            className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-medium text-sm shadow-sm"
           >
             {formik.isSubmitting
               ? 'Saving...'
@@ -313,6 +351,7 @@ export default function LeadAddDialog({
             <FormInput
               label="Customer Name"
               name="customerName"
+              placeholder="Enter Customer Name"
               value={formik.values.customerName}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -325,6 +364,7 @@ export default function LeadAddDialog({
               label="Customer Email"
               name="customerEmail"
               type="email"
+              placeholder="Enter Customer Email (e.g. name@example.com)"
               value={formik.values.customerEmail}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -337,6 +377,7 @@ export default function LeadAddDialog({
               name="customerContact"
               type="tel"
               isPhone={true}
+              placeholder="00000 00000"
               value={formik.values.customerContact}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const val = e.target.value;
@@ -350,6 +391,7 @@ export default function LeadAddDialog({
             <FormInput
               label="Company Name"
               name="companyName"
+              placeholder="Enter Company Name"
               value={formik.values.companyName}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -357,13 +399,22 @@ export default function LeadAddDialog({
               required={requiredFields.includes('companyName')}
             />
 
-            {/* Row: Managed By | Select Project | Project Amount (1 Line) */}
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Row: Managed By | Select Project | Project Amount */}
+            <div
+              className={`md:col-span-2 grid grid-cols-1 ${
+                formik.values.managedBy === 'Digitalks' ? 'md:grid-cols-2' : 'md:grid-cols-3'
+              } gap-4`}
+            >
               <FormSelect
                 label="Managed By"
                 name="managedBy"
                 value={formik.values.managedBy}
-                onChange={(val) => formik.setFieldValue('managedBy', val)}
+                onChange={(val) => {
+                  formik.setFieldValue('managedBy', val);
+                  if (val === 'Digitalks') {
+                    formik.setFieldValue('paymentAmount', '');
+                  }
+                }}
                 options={[
                   { value: 'Manage by Me', label: 'Manage by Me' },
                   { value: 'Digitalks', label: 'Digitalks' },
@@ -381,41 +432,43 @@ export default function LeadAddDialog({
                   label: p.name,
                 }))}
                 placeholder="Select Project"
+                error={getFieldError('project')}
+                required={true}
               />
 
-              <FormInput
-                label="Project Amount (₹)"
-                name="paymentAmount"
-                value={formik.values.paymentAmount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  formik.setFieldValue('paymentAmount', val);
-                }}
-                onBlur={formik.handleBlur}
-                error={getFieldError('paymentAmount')}
-                icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
-                required={requiredFields.includes('paymentAmount')}
-                placeholder="e.g. 25000"
-              />
+              {formik.values.managedBy !== 'Digitalks' && (
+                <FormInput
+                  label="Project Amount (₹)"
+                  name="paymentAmount"
+                  value={formik.values.paymentAmount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    formik.setFieldValue('paymentAmount', val);
+                  }}
+                  onBlur={formik.handleBlur}
+                  error={getFieldError('paymentAmount')}
+                  icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
+                  required={requiredFields.includes('paymentAmount')}
+                  placeholder="e.g. 25000"
+                />
+              )}
             </div>
 
-            {/* Lead Status: Default New Lead & Non-changeable */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Lead Status
-              </label>
-              <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-700">
-                <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  <span className="font-semibold text-gray-900">
-                    {statuses.find((s) => s._id === formik.values.leadStatus)?.name || 'New Lead'}
-                  </span>
-                </span>
-              
-              </div>
-            </div>
+            {/* Lead Status (Selectable) */}
+            <FormSelect
+              label="Lead Status"
+              name="leadStatus"
+              value={formik.values.leadStatus}
+              onChange={(val) => formik.setFieldValue('leadStatus', val)}
+              options={statuses.map((s) => ({
+                value: s._id,
+                label: s.name,
+              }))}
+              placeholder="Select Lead Status"
+              error={getFieldError('leadStatus')}
+            />
 
-            {/* Lead Source: Direct Text Input */}
+            {/* Lead Source: Optional */}
             <FormInput
               label="Lead Source"
               name="leadSource"
@@ -424,38 +477,107 @@ export default function LeadAddDialog({
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={getFieldError('leadSource')}
-              required={requiredFields.includes('leadSource')}
+              required={false}
             />
           </div>
 
+          {/* Features (Bullet Points) Section */}
+          <div className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-gray-800">
+                Features / Key Deliverables (Bullet Points)
+              </label>
+              {formik.values.features && formik.values.features.length > 0 && (
+                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                  {formik.values.features.length} {formik.values.features.length === 1 ? 'bullet point' : 'bullet points'}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={featureInput}
+                onChange={(e) => setFeatureInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddFeature();
+                  }
+                }}
+                placeholder="Type a feature / bullet point (e.g. Custom Admin Panel) and click Add"
+                className="flex-1 px-3.5 py-2 text-sm border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-gray-800 placeholder-gray-400"
+              />
+              <button
+                type="button"
+                onClick={handleAddFeature}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Plus size={16} />
+                <span>Add</span>
+              </button>
+            </div>
+
+            {/* Bullet list items */}
+            {formik.values.features && formik.values.features.length > 0 ? (
+              <ul className="mt-3 space-y-2">
+                {formik.values.features.map((feat, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm text-gray-800 shadow-xs hover:border-gray-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+                      <span className="break-words font-medium">{feat}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFeature(idx)}
+                      className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 cursor-pointer"
+                      title="Delete bullet point"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">
+                No features added yet. Add bullet points above to specify custom features or deliverables.
+              </p>
+            )}
+          </div>
+
+          {/* Description / Remarks Field */}
           <div className="w-full">
             <label className="block mb-1.5 text-sm font-semibold text-gray-700">
-              Remarks{' '}
-              {requiredFields.includes('remarks') && (
+              Description / Remarks
+              {requiredFields.includes('description') && (
                 <span className="text-red-700 ml-1">*</span>
               )}
             </label>
             <div
               className={`rounded-xl border overflow-hidden ${
-                formik.touched.remarks && formik.errors.remarks
+                formik.touched.description && formik.errors.description
                   ? 'border-red-500'
                   : 'border-gray-300'
               }`}
             >
               <DefaultEditor
-                value={formik.values.remarks}
+                value={formik.values.description}
                 onChange={(e) => {
+                  formik.setFieldValue('description', e.target.value);
                   formik.setFieldValue('remarks', e.target.value);
-                  if (formik.errors.remarks) {
-                    formik.setFieldError('remarks', undefined);
+                  if (formik.errors.description) {
+                    formik.setFieldError('description', undefined);
                   }
                 }}
-                onBlur={() => formik.setFieldTouched('remarks', true)}
+                onBlur={() => formik.setFieldTouched('description', true)}
               />
             </div>
-            {getFieldError('remarks') && (
+            {getFieldError('description') && (
               <p className="mt-1 text-xs text-red-500 font-medium">
-                {getFieldError('remarks')}
+                {getFieldError('description')}
               </p>
             )}
           </div>

@@ -247,19 +247,106 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <InfoCard label="Phone" value={formatContactNumber((lead as any).customerContact || lead.contact)} />
               <InfoCard label="Email" value={(lead as any).customerEmail || lead.email} />
-              <InfoCard label="Payment Amount" value={(lead as any).paymentAmount ? formatIndianCurrency((lead as any).paymentAmount) : undefined} />
+              <InfoCard label="Managed By" value={(lead as any).managedBy || 'Manage by Me'} />
+              <InfoCard
+                label="Project"
+                value={
+                  typeof (lead as any).project === 'object' && (lead as any).project !== null
+                    ? (lead as any).project.name || '-'
+                    : (lead as any).project || '-'
+                }
+              />
+              <InfoCard label="Total Amount" value={(lead as any).paymentAmount || (lead as any).projectAmount ? formatIndianCurrency((lead as any).paymentAmount || (lead as any).projectAmount) : undefined} />
+              <InfoCard
+                label="Paid Amount"
+                value={
+                  formatIndianCurrency(
+                    (lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0
+                      ? (lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                      : (Number((lead as any).paidAmount) || 0)
+                  )
+                }
+              />
+              <InfoCard
+                label="Pending Amount"
+                value={
+                  formatIndianCurrency(
+                    Math.max(
+                      0,
+                      (Number((lead as any).paymentAmount) || Number((lead as any).projectAmount) || 0) -
+                        ((lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0
+                          ? (lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                          : (Number((lead as any).paidAmount) || 0))
+                    )
+                  )
+                }
+              />
 
               <InfoCard label="Last Follow-Up" value={lead.lastFollowUp} />
               <InfoCard label="Active" value={lead.isActive ? 'Yes' : 'No'} />
             </div>
 
-            {(lead as any).remarks && (
+            {/* Payment History Records */}
+            {(lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0 && (
               <div className="rounded-lg bg-gray-50 p-4">
-                <div className="mb-2 text-sm font-medium text-gray-600">Remarks</div>
+                <div className="mb-2 text-sm font-bold text-gray-700 flex items-center justify-between">
+                  <span>Payment History ({((lead as any).payments).length} entries)</span>
+                  <span className="text-xs text-emerald-600 font-semibold">
+                    Total Paid: {formatIndianCurrency((lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}
+                  </span>
+                </div>
+                <div className="overflow-x-auto border border-gray-200 rounded-md bg-white">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
+                      <tr>
+                        <th className="py-2 px-3">#</th>
+                        <th className="py-2 px-3">Date</th>
+                        <th className="py-2 px-3">Mode</th>
+                        <th className="py-2 px-3">Note</th>
+                        <th className="py-2 px-3 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {((lead as any).payments).map((p: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="py-2 px-3 text-gray-400 font-medium">{idx + 1}</td>
+                          <td className="py-2 px-3 font-medium text-gray-800">
+                            {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="py-2 px-3 text-gray-600">{p.paymentMode || 'Cash'}</td>
+                          <td className="py-2 px-3 text-gray-500">{p.note || '-'}</td>
+                          <td className="py-2 px-3 text-right font-bold text-emerald-600">
+                            {formatIndianCurrency(p.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {((lead as any).description || (lead as any).remarks) && (
+              <div className="rounded-lg bg-gray-50 p-4">
+                <div className="mb-2 text-sm font-medium text-gray-600">Description</div>
                 <div
                   className="prose prose-sm max-w-none text-gray-800"
-                  dangerouslySetInnerHTML={{ __html: (lead as any).remarks }}
+                  dangerouslySetInnerHTML={{ __html: (lead as any).description || (lead as any).remarks }}
                 />
+              </div>
+            )}
+
+            {(lead as any).features && Array.isArray((lead as any).features) && (lead as any).features.length > 0 && (
+              <div className="rounded-lg bg-gray-50 p-4">
+                <div className="mb-2 text-sm font-medium text-gray-600">Features / Deliverables</div>
+                <ul className="space-y-1.5 list-none pl-0">
+                  {(lead as any).features.map((f: string, i: number) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0"></span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

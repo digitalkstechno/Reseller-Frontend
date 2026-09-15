@@ -117,8 +117,10 @@ export default function LeadsPage() {
 
     const lp = rawPerms?.lead || {};
     setLeadPermissions(lp);
-    if (!lp.readAll && lp.readOwn) setActiveTab('my');
-  }, [token, rawPerms]);
+    if (userRole !== 'project_manager' && userRole !== 'projectmanager' && userRole !== 'admin') {
+      if (!lp.readAll && lp.readOwn) setActiveTab('my');
+    }
+  }, [token, rawPerms, userRole]);
 
   const filters = useMemo(
     () => ({
@@ -252,15 +254,16 @@ export default function LeadsPage() {
   };
 
   // ── Permission flags ──────────────────────────────────────────────────────
-  const canCreate = leadPermissions?.create !== false;
-  const canRead = (leadPermissions?.readAll || leadPermissions?.readOwn) !== false;
-  const canReadAll = leadPermissions?.readAll !== false;
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager';
+  const canCreate = isPM ? false : leadPermissions?.create !== false;
+  const canRead = isPM ? true : (leadPermissions?.readAll || leadPermissions?.readOwn) !== false;
+  const canReadAll = isPM ? true : leadPermissions?.readAll !== false;
   const canReadOwn = leadPermissions?.readOwn !== false;
   const canUpdate = leadPermissions?.update !== false;
-  const canDelete = leadPermissions?.delete !== false;
-  const canAssign = leadPermissions?.assign !== false;
-  const canTransfer = leadPermissions?.transfer !== false;
-  const canConvert = leadPermissions?.convert !== false;
+  const canDelete = isPM ? false : leadPermissions?.delete !== false;
+  const canAssign = isPM ? false : leadPermissions?.assign !== false;
+  const canTransfer = isPM ? false : leadPermissions?.transfer !== false;
+  const canConvert = isPM ? false : leadPermissions?.convert !== false;
 
   const handleApplyFilters = () => {
     setStatusFilter(tempStatusFilter);
