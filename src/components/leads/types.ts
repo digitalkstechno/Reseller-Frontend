@@ -51,6 +51,8 @@ export type ApiLead = {
   nextFollowupTime?: string;
   note?: string;
   remarks?: string;
+  description?: string;
+  features?: string[];
   isActive?: boolean;
   followUps?: ApiFollowUp[];
   attachments?: {
@@ -73,6 +75,15 @@ export type ApiLead = {
   paymentDate?: any;
   paymentMode?: string;
   paymentProof?: string;
+  payments?: {
+    _id?: string;
+    amount: number;
+    paymentDate: string | Date;
+    paymentMode: string;
+    paymentProof?: string;
+    note?: string;
+    createdAt?: string | Date;
+  }[];
   city?: string;
   createdAt?: string;
   updatedAt?: string;

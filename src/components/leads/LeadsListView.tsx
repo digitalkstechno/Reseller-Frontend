@@ -45,6 +45,7 @@ type TableLead = {
 
   paymentAmount?: number;
   paidAmount?: number;
+  payments?: any[];
   paymentDate?: any;
   paymentMode?: string;
   paymentProof?: string;
@@ -116,8 +117,9 @@ function mapLead(item: any): TableLead {
     isActive: item.isActive,
     isWon: item.isWon,
 
-    paymentAmount: item.paymentAmount || item.amount,
+    paymentAmount: item.paymentAmount || item.projectAmount || item.amount,
     paidAmount: item.paidAmount,
+    payments: item.payments,
     paymentDate: item.paymentDate,
     paymentMode: item.paymentMode,
     paymentProof: item.paymentProof,
@@ -222,22 +224,87 @@ export default function LeadsListView({
         </span>
       ),
     },
-    { key: 'status', label: 'STATUS' },
-
-    { key: 'lastFollowUp', label: 'LAST FOLLOW-UP' },
     {
       key: 'paymentStatus',
       label: 'PAYMENT',
-      render: (v) => (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${v === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-          {v === 'Paid' ? 'Paid' : 'Unpaid'}
-        </span>
-      )
+      render: (_, row) => {
+        const total = Number(row.paymentAmount) || 0;
+        const paid = Array.isArray(row.payments) && row.payments.length > 0
+          ? row.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+          : (Number(row.paidAmount) || (row.paymentStatus === 'Paid' ? total : 0));
+        const pending = Math.max(0, total - paid);
+
+        let statusText = 'Unpaid';
+        let badgeClass = 'bg-gray-100 text-gray-800 border-gray-200';
+
+        if (row.paymentStatus === 'Paid' || (total > 0 && paid >= total)) {
+          statusText = 'Paid';
+          badgeClass = 'bg-green-100 text-green-800 border-green-200';
+        } else if (paid > 0 && pending > 0) {
+          statusText = 'Partial';
+          badgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+        }
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass}`}>
+            {statusText}
+          </span>
+        );
+      },
     },
     {
       key: 'paymentAmount',
-      label: 'AMOUNT',
-      render: (v) => (v ? <span className="font-bold text-emerald-600">{formatIndianCurrency(v)}</span> : <span className="text-gray-400">-</span>)
+      label: 'TOTAL AMOUNT',
+      render: (_, row) => {
+        const total = Number(row.paymentAmount) || 0;
+        const paid = Array.isArray(row.payments) && row.payments.length > 0
+          ? row.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+          : (Number(row.paidAmount) || (row.paymentStatus === 'Paid' ? total : 0));
+        const pending = Math.max(0, total - paid);
+
+        if (!total && !paid) {
+          return <span className="text-gray-400 font-medium">-</span>;
+        }
+
+        const formatDec = (n: number) =>
+          '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        return (
+          <div className="flex flex-col min-w-[190px] max-w-[230px] py-1 text-xs select-text">
+            <div className="flex items-center justify-between text-gray-500 gap-3 py-0.5">
+              <div className="flex items-center gap-1.5 flex-shrink-0 text-gray-600">
+                <span className="text-[13px] leading-none">📄</span>
+                <span className="font-medium text-[11px] whitespace-nowrap">Total Amount</span>
+              </div>
+              <span className="font-bold text-gray-900 text-xs tabular-nums text-right">
+                {formatDec(total)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-gray-500 gap-3 py-0.5">
+              <div className="flex items-center gap-1.5 flex-shrink-0 text-gray-600">
+                <span className="text-gray-500 font-semibold text-xs leading-none">₹</span>
+                <span className="font-medium text-[11px] whitespace-nowrap">Paid Amount</span>
+              </div>
+              <span className="font-bold text-gray-900 text-xs tabular-nums text-right">
+                {formatDec(paid)}
+              </span>
+            </div>
+
+            <div className="border-t border-dashed border-gray-300 my-1 w-full" />
+
+            <div className={`flex items-center justify-between gap-3 py-0.5 font-bold ${pending > 0 ? 'text-emerald-600' : 'text-emerald-600'}`}>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <span className="font-bold text-xs leading-none">₹</span>
+                <span className="text-[11px] whitespace-nowrap">{pending > 0 ? 'Pending' : 'Total'}</span>
+              </div>
+              <span className="text-xs tabular-nums text-right font-bold">
+                {formatDec(pending > 0 ? pending : total)}
+              </span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'commissionAmount',
@@ -253,8 +320,6 @@ export default function LeadsListView({
       label: 'RESELLER',
       render: (v) => <span className="text-gray-700">{v || '-'}</span>,
     });
-    // Remove status column for admin as requested
-    columns = columns.filter(c => c.key !== 'status');
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -439,7 +504,7 @@ export default function LeadsListView({
         <PaymentModal
           isOpen={showPayment}
           onClose={() => { setShowPayment(false); setPaymentTarget(null); }}
-          lead={paymentTarget}
+          lead={paymentTarget._raw || paymentTarget}
           onSuccess={() => { onRefresh?.(); }}
         />
       )}
