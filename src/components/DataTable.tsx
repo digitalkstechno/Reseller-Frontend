@@ -26,6 +26,15 @@ export interface Column<T> {
   className?: string;
 }
 
+export interface ActionItem<T> {
+  label: string | ((row: T) => string);
+  icon?: React.ReactNode | ((row: T) => React.ReactNode);
+  onClick: (row: T) => void;
+  className?: string;
+  color?: string | ((row: T) => string);
+  show?: (row: T) => boolean;
+}
+
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];

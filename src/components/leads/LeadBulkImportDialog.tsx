@@ -119,7 +119,7 @@ export default function LeadBulkImportDialog({ isOpen, onClose, onImported }: Pr
         validateStatus: () => true,
       });
 
-      const contentType = res.headers['content-type'] || '';
+      const contentType = String(res.headers['content-type'] || '');
 
       if (contentType.includes('spreadsheetml')) {
         const imported = parseInt(res.headers['x-import-imported'] || '0', 10);

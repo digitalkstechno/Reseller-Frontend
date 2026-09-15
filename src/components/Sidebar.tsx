@@ -20,6 +20,7 @@ import {
   Flag,
   IndianRupee,
   FileText,
+  FolderKanban,
 } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -75,6 +76,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   // menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
   if (userRole && userRole.toLowerCase() !== 'reseller' && userRole.toLowerCase() === 'admin') {
     menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
+    menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
   }
   if (userRole) {
     if (userRole.toLowerCase() === 'admin') {

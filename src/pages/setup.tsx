@@ -6,14 +6,9 @@ import Dialog from '@/components/Dialog';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
-import { RolesContent } from './roles';
-import { StaffManagementContent } from './staff-management';
 import { LeadSourcesContent } from './lead-sources';
 import { LeadStatusContent } from './lead-status';
 import { Settings, Users, Link2, Flag, Tag, Building2, UsersRound, Settings2 } from 'lucide-react';
-import { TeamsContent } from './teams';
-import { OrganizationsContent } from './organizations';
-import { TaskStatusContent } from './task-status';
 import { useRouter } from 'next/router';
 import { FieldSettingsContent } from './field-settings';
 

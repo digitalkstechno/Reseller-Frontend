@@ -75,7 +75,7 @@ interface LeadSummary {
   pendingCommission?: number;
   pendingCommissionUsersCount?: number;
   statusWiseCounts: StatusCount[];
-  chartType?: "weekly" | "monthly";
+  chartType?: "daily" | "weekly" | "monthly" | string;
   chartData?: any[];
 }
 
@@ -88,7 +88,7 @@ interface SummaryCard {
   Icon: ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
-  type: "total" | "month" | "status" | "revenue" | "custom";
+  type: "total" | "month" | "status" | "revenue" | "custom" | "resellers";
   statusId?: string;
   fill?: string;
   name?: string;

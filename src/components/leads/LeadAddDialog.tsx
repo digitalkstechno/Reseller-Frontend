@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { EMAIL_REGEX } from '@/utills/emailRegex';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { DefaultEditor } from 'react-simple-wysiwyg';
@@ -11,6 +10,7 @@ import { ApiLead } from './types';
 import FormInput from '../ui/Input';
 import FormSelect from '../ui/FormSelect';
 
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +19,6 @@ interface Props {
   onLeadCreated?: (lead: any) => void;
   onLeadUpdated?: (lead: any) => void;
 }
-
 
 export default function LeadAddDialog({
   isOpen,
@@ -32,7 +31,7 @@ export default function LeadAddDialog({
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
   const [sources, setSources] = useState<{ _id: string; name: string }[]>([]);
-  const [staffMembers, setStaffMembers] = useState<{ _id: string; fullName: string }[]>([]);
+  const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>([]);
   const [requiredFields, setRequiredFields] = useState<string[]>([]);
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
   const token = getAuthToken;
@@ -42,14 +41,17 @@ export default function LeadAddDialog({
     const fetchDropdowns = async () => {
       try {
         const headers = { Authorization: `Bearer ${token()}` };
-        const [statusRes, sourceRes, reqRes] = await Promise.all([
-          axios.get(baseUrl.leadStatuses, { headers }),
-          axios.get(baseUrl.leadSources, { headers }),
-          axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers })
+        const [statusRes, sourceRes, projectRes, reqRes] = await Promise.all([
+          axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
+          axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
+          axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
+          axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers }).catch(() => ({ data: [] })),
         ]);
+
         setStatuses(statusRes.data?.data || statusRes.data || []);
         setSources(sourceRes.data?.data || sourceRes.data || []);
-        
+        setProjects(projectRes.data?.data || projectRes.data?.projects || []);
+
         let reqs = reqRes.data?.data?.requiredLeads || [];
         reqs = reqs.filter((r: string) => r !== 'customerEmail');
         if (!reqs.includes('customerContact')) reqs.push('customerContact');
@@ -59,20 +61,31 @@ export default function LeadAddDialog({
         const schemaShape: any = {
           customerName: Yup.string()
             .max(50, 'Max 50 characters')
-            .test('req', 'Customer name is required', val => !requiredFields.includes('customerName') || !!val),
+            .test('req', 'Customer name is required', (val) => !requiredFields.includes('customerName') || !!val),
           customerEmail: Yup.string()
             .email('Invalid email address')
-            .test('req', 'Email is required', val => !requiredFields.includes('customerEmail') || !!val),
+            .test('req', 'Email is required', (val) => !requiredFields.includes('customerEmail') || !!val),
           customerContact: Yup.string()
             .matches(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian phone number')
-            .test('req', 'Contact is required', val => !requiredFields.includes('customerContact') || !!val),
-          companyName: Yup.string()
-            .test('req', 'Company name is required', val => !requiredFields.includes('companyName') || !!val),
-          address: Yup.string()
-            .test('req', 'Location is required', val => !requiredFields.includes('address') || !!val),
-          paymentAmount: Yup.number().transform((value, originalValue) => originalValue === '' ? undefined : value).typeError('Payment Amount must be a number').min(0, 'Payment Amount cannot be negative'),
+            .test('req', 'Contact is required', (val) => !requiredFields.includes('customerContact') || !!val),
+          companyName: Yup.string().test(
+            'req',
+            'Company name is required',
+            (val) => !requiredFields.includes('companyName') || !!val
+          ),
+          address: Yup.string().test(
+            'req',
+            'Location is required',
+            (val) => !requiredFields.includes('address') || !!val
+          ),
+          project: Yup.string().optional(),
+          paymentAmount: Yup.number()
+            .transform((value, originalValue) => (originalValue === '' ? undefined : value))
+            .typeError('Payment Amount must be a number')
+            .min(0, 'Payment Amount cannot be negative'),
           leadStatus: Yup.string(),
           leadSource: Yup.string(),
+          customLeadSource: Yup.string(),
           remarks: Yup.string(),
           isActive: Yup.boolean(),
         };
@@ -82,16 +95,16 @@ export default function LeadAddDialog({
           customerEmail: 'Customer Email',
           customerContact: 'Customer Contact',
           companyName: 'Company Name',
-          paymentAmount: 'Payment Amount',
+          paymentAmount: 'Payment / Project Amount',
           leadStatus: 'Lead Status',
           leadSource: 'Lead Source',
-          remarks: 'Remarks'
+          remarks: 'Remarks',
         };
 
         reqs.forEach((f: string) => {
-           if (schemaShape[f]) {
-             schemaShape[f] = schemaShape[f].required(`${labels[f] || f} is required`);
-           }
+          if (schemaShape[f]) {
+            schemaShape[f] = schemaShape[f].required(`${labels[f] || f} is required`);
+          }
         });
         setDynamicSchema(Yup.object().shape(schemaShape));
       } catch (err) {
@@ -109,6 +122,8 @@ export default function LeadAddDialog({
       customerContact: '',
       companyName: '',
       address: '',
+      managedBy: 'Manage by Me',
+      project: '',
       paymentAmount: '',
       leadStatus: '',
       leadSource: '',
@@ -122,15 +137,23 @@ export default function LeadAddDialog({
     onSubmit: async (values, { setSubmitting, setStatus }) => {
       setStatus(null);
       try {
-        const payload = {
+        const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id;
+        const finalStatus = mode === 'add'
+          ? (newLeadStatusId || values.leadStatus || statuses[0]?._id)
+          : values.leadStatus;
+
+        const payload: any = {
           customerName: values.customerName.trim(),
           customerEmail: values.customerEmail.trim().toLowerCase(),
           customerContact: values.customerContact.trim(),
-          companyName: values.companyName?.trim() || "",
-          address: values.address?.trim() || "",
+          companyName: values.companyName?.trim() || '',
+          address: values.address?.trim() || '',
+          managedBy: values.managedBy || 'Manage by Me',
+          project: values.project || undefined,
+          projectAmount: Number(values.paymentAmount) || 0,
           paymentAmount: Number(values.paymentAmount) || 0,
-          leadStatus: values.leadStatus,
-          leadSource: values.leadSource,
+          leadStatus: finalStatus,
+          leadSource: values.leadSource ? values.leadSource.trim() : undefined,
           assignedTo: values.assignedTo,
           remarks: values.remarks,
           isActive: values.isActive,
@@ -170,28 +193,72 @@ export default function LeadAddDialog({
     if (!isOpen) return;
     setLoading(true);
     try {
+      const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+
       if (mode === 'edit' && initialData) {
+        const projId =
+          typeof (initialData as any).project === 'object'
+            ? (initialData as any).project?._id || ''
+            : (initialData as any).project || '';
+
         formik.setValues({
           customerName: (initialData as any).customerName || initialData.fullName || '',
           customerEmail: (initialData as any).customerEmail || initialData.email || '',
-          customerContact: (initialData as any).customerContact || (initialData as any).customerContact || initialData.contact || '',
+          customerContact:
+            (initialData as any).customerContact || (initialData as any).contact || '',
           companyName: initialData.companyName || '',
           address: (initialData as any).address || '',
-          paymentAmount: (initialData as any).paymentAmount != null ? String((initialData as any).paymentAmount) : '',
-          leadStatus: typeof initialData.leadStatus === 'object' ? initialData.leadStatus?._id || '' : (initialData.leadStatus || ''),
-          leadSource: typeof (initialData as any).leadSource === 'object' ? (initialData as any).leadSource?._id || '' : ((initialData as any).leadSource || (initialData as any).source || ''),
-          assignedTo: typeof initialData.assignedTo === 'object' ? initialData.assignedTo?._id || '' : (initialData.assignedTo || ''),
+          managedBy: (initialData as any).managedBy || 'Manage by Me',
+          project: projId,
+          paymentAmount:
+            (initialData as any).paymentAmount != null
+              ? String((initialData as any).paymentAmount)
+              : (initialData as any).projectAmount != null
+              ? String((initialData as any).projectAmount)
+              : '',
+          leadStatus:
+            typeof initialData.leadStatus === 'object'
+              ? initialData.leadStatus?._id || ''
+              : initialData.leadStatus || defaultStatusId,
+          leadSource:
+            typeof (initialData as any).leadSource === 'object'
+              ? (initialData as any).leadSource?.name || (initialData as any).leadSource?._id || ''
+              : (initialData as any).leadSource || (initialData as any).source || '',
+          assignedTo:
+            typeof initialData.assignedTo === 'object'
+              ? initialData.assignedTo?._id || ''
+              : initialData.assignedTo || '',
           remarks: (initialData as any).remarks || '',
           isActive: initialData.isActive ?? true,
         });
       } else {
-        formik.resetForm();
+        formik.resetForm({
+          values: {
+            customerName: '',
+            customerEmail: '',
+            customerContact: '',
+            companyName: '',
+            address: '',
+            managedBy: 'Manage by Me',
+            project: '',
+            paymentAmount: '',
+            leadStatus: defaultStatusId,
+            leadSource: '',
+            assignedTo: '',
+            remarks: '',
+            isActive: true,
+          },
+        });
       }
       formik.setStatus(null);
     } finally {
       setLoading(false);
     }
-  }, [isOpen, mode, initialData]);
+  }, [isOpen, mode, initialData, statuses]);
+
+  const handleProjectSelect = (projectId: string) => {
+    formik.setFieldValue('project', projectId);
+  };
 
   const getFieldError = (field: keyof typeof formik.values) => {
     const touched = formik.touched[field];
@@ -204,6 +271,7 @@ export default function LeadAddDialog({
       isOpen={isOpen}
       onClose={onClose}
       title={mode === 'edit' ? 'Edit Lead' : 'Add New Lead'}
+      size="xl"
       footer={
         <div className="flex justify-end gap-3">
           <button
@@ -222,8 +290,8 @@ export default function LeadAddDialog({
             {formik.isSubmitting
               ? 'Saving...'
               : mode === 'edit'
-                ? 'Update Lead'
-                : 'Save Lead'}
+              ? 'Update Lead'
+              : 'Save Lead'}
           </button>
         </div>
       }
@@ -236,6 +304,11 @@ export default function LeadAddDialog({
           className="space-y-5 p-2"
           noValidate
         >
+          {formik.status && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {formik.status}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Customer Name"
@@ -247,6 +320,7 @@ export default function LeadAddDialog({
               required={requiredFields.includes('customerName')}
               maxLength={50}
             />
+
             <FormInput
               label="Customer Email"
               name="customerEmail"
@@ -257,6 +331,7 @@ export default function LeadAddDialog({
               error={getFieldError('customerEmail')}
               required={requiredFields.includes('customerEmail')}
             />
+
             <FormInput
               label="Customer Contact"
               name="customerContact"
@@ -271,6 +346,7 @@ export default function LeadAddDialog({
               error={getFieldError('customerContact')}
               required={requiredFields.includes('customerContact')}
             />
+
             <FormInput
               label="Company Name"
               name="companyName"
@@ -281,55 +357,91 @@ export default function LeadAddDialog({
               required={requiredFields.includes('companyName')}
             />
 
+            {/* Row: Managed By | Select Project | Project Amount (1 Line) */}
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormSelect
+                label="Managed By"
+                name="managedBy"
+                value={formik.values.managedBy}
+                onChange={(val) => formik.setFieldValue('managedBy', val)}
+                options={[
+                  { value: 'Manage by Me', label: 'Manage by Me' },
+                  { value: 'Digitalks', label: 'Digitalks' },
+                ]}
+                placeholder="Select Managed By"
+              />
+
+              <FormSelect
+                label="Select Project"
+                name="project"
+                value={formik.values.project}
+                onChange={handleProjectSelect}
+                options={projects.map((p) => ({
+                  value: p._id,
+                  label: p.name,
+                }))}
+                placeholder="Select Project"
+              />
+
+              <FormInput
+                label="Project Amount (₹)"
+                name="paymentAmount"
+                value={formik.values.paymentAmount}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  formik.setFieldValue('paymentAmount', val);
+                }}
+                onBlur={formik.handleBlur}
+                error={getFieldError('paymentAmount')}
+                icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
+                required={requiredFields.includes('paymentAmount')}
+                placeholder="e.g. 25000"
+              />
+            </div>
+
+            {/* Lead Status: Default New Lead & Non-changeable */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Lead Status
+              </label>
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-700">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span className="font-semibold text-gray-900">
+                    {statuses.find((s) => s._id === formik.values.leadStatus)?.name || 'New Lead'}
+                  </span>
+                </span>
+              
+              </div>
+            </div>
+
+            {/* Lead Source: Direct Text Input */}
             <FormInput
-              label="Payment Amount"
-              name="paymentAmount"
-              value={formik.values.paymentAmount}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const val = e.target.value.replace(/\D/g, '');
-                formik.setFieldValue('paymentAmount', val);
-              }}
-              onBlur={formik.handleBlur}
-              error={getFieldError('paymentAmount')}
-              icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
-              required={requiredFields.includes('paymentAmount')}
-              maxLength={6}
-            />
-            <FormSelect
-              label="Lead Status"
-              name="leadStatus"
-              value={formik.values.leadStatus}
-              onChange={(val) => {
-                formik.setFieldValue('leadStatus', val, false);
-                formik.setFieldTouched('leadStatus', false, false);
-                formik.setFieldError('leadStatus', undefined);
-              }}
-              options={statuses.map((s) => ({ value: s._id, label: s.name }))}
-              error={getFieldError('leadStatus')}
-              required={requiredFields.includes('leadStatus')}
-              placeholder="Select Status"
-            />
-            <FormSelect
               label="Lead Source"
               name="leadSource"
+              placeholder="Enter Lead Source (e.g. Instagram, Referral, Facebook...)"
               value={formik.values.leadSource}
-              onChange={(val) => {
-                formik.setFieldValue('leadSource', val, false);
-                formik.setFieldTouched('leadSource', false, false);
-                formik.setFieldError('leadSource', undefined);
-              }}
-              options={sources.map((s) => ({ value: s._id, label: s.name }))}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
               error={getFieldError('leadSource')}
               required={requiredFields.includes('leadSource')}
-              placeholder="Select Source"
             />
           </div>
 
           <div className="w-full">
             <label className="block mb-1.5 text-sm font-semibold text-gray-700">
-              Remarks {requiredFields.includes('remarks') && <span className="text-red-700 ml-1">*</span>}
+              Remarks{' '}
+              {requiredFields.includes('remarks') && (
+                <span className="text-red-700 ml-1">*</span>
+              )}
             </label>
-            <div className={`rounded-xl border overflow-hidden ${formik.touched.remarks && formik.errors.remarks ? 'border-red-500' : 'border-gray-300'}`}>
+            <div
+              className={`rounded-xl border overflow-hidden ${
+                formik.touched.remarks && formik.errors.remarks
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+              }`}
+            >
               <DefaultEditor
                 value={formik.values.remarks}
                 onChange={(e) => {
@@ -342,7 +454,9 @@ export default function LeadAddDialog({
               />
             </div>
             {getFieldError('remarks') && (
-              <p className="mt-1 text-xs text-red-500 font-medium">{getFieldError('remarks')}</p>
+              <p className="mt-1 text-xs text-red-500 font-medium">
+                {getFieldError('remarks')}
+              </p>
             )}
           </div>
 
