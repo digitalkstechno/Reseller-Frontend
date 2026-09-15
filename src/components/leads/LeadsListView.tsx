@@ -30,6 +30,8 @@ type TableLead = {
   address?: string;
   phone: string;
   email: string;
+  managedBy?: string;
+  project?: string;
   status: string;
   staff: string;
   priority: string;
@@ -90,6 +92,12 @@ interface Props {
 }
 
 function mapLead(item: any): TableLead {
+  const projectName = typeof item.project === 'object' && item.project !== null
+    ? item.project.name || '-'
+    : typeof item.project === 'string' && item.project
+    ? item.project
+    : '-';
+
   return {
     id: item._id,
     name: item.customerName || item.fullName || '-',
@@ -97,7 +105,9 @@ function mapLead(item: any): TableLead {
     address: item.address || '-',
     phone: item.customerContact || item.customerContact || item.contact || item.phone || '-',
     email: item.customerEmail || item.email || '-',
-    status: item.leadStatus?.name || item.status?.name || '-',
+    managedBy: item.managedBy || 'Manage by Me',
+    project: projectName,
+    status: item.leadStatus?.name || item.status?.name || (typeof item.leadStatus === 'string' && item.leadStatus ? item.leadStatus : 'New Lead'),
     staff: item.assignedTo?.fullName || '-',
     priority: item.priority?.toUpperCase() || 'MEDIUM',
     lastFollowUp: item.updatedAt
@@ -192,6 +202,24 @@ export default function LeadsListView({
             </div>
           )}
         </div>
+      ),
+    },
+    {
+      key: 'managedBy',
+      label: 'MANAGED BY',
+      render: (v) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+          {v || 'Manage by Me'}
+        </span>
+      ),
+    },
+    {
+      key: 'project',
+      label: 'PROJECT',
+      render: (v) => (
+        <span className="text-sm font-medium text-gray-700">
+          {v && v !== '-' ? v : '-'}
+        </span>
       ),
     },
     { key: 'status', label: 'STATUS' },

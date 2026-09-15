@@ -247,6 +247,15 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <InfoCard label="Phone" value={formatContactNumber((lead as any).customerContact || lead.contact)} />
               <InfoCard label="Email" value={(lead as any).customerEmail || lead.email} />
+              <InfoCard label="Managed By" value={(lead as any).managedBy || 'Manage by Me'} />
+              <InfoCard
+                label="Project"
+                value={
+                  typeof (lead as any).project === 'object' && (lead as any).project !== null
+                    ? (lead as any).project.name || '-'
+                    : (lead as any).project || '-'
+                }
+              />
               <InfoCard label="Payment Amount" value={(lead as any).paymentAmount ? formatIndianCurrency((lead as any).paymentAmount) : undefined} />
 
               <InfoCard label="Last Follow-Up" value={lead.lastFollowUp} />

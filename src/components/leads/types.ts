@@ -39,6 +39,8 @@ export type ApiLead = {
   email: string;
   customerEmail?: string;
   managedBy?: string;
+  project?: { _id: string; name: string } | string;
+  projectAmount?: number;
   paymentAmount?: number | string;
   leadStatus?: ApiStatus;
   leadSource?: ApiSource;
