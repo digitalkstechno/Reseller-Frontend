@@ -203,12 +203,17 @@ export function ResellersContent() {
     {
       key: 'status',
       label: 'STATUS',
-      render: (value) => (
-        <Badge
-          label={value}
-          className={value === 'active' ? 'bg-green-50 text-green-700 border-green-200 uppercase' : 'bg-red-50 text-red-600 border-red-200 uppercase'}
-        />
-      ),
+      render: (value) => {
+        const isActive = value?.toLowerCase() === 'active' || !value;
+        return (
+          <Badge
+            variant={isActive ? 'success' : 'danger'}
+            className="uppercase font-semibold tracking-wider text-[11px]"
+          >
+            {isActive ? 'ACTIVE' : (value || 'INACTIVE')}
+          </Badge>
+        );
+      },
     },
   ];
 

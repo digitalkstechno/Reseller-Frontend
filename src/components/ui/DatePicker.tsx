@@ -206,7 +206,7 @@ export default function DatePicker({
           ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white hover:border-gray-400 cursor-pointer'}
         `}
       >
-        <span className={value ? 'text-gray-900' : 'text-gray-400'}>
+        <span className={`truncate whitespace-nowrap ${value ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
           {value ? formatDisplay(value) : placeholder}
         </span>
         <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />

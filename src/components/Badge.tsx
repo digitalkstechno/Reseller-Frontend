@@ -13,7 +13,8 @@ export interface BadgeProps
     | 'error'
     | string;
   size?: 'sm' | 'md' | 'lg';
-  children: React.ReactNode;
+  label?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const getVariantStyles = (variantType: string) => {
@@ -58,6 +59,7 @@ export function Badge({
   variant = 'default',
   size = 'md',
   className = '',
+  label,
   children,
   ...props
 }: BadgeProps) {
@@ -68,7 +70,7 @@ export function Badge({
       )} ${getSizeStyles(size)} ${className}`}
       {...props}
     >
-      {children}
+      {children ?? label}
     </span>
   );
 }
