@@ -129,8 +129,6 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
     setLocalFollowUps(prev => [...prev, tempFollowUp]);
 
     // Clear form fields
-    onClose()
-
     setFollowupNote('');
     setEditNextDate('');
     setEditNextTime('');
@@ -410,74 +408,59 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
             </div>
 
             {/* Follow-up History */}
-            {isReseller &&
-              <div className="rounded-lg bg-gray-50 p-4">
-                <div className="mb-3 text-sm font-bold text-gray-800 flex items-center justify-between">
-                  <span>Follow-Up History</span>
-                  <span className="bg-gray-200 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-normal">
-                    {localFollowUps.length} Records
-                  </span>
-                </div>
+            <div className="rounded-lg bg-gray-50 p-4">
+              <div className="mb-3 text-sm font-bold text-gray-800 flex items-center justify-between">
+                <span>Follow-Up History</span>
+                <span className="bg-gray-200 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-normal">
+                  {localFollowUps.length} Records
+                </span>
+              </div>
 
-                {/* Add New Follow-up Section */}
-                {isDigitalks ? (
-                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-lg text-amber-700 flex-shrink-0">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-amber-900">Follow-ups Managed by Digitalks</h4>
-                      <p className="text-xs text-amber-700 mt-0.5">
-                        This lead is managed by Digitalks. Follow-ups and communications are handled directly by the Digitalks team.
-                      </p>
-                    </div>
+              {/* Add New Follow-up Section */}
+              <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Follow-up</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500">Date</label>
+                    <DatePicker
+                      value={editNextDate}
+                      onChange={(val) => setEditNextDate(val)}
+                    />
                   </div>
-                ) : !isWon ? (
-                  <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Follow-up</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500">Date</label>
-                        <DatePicker
-                          value={editNextDate}
-                          onChange={(val) => setEditNextDate(val)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500">Time</label>
-                        <TimePicker
-                          value={editNextTime}
-                          onChange={(val) => setEditNextTime(val)}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 space-y-1">
-                      <label className="text-xs font-medium text-gray-500">Note / Summary</label>
-                      <textarea
-                        value={followupNote}
-                        onChange={(e) => setFollowupNote(e.target.value)}
-                        placeholder="Describe the interaction..."
-                        rows={3}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none"
-                      />
-                    </div>
-                    <button
-                      onClick={handleAddFollowup}
-                      disabled={!editNextDate || !followupNote || addingFollowup}
-                      className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      {addingFollowup ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Recording...
-                        </span>
-                      ) : 'Save Follow-up'}
-                    </button>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500">Time</label>
+                    <TimePicker
+                      value={editNextTime}
+                      onChange={(val) => setEditNextTime(val)}
+                    />
                   </div>
-                ) : null}
+                </div>
+                <div className="mt-3 space-y-1">
+                  <label className="text-xs font-medium text-gray-500">Note / Summary</label>
+                  <textarea
+                    value={followupNote}
+                    onChange={(e) => setFollowupNote(e.target.value)}
+                    placeholder="Describe the interaction..."
+                    rows={3}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none"
+                  />
+                </div>
+                <button
+                  onClick={handleAddFollowup}
+                  disabled={!editNextDate || !followupNote || addingFollowup}
+                  className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  {addingFollowup ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Recording...
+                    </span>
+                  ) : 'Save Follow-up'}
+                </button>
+              </div>
 
                 {/* Follow-up Table */}
                 {localFollowUps && localFollowUps.length > 0 ? (
@@ -559,7 +542,6 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                   </div>
                 )}
               </div>
-            }
 
 
             {/* Note */}

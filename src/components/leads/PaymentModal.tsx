@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Calendar, CreditCard, Image as ImageIcon, Plus, CheckCircle, Eye, History, FileText, ArrowDownLeft } from 'lucide-react';
+import { X, Calendar, CreditCard, Image as ImageIcon, Plus, CheckCircle, Eye, History, FileText, Upload } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import DatePicker from '@/components/ui/DatePicker';
-import { formatIndianCurrency } from '@/utills/formatters';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -24,7 +23,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
   // Local payments list
   const [localPayments, setLocalPayments] = useState<any[]>([]);
 
-  // Dynamically compute paid and pending from localPayments so top summary cards NEVER desync!
+  // Dynamically compute paid and pending
   const computedPaid = localPayments.length > 0
     ? localPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
     : (Number(lead?.paidAmount) || (lead?.paymentStatus === 'Paid' ? totalAmount : 0));
@@ -44,7 +43,6 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
 
   // Preview proof image
   const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
-
   const [errors, setErrors] = useState<{ amount?: string; date?: string; mode?: string }>({});
 
   useEffect(() => {
@@ -163,7 +161,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
       if (fileInputRef.current) fileInputRef.current.value = '';
 
       onSuccess();
-      setActiveTab('history');
+      onClose();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to record payment');
     } finally {
@@ -177,53 +175,58 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-blue-100" />
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-50 text-[#3B82F6]">
+              <CreditCard className="h-5 w-5" />
+            </div>
             <div>
-              <h2 className="text-lg font-bold">Payments & Installments</h2>
-              <p className="text-xs text-blue-100">{lead?.customerName || lead?.fullName || 'Lead'}</p>
+              <h2 className="text-base font-bold text-gray-900">Payments & Installments</h2>
+              <p className="text-xs text-gray-500">{lead?.customerName || lead?.fullName || 'Lead'}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer p-1 rounded-full hover:bg-white/10 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* ── Summary Overview Card ───────────────────────────────── */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex-shrink-0">
-          <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-200 text-center shadow-sm">
-            <div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Total Amount</span>
-              <span className="text-xs sm:text-sm font-bold text-gray-900 tabular-nums">
+        {/* ── Summary Overview Cards ───────────────────────────────── */}
+        <div className="p-5 bg-gray-50/70 border-b border-gray-100 flex-shrink-0">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-sm">
+              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Total Amount</span>
+              <span className="text-sm sm:text-base font-bold text-gray-900 tabular-nums">
                 {formatAmountDecimals(totalAmount)}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block mb-0.5">Paid Amount</span>
-              <span className="text-xs sm:text-sm font-bold text-emerald-600 tabular-nums">
+            <div className="bg-white p-3 rounded-xl border border-emerald-200/80 shadow-sm">
+              <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block mb-1">Paid Amount</span>
+              <span className="text-sm sm:text-base font-bold text-emerald-600 tabular-nums">
                 {formatAmountDecimals(computedPaid)}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-0.5">Pending</span>
-              <span className={`text-xs sm:text-sm font-bold tabular-nums ${pendingAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+            <div className="bg-white p-3 rounded-xl border border-amber-200/80 shadow-sm">
+              <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider block mb-1">Pending</span>
+              <span className={`text-sm sm:text-base font-bold tabular-nums ${pendingAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {formatAmountDecimals(pendingAmount)}
               </span>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mt-3 border-b border-gray-200">
+          <div className="flex items-center gap-1.5 mt-4 p-1 bg-gray-200/60 rounded-xl">
             <button
               onClick={() => setActiveTab('add')}
-              className={`pb-2 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
+              className={`flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'add'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-[#3B82F6] shadow-sm font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -231,10 +234,10 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`pb-2 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
+              className={`flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'history'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-[#3B82F6] shadow-sm font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <History className="h-3.5 w-3.5" />
@@ -244,22 +247,22 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-4">
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {/* ── TAB 1: ADD PAYMENT ───────────────────────────── */}
           {activeTab === 'add' && (
             <div className="space-y-4">
               {isFullyPaid && (
-                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-xs font-semibold">
+                <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-medium">
                   <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                  <span>This lead is already fully paid. You can still record additional installments or adjustments if needed.</span>
+                  <span>This lead is already fully paid. You can record additional installments or adjustments if needed.</span>
                 </div>
               )}
 
               {/* Amount Input */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1">
-                    <span className="text-blue-600">₹</span> Payment Amount to Add <span className="text-red-500">*</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Payment Amount to Add <span className="text-red-500">*</span>
                   </label>
                   {pendingAmount > 0 && (
                     <button
@@ -268,14 +271,14 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                         setAmount(String(pendingAmount));
                         if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-semibold underline cursor-pointer"
+                      className="text-xs text-[#3B82F6] hover:text-blue-700 font-semibold cursor-pointer hover:underline"
                     >
                       Fill Remaining ({formatAmountDecimals(pendingAmount)})
                     </button>
                   )}
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₹</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₹</span>
                   <input
                     type="number"
                     min="1"
@@ -291,20 +294,20 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                       setAmount(val);
                       if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
                     }}
-                    placeholder="Enter amount (e.g. 50000)"
+                    placeholder="Enter amount (e.g. 25000)"
                     className={`w-full border ${
-                      errors.amount ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg pl-8 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-gray-900 font-medium`}
+                      errors.amount ? 'border-red-500' : 'border-gray-200'
+                    } rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 bg-white text-gray-900 font-medium transition-all`}
                   />
                 </div>
                 {errors.amount && <p className="mt-1 text-xs text-red-500 font-medium">{errors.amount}</p>}
               </div>
 
               {/* Payment Date & Mode */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 text-blue-600" /> Payment Date <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Payment Date <span className="text-red-500">*</span>
                   </label>
                   <DatePicker
                     value={paymentDate}
@@ -318,8 +321,8 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
-                    <CreditCard className="h-3.5 w-3.5 text-blue-600" /> Payment Mode <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Payment Mode <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={paymentMode}
@@ -327,7 +330,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                       setPaymentMode(e.target.value);
                       if (errors.mode) setErrors((prev) => ({ ...prev, mode: undefined }));
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:border-blue-500"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
                   >
                     <option value="Cash">Cash</option>
                     <option value="GPay / UPI">GPay / UPI</option>
@@ -340,29 +343,42 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
 
               {/* Payment Proof File */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
-                  <ImageIcon className="h-3.5 w-3.5 text-blue-600" /> Payment Proof / Screenshot (Optional)
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Payment Proof / Screenshot (Optional)
                 </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".jpg,.jpeg,.png,.webp,.pdf"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-blue-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 cursor-pointer"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    className="hidden"
+                    id="payment-proof-upload"
+                  />
+                  <label
+                    htmlFor="payment-proof-upload"
+                    className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-gray-500" />
+                    {paymentProof ? 'Change File' : 'Choose File'}
+                  </label>
+                  <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                    {paymentProof ? paymentProof.name : 'No file chosen'}
+                  </span>
+                </div>
               </div>
 
               {/* Note / Remarks */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
-                  <FileText className="h-3.5 w-3.5 text-blue-600" /> Note / Transaction Ref (Optional)
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Note / Transaction Ref (Optional)
                 </label>
                 <input
                   type="text"
                   value={paymentNote}
                   onChange={(e) => setPaymentNote(e.target.value)}
                   placeholder="e.g. Installment 1 / UPI Ref ID"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 transition-all"
                 />
               </div>
 
@@ -371,7 +387,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white text-sm font-semibold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-[#3B82F6] hover:bg-blue-600 active:scale-98 text-white text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
               >
                 {loading ? 'Saving Payment...' : (
                   <>
@@ -387,17 +403,17 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
           {activeTab === 'history' && (
             <div className="space-y-3">
               {localPayments.length === 0 ? (
-                <div className="p-8 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                <div className="p-8 text-center bg-gray-50/80 rounded-2xl border border-dashed border-gray-200">
                   <p className="text-sm text-gray-500">No payment entries recorded yet.</p>
                   <button
                     onClick={() => setActiveTab('add')}
-                    className="mt-2 text-xs font-semibold text-blue-600 hover:underline inline-flex items-center gap-1"
+                    className="mt-2 text-xs font-semibold text-[#3B82F6] hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> Record First Payment
                   </button>
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-gray-50 text-gray-600 uppercase font-semibold border-b border-gray-200">
                       <tr>
@@ -418,7 +434,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                           : null;
 
                         return (
-                          <tr key={p._id || idx} className="hover:bg-gray-50 transition-colors">
+                          <tr key={p._id || idx} className="hover:bg-gray-50/60 transition-colors">
                             <td className="py-2.5 px-3 text-gray-400 font-medium">{localPayments.length - idx}</td>
                             <td className="py-2.5 px-3 font-medium text-gray-800 whitespace-nowrap">
                               {formatDisplayDate(p.paymentDate || p.createdAt)}
@@ -439,7 +455,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                                 <button
                                   type="button"
                                   onClick={() => setPreviewProofUrl(proofUrl)}
-                                  className="text-blue-600 hover:text-blue-800 p-1 inline-flex items-center cursor-pointer"
+                                  className="text-[#3B82F6] hover:text-blue-700 p-1 inline-flex items-center cursor-pointer"
                                   title="View Proof"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
@@ -455,48 +471,40 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                   </table>
                 </div>
               )}
-
-              {/* Add more button */}
-              {pendingAmount > 0 && (
-                <button
-                  onClick={() => setActiveTab('add')}
-                  className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Another Payment / Installment
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Proof Preview Modal / Popup */}
-          {previewProofUrl && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <div className="bg-white rounded-lg p-3 max-w-lg w-full overflow-hidden shadow-2xl">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
-                  <span className="text-xs font-bold text-gray-700">Payment Proof Preview</span>
-                  <button onClick={() => setPreviewProofUrl(null)} className="text-gray-400 hover:text-gray-600">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex justify-center max-h-[70vh] overflow-auto">
-                  <img src={previewProofUrl} alt="Payment Proof" className="rounded object-contain max-h-[60vh] max-w-full" />
-                </div>
-              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t bg-gray-50 flex justify-end">
+        <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-end flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
           >
             Close
           </button>
         </div>
       </div>
+
+      {/* Proof Preview Modal */}
+      {previewProofUrl && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-4 max-w-lg w-full relative">
+            <button
+              onClick={() => setPreviewProofUrl(null)}
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <h3 className="text-sm font-bold text-gray-800 mb-3">Payment Proof</h3>
+            <img
+              src={previewProofUrl}
+              alt="Payment Proof"
+              className="w-full max-h-[60vh] object-contain rounded-xl border border-gray-100"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
