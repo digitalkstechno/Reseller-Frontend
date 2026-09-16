@@ -9,7 +9,6 @@ import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead } from './types';
 import FormInput from '../ui/Input';
 import FormSelect from '../ui/FormSelect';
-import { Trash2, Plus } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -34,7 +33,6 @@ export default function LeadAddDialog({
   const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>([]);
   const [requiredFields, setRequiredFields] = useState<string[]>([]);
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
-  const [featureInput, setFeatureInput] = useState('');
   const token = getAuthToken;
 
   useEffect(() => {
@@ -94,7 +92,6 @@ export default function LeadAddDialog({
           customLeadSource: Yup.string().optional(),
           remarks: Yup.string().optional(),
           description: Yup.string().optional(),
-          features: Yup.array().of(Yup.string()).optional(),
           isActive: Yup.boolean(),
         };
 
@@ -139,7 +136,6 @@ export default function LeadAddDialog({
       assignedTo: '',
       description: '',
       remarks: '',
-      features: [] as string[],
       isActive: true,
     },
     validationSchema: dynamicSchema,
@@ -151,8 +147,7 @@ export default function LeadAddDialog({
         const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id;
         const finalStatus = values.leadStatus || (mode === 'add' ? (newLeadStatusId || statuses[0]?._id) : undefined);
 
-        const isDigitalks = values.managedBy === 'Digitalks';
-        const finalAmount = isDigitalks ? 0 : (Number(values.paymentAmount) || 0);
+        const finalAmount = Number(values.paymentAmount) || 0;
 
         const payload: any = {
           customerName: values.customerName.trim(),
@@ -169,7 +164,6 @@ export default function LeadAddDialog({
           assignedTo: values.assignedTo,
           description: values.description || values.remarks || '',
           remarks: values.remarks || values.description || '',
-          features: values.features || [],
           isActive: values.isActive,
         };
 
@@ -246,10 +240,8 @@ export default function LeadAddDialog({
               : initialData.assignedTo || '',
           description: (initialData as any).description || (initialData as any).remarks || '',
           remarks: (initialData as any).remarks || (initialData as any).description || '',
-          features: Array.isArray((initialData as any).features) ? (initialData as any).features : [],
           isActive: initialData.isActive ?? true,
         });
-        setFeatureInput('');
       } else {
         formik.resetForm({
           values: {
@@ -266,11 +258,9 @@ export default function LeadAddDialog({
             assignedTo: '',
             description: '',
             remarks: '',
-            features: [],
             isActive: true,
           },
         });
-        setFeatureInput('');
       }
       formik.setStatus(null);
     } finally {
@@ -280,22 +270,6 @@ export default function LeadAddDialog({
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
-  };
-
-  const handleAddFeature = () => {
-    const trimmed = featureInput.trim();
-    if (!trimmed) return;
-    const current = formik.values.features || [];
-    formik.setFieldValue('features', [...current, trimmed]);
-    setFeatureInput('');
-  };
-
-  const handleRemoveFeature = (index: number) => {
-    const current = formik.values.features || [];
-    formik.setFieldValue(
-      'features',
-      current.filter((_, i) => i !== index)
-    );
   };
 
   const getFieldError = (field: keyof typeof formik.values) => {
@@ -479,73 +453,6 @@ export default function LeadAddDialog({
               error={getFieldError('leadSource')}
               required={false}
             />
-          </div>
-
-          {/* Features (Bullet Points) Section */}
-          <div className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-gray-800">
-                Features / Key Deliverables (Bullet Points)
-              </label>
-              {formik.values.features && formik.values.features.length > 0 && (
-                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                  {formik.values.features.length} {formik.values.features.length === 1 ? 'bullet point' : 'bullet points'}
-                </span>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={featureInput}
-                onChange={(e) => setFeatureInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddFeature();
-                  }
-                }}
-                placeholder="Type a feature / bullet point (e.g. Custom Admin Panel) and click Add"
-                className="flex-1 px-3.5 py-2 text-sm border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-gray-800 placeholder-gray-400"
-              />
-              <button
-                type="button"
-                onClick={handleAddFeature}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Plus size={16} />
-                <span>Add</span>
-              </button>
-            </div>
-
-            {/* Bullet list items */}
-            {formik.values.features && formik.values.features.length > 0 ? (
-              <ul className="mt-3 space-y-2">
-                {formik.values.features.map((feat, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-center justify-between gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm text-gray-800 shadow-xs hover:border-gray-300 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
-                      <span className="break-words font-medium">{feat}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFeature(idx)}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 cursor-pointer"
-                      title="Delete bullet point"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-xs text-gray-500">
-                No features added yet. Add bullet points above to specify custom features or deliverables.
-              </p>
-            )}
           </div>
 
           {/* Description / Remarks Field */}

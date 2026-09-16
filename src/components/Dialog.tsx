@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FiX } from 'react-icons/fi';
 import { createPortal } from 'react-dom';
 
@@ -28,13 +28,24 @@ export default function Dialog({
     xl: 'md:w-2/3 md:max-w-[75vw]',
   };
   const [mounted, setMounted] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     setMounted(true);
   }, []);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      if (bodyRef.current) {
+        bodyRef.current.scrollTop = 0;
+      }
+      const t = setTimeout(() => {
+        if (bodyRef.current) {
+          bodyRef.current.scrollTop = 0;
+        }
+      }, 50);
+      return () => clearTimeout(t);
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -81,7 +92,7 @@ export default function Dialog({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">{children}</div>
+        <div ref={bodyRef} className="flex-1 overflow-y-auto px-6 py-6">{children}</div>
 
         {/* Footer */}
         {footer && (

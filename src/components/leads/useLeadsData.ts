@@ -14,6 +14,8 @@ type Filters = {
   to?: string;
   paymentStatus?: string;
   reseller?: string;
+  managedBy?: string;
+  project?: string;
 };
 
 export function useLeadsData(
@@ -118,6 +120,10 @@ export function useLeadsData(
             search: f.search || undefined,
             status: f.status || undefined,
             staff: f.staff || undefined,
+            reseller: f.reseller || undefined,
+            managedBy: f.managedBy || undefined,
+            project: f.project || undefined,
+            paymentStatus: f.paymentStatus || undefined,
             from: f.from || undefined,
             to: f.to || undefined,
             limit: stateRef.current.limit,
@@ -143,6 +149,10 @@ export function useLeadsData(
             search: f.search || undefined,
             status: f.status || undefined,
             staff: f.staff || undefined,
+            reseller: f.reseller || undefined,
+            managedBy: f.managedBy || undefined,
+            project: f.project || undefined,
+            paymentStatus: f.paymentStatus || undefined,
             from: f.from || undefined,
             to: f.to || undefined,
             limit: 100,
@@ -172,6 +182,8 @@ export function useLeadsData(
           status: f.status || undefined,
           staff: f.staff || undefined,
           reseller: f.reseller || undefined,
+          managedBy: f.managedBy || undefined,
+          project: f.project || undefined,
           paymentStatus: f.paymentStatus || undefined,
           from: f.from || undefined,
           to: f.to || undefined,
@@ -205,6 +217,8 @@ export function useLeadsData(
           status: f.status || undefined,
           staff: f.staff || undefined,
           reseller: f.reseller || undefined,
+          managedBy: f.managedBy || undefined,
+          project: f.project || undefined,
           paymentStatus: f.paymentStatus || undefined,
           from: f.from || undefined,
           to: f.to || undefined,
@@ -239,6 +253,8 @@ export function useLeadsData(
           status: f.status || undefined,
           staff: f.staff || undefined,
           reseller: f.reseller || undefined,
+          managedBy: f.managedBy || undefined,
+          project: f.project || undefined,
           paymentStatus: f.paymentStatus || undefined,
           from: f.from || undefined,
           to: f.to || undefined,
@@ -270,6 +286,9 @@ export function useLeadsData(
           search: f.search || undefined,
           status: f.status || undefined,
           staff: f.staff || undefined,
+          reseller: f.reseller || undefined,
+          managedBy: f.managedBy || undefined,
+          project: f.project || undefined,
           from: f.from || undefined,
           to: f.to || undefined,
         },
@@ -427,6 +446,9 @@ export function useLeadsData(
     refetchAll,
     fetchLeadsList,
     fetchKanbanLeads,
+    fetchLostLeads,
+    fetchWonLeads,
+    fetchCounts,
     findLeadById,
 
     listPagination: {

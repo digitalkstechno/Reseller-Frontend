@@ -314,7 +314,17 @@ export default function LeadsListView({
     },
   ];
 
-  let columns = [...baseColumns];
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
+
+  let columns = baseColumns.filter((col) => {
+    if (isPM) {
+      if (col.key === 'managedBy' || col.key === 'paymentAmount' || col.key === 'commissionAmount') {
+        return false;
+      }
+    }
+    return true;
+  });
+
   if (userRole === 'admin') {
     columns.splice(2, 0, {
       key: 'staff',
@@ -451,11 +461,11 @@ export default function LeadsListView({
         onSearch={onSearchChange}
         actions={userRole !== 'admin'}
         onView={handleView}
-        onEdit={permissions?.update ? handleEdit : undefined}
-        onDelete={permissions?.delete ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
-        canEdit={(row) => row.status?.toLowerCase() !== 'won' && !row.isWon}
-        canDelete={(row) => row.status?.toLowerCase() !== 'won' && !row.isWon}
-        extraActions={permissions?.update ? [
+        onEdit={!isPM && permissions?.update ? handleEdit : undefined}
+        onDelete={!isPM && permissions?.delete ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
+        canEdit={(row) => !isPM && row.status?.toLowerCase() !== 'won' && !row.isWon}
+        canDelete={(row) => !isPM && row.status?.toLowerCase() !== 'won' && !row.isWon}
+        extraActions={!isPM && permissions?.update ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',
             icon: (row) => row.paymentStatus === 'Paid'
