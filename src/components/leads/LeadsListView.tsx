@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -165,19 +166,24 @@ export default function LeadsListView({
     }
   }, [externalLeads]);
 
-  // Extract user role from token
-  const userRole = (() => {
+  // Extract user role from Redux & token
+  const { role: authRole, user: authUser } = useSelector((state: any) => state.auth || {});
+  const userRole = (authRole || authUser?.role?.roleName || authUser?.role || (() => {
     const t = typeof window !== 'undefined' ? getAuthToken() : null;
     if (!t) return '';
     try {
       const parts = t.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(window.atob(parts[1]));
-        return payload?.role?.roleName?.toLowerCase() || '';
+        return payload?.role?.roleName || payload?.role || '';
       }
     } catch { }
     return '';
-  })();
+  })()).toString().toLowerCase();
+
+  const isAdmin = userRole === 'admin' || authUser?.email === 'admin@gmail.com';
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
+  const isReseller = userRole === 'reseller';
 
   // ── Columns ──────────────────────────────────────────────────────────────
   const baseColumns: Column<TableLead>[] = [
@@ -336,8 +342,6 @@ export default function LeadsListView({
     },
   ];
 
-  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
-
   let columns = baseColumns.filter((col) => {
     if (isPM) {
       if (col.key === 'managedBy' || col.key === 'paymentAmount' || col.key === 'commissionAmount') {
@@ -347,7 +351,7 @@ export default function LeadsListView({
     return true;
   });
 
-  if (userRole === 'admin') {
+  if (isAdmin) {
     columns.splice(2, 0, {
       key: 'staff',
       label: 'RESELLER',
@@ -483,17 +487,17 @@ export default function LeadsListView({
         onSearch={onSearchChange}
         actions={!isPM}
         onView={handleView}
-        onEdit={!isPM && (userRole === 'admin' || permissions?.update) ? handleEdit : undefined}
-        onDelete={!isPM && (userRole === 'admin' || permissions?.delete) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
+        onEdit={!isPM && (isAdmin || permissions?.update) ? handleEdit : undefined}
+        onDelete={!isPM && (isAdmin || permissions?.delete) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
         canEdit={(row) => {
           if (isPM) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
           const isDigitalks = row.managedBy === 'Digitalks';
-          if (userRole === 'admin') {
+          if (isAdmin) {
             return isDigitalks;
           }
-          if (userRole === 'reseller') {
+          if (isReseller) {
             return !isDigitalks;
           }
           return true;
@@ -503,25 +507,28 @@ export default function LeadsListView({
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
           const isDigitalks = row.managedBy === 'Digitalks';
-          if (userRole === 'admin') {
+          if (isAdmin) {
             return isDigitalks;
           }
-          if (userRole === 'reseller') {
+          if (isReseller) {
             return !isDigitalks;
           }
           return true;
         }}
-        extraActions={!isPM && (userRole === 'admin' || permissions?.update) ? [
+        extraActions={!isPM && (isAdmin || permissions?.update) ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',
             icon: (row) => row.paymentStatus === 'Paid'
               ? <span className="text-xs group-hover:text-white">✓</span>
               : <span className="text-xs font-bold group-hover:text-white">₹</span>,
-            color: (row) => row.paymentStatus === 'Paid' ? 'green' : 'blue',
             show: (row) => {
               const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
               const isDigitalks = row.managedBy === 'Digitalks';
-              return isWon && !isDigitalks;
+              const hasAmount = (Number(row.paymentAmount) > 0) || (Number(row.paidAmount) > 0);
+              if (isAdmin) {
+                return isDigitalks && (hasAmount || isWon);
+              }
+              return !isDigitalks && isWon;
             },
             onClick: (row) => {
               setPaymentTarget(row);

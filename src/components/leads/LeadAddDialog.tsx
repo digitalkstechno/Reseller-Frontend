@@ -229,9 +229,7 @@ export default function LeadAddDialog({
           managedBy: (initialData as any).managedBy || 'Manage by Me',
           project: projId,
           paymentAmount:
-            (initialData as any).managedBy === 'Digitalks'
-              ? ''
-              : (initialData as any).paymentAmount != null
+            (initialData as any).paymentAmount != null
               ? String((initialData as any).paymentAmount)
               : (initialData as any).projectAmount != null
               ? String((initialData as any).projectAmount)
@@ -384,62 +382,67 @@ export default function LeadAddDialog({
             />
 
             {/* Row: Managed By | Select Project | Project Amount */}
-            <div
-              className={`md:col-span-2 grid grid-cols-1 ${
-                formik.values.managedBy === 'Digitalks' ? 'md:grid-cols-2' : 'md:grid-cols-3'
-              } gap-4`}
-            >
-              <FormSelect
-                label="Managed By"
-                name="managedBy"
-                value={formik.values.managedBy}
-                onChange={(val) => {
-                  formik.setFieldValue('managedBy', val);
-                  if (val === 'Digitalks' && !isAdmin) {
-                    const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
-                    if (newLeadStatusId && mode === 'add') {
-                      formik.setFieldValue('leadStatus', newLeadStatusId);
-                    }
-                  }
-                }}
-                options={[
-                  { value: 'Manage by Me', label: 'Manage by Me' },
-                  { value: 'Digitalks', label: 'Digitalks' },
-                ]}
-                placeholder="Select Managed By"
-              />
+            {(() => {
+              const showPaymentAmount = isAdmin || mode === 'edit' || formik.values.managedBy !== 'Digitalks';
+              return (
+                <div
+                  className={`md:col-span-2 grid grid-cols-1 ${
+                    showPaymentAmount ? 'md:grid-cols-3' : 'md:grid-cols-2'
+                  } gap-4`}
+                >
+                  <FormSelect
+                    label="Managed By"
+                    name="managedBy"
+                    value={formik.values.managedBy}
+                    onChange={(val) => {
+                      formik.setFieldValue('managedBy', val);
+                      if (val === 'Digitalks' && !isAdmin && mode === 'add') {
+                        const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+                        if (newLeadStatusId) {
+                          formik.setFieldValue('leadStatus', newLeadStatusId);
+                        }
+                      }
+                    }}
+                    options={[
+                      { value: 'Manage by Me', label: 'Manage by Me' },
+                      { value: 'Digitalks', label: 'Digitalks' },
+                    ]}
+                    placeholder="Select Managed By"
+                  />
 
-              <FormSelect
-                label="Select Project"
-                name="project"
-                value={formik.values.project}
-                onChange={handleProjectSelect}
-                options={projects.map((p) => ({
-                  value: p._id,
-                  label: p.name,
-                }))}
-                placeholder="Select Project"
-                error={getFieldError('project')}
-                required={true}
-              />
+                  <FormSelect
+                    label="Select Project"
+                    name="project"
+                    value={formik.values.project}
+                    onChange={handleProjectSelect}
+                    options={projects.map((p) => ({
+                      value: p._id,
+                      label: p.name,
+                    }))}
+                    placeholder="Select Project"
+                    error={getFieldError('project')}
+                    required={true}
+                  />
 
-              {formik.values.managedBy !== 'Digitalks' && (
-                <FormInput
-                  label="Project Amount (₹)"
-                  name="paymentAmount"
-                  value={formik.values.paymentAmount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    formik.setFieldValue('paymentAmount', val);
-                  }}
-                  onBlur={formik.handleBlur}
-                  error={getFieldError('paymentAmount')}
-                  icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
-                  required={requiredFields.includes('paymentAmount')}
-                  placeholder="e.g. 25000"
-                />
-              )}
-            </div>
+                  {showPaymentAmount && (
+                    <FormInput
+                      label="Project Amount (₹)"
+                      name="paymentAmount"
+                      value={formik.values.paymentAmount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        formik.setFieldValue('paymentAmount', val);
+                      }}
+                      onBlur={formik.handleBlur}
+                      error={getFieldError('paymentAmount')}
+                      icon={<span className="text-gray-700 font-medium text-lg">₹</span>}
+                      required={requiredFields.includes('paymentAmount') && formik.values.managedBy !== 'Digitalks'}
+                      placeholder="e.g. 25000"
+                    />
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Lead Status (Selectable) */}
             <FormSelect
