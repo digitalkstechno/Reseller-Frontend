@@ -111,7 +111,9 @@ function mapLead(item: any): TableLead {
     managedBy: item.managedBy || 'Manage by Me',
     project: projectName,
     status: item.leadStatus?.name || item.status?.name || (typeof item.leadStatus === 'string' && item.leadStatus ? item.leadStatus : 'New Lead'),
-    staff: item.assignedTo?.fullName || '-',
+    staff: typeof item.assignedTo === 'object' && item.assignedTo !== null
+      ? item.assignedTo.fullName || '-'
+      : (typeof item.assignedTo === 'string' ? item.assignedTo : '-'),
     priority: item.priority?.toUpperCase() || 'MEDIUM',
     lastFollowUp: item.updatedAt
       ? new Date(item.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })

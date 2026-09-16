@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -258,7 +258,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
       >
         {lead && (
           <div className="space-y-4 text-sm pr-1">
-            <h2 className="text-xl font-bold text-gray-900">{(lead as any).customerName || lead.fullName}</h2>
+            <h2 className="text-xl font-bold text-gray-900">{typeof (lead as any).customerName === 'string' ? (lead as any).customerName : (typeof lead.fullName === 'string' ? lead.fullName : '-')}</h2>
 
             {/* Info grid */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -299,7 +299,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                 }
               />
 
-              <InfoCard label="Last Follow-Up" value={lead.lastFollowUp} />
+              <InfoCard label="Last Follow-Up" value={typeof lead.lastFollowUp === 'string' ? lead.lastFollowUp : lead.lastFollowUp ? new Date(lead.lastFollowUp as any).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined} />
               <InfoCard label="Active" value={lead.isActive ? 'Yes' : 'No'} />
             </div>
 
@@ -671,21 +671,32 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
   );
 }
 
+function safeStr(value: any): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'string') return value || '-';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  // Object with fullName (e.g. assignedTo, reseller, staff)
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value.fullName || value.name || value.email || JSON.stringify(value);
+  }
+  return String(value);
+}
+
 function InfoCard({
   label,
   value,
 }: {
   label: string;
-  value?: string | React.ReactNode | null;
+  value?: any;
 }) {
+  const displayValue = React.isValidElement(value)
+    ? value
+    : safeStr(value);
+
   return (
     <div className="rounded-lg bg-gray-50 p-3">
       <div className="mb-0.5 text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
-      <div className="text-gray-900">
-        {typeof value === 'string' || value === undefined || value === null
-          ? value || '-'
-          : value}
-      </div>
+      <div className="text-gray-900">{displayValue}</div>
     </div>
   );
 }

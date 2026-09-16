@@ -22,6 +22,10 @@ export default function ProjectViewDialog({
   if (!project) return null;
 
   const images = project.images || [];
+  const projectManager =
+    typeof project.projectManager === 'object' && project.projectManager !== null
+      ? project.projectManager.fullName
+      : project.projectManager;
 
   const nextImage = () => {
     if (images.length > 0) {
@@ -63,7 +67,7 @@ export default function ProjectViewDialog({
             </div>
             {project.projectManager && (
               <p className="text-xs text-blue-700 font-semibold mt-1">
-                Project Manager: <span className="text-gray-900">{project.projectManager}</span>
+                Project Manager: <span className="text-gray-900">{projectManager || 'N/A'}</span>
               </p>
             )}
             <p className="text-xs text-gray-500 mt-0.5">
