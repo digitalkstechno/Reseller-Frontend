@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
@@ -27,6 +28,10 @@ export default function LeadAddDialog({
   onLeadCreated,
   onLeadUpdated,
 }: Props) {
+  const { role } = useSelector((state: any) => state.auth);
+  const userRole = role?.toLowerCase() || '';
+  const isAdmin = userRole === 'admin';
+
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
   const [sources, setSources] = useState<{ _id: string; name: string }[]>([]);
@@ -385,8 +390,11 @@ export default function LeadAddDialog({
                 value={formik.values.managedBy}
                 onChange={(val) => {
                   formik.setFieldValue('managedBy', val);
-                  if (val === 'Digitalks') {
-                    formik.setFieldValue('paymentAmount', '');
+                  if (val === 'Digitalks' && !isAdmin) {
+                    const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+                    if (newLeadStatusId && mode === 'add') {
+                      formik.setFieldValue('leadStatus', newLeadStatusId);
+                    }
                   }
                 }}
                 options={[
@@ -434,12 +442,14 @@ export default function LeadAddDialog({
               name="leadStatus"
               value={formik.values.leadStatus}
               onChange={(val) => formik.setFieldValue('leadStatus', val)}
+              disabled={!isAdmin && formik.values.managedBy === 'Digitalks'}
               options={statuses.map((s) => ({
                 value: s._id,
                 label: s.name,
               }))}
               placeholder="Select Lead Status"
               error={getFieldError('leadStatus')}
+              helperText={!isAdmin && formik.values.managedBy === 'Digitalks' ? 'Lead status for Digitalks managed leads can only be updated by Admin' : undefined}
             />
 
             {/* Lead Source: Optional */}
