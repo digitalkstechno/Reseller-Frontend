@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import Dialog, { CenterDialog } from '@/components/Dialog';
 import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead, ApiStatus } from './types';
-import { Eye, Download, FileText, Image, File, FileSpreadsheet, Search, Trash2 } from 'lucide-react';
+import { Eye, Download, FileText, Image, File, FileSpreadsheet, Search, Trash2, Edit3, Clock } from 'lucide-react';
 import { formatContactNumber } from "@/utills/utill";
 import { getFileIcon } from '@/utills/utill';
 import { formatIndianCurrency } from '@/utills/formatters';
@@ -17,6 +17,7 @@ interface Props {
   statuses: ApiStatus[];
   onClose: () => void;
   onRefresh: () => void;
+  onEdit?: (lead: ApiLead) => void;
 }
 
 // Interface for follow-up
@@ -32,7 +33,7 @@ interface FollowUp {
   createdAt?: string;
 }
 
-export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: Props) {
+export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onEdit }: Props) {
   const [editStatus, setEditStatus] = useState('');
   const [editNextDate, setEditNextDate] = useState('');
   const [editNextTime, setEditNextTime] = useState('');
@@ -75,12 +76,15 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
 
   useEffect(() => {
     if (authUser) {
-      // Create a mock staff info object with role info for compatibility with existing code
       setStaffInfo({ ...authUser, role: { roleName: authRole } });
     }
   }, [authUser, authRole]);
 
-  const isReseller = staffInfo?.role?.roleName?.toLowerCase() === 'reseller';
+  const userRole = (authRole || staffInfo?.role?.roleName || '').toLowerCase();
+  const isAdmin = userRole === 'admin';
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
+  const isReseller = userRole === 'reseller';
+  const isDigitalks = (lead as any)?.managedBy === 'Digitalks';
   const isWon = ((typeof lead?.leadStatus === 'string' ? lead.leadStatus : lead?.leadStatus?.name) || '').toLowerCase() === 'won' || (lead as any)?.status?.name?.toLowerCase() === 'won' || lead?.isWon;
 
   const handleSave = async () => {
@@ -223,15 +227,24 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
           <>
             <button
               onClick={onClose}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
               Close
             </button>
-            {!isWon && (
+            {onEdit && lead && (isAdmin || (!isWon && !isPM)) && (
+              <button
+                onClick={() => onEdit(lead)}
+                className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-[#3B82F6] hover:bg-blue-100 cursor-pointer transition-colors"
+              >
+                <Edit3 className="h-4 w-4" />
+                Edit Full Lead
+              </button>
+            )}
+            {!isWon && !(isReseller && isDigitalks) && (
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50 cursor-pointer shadow-sm transition-colors"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -351,23 +364,38 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
             )}
 
             <div className="rounded-lg bg-gray-50 p-4">
-              <div className="mb-3 text-sm font-medium text-gray-600">Status</div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Status</span>
+                {isWon ? (
+                  <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Won Lead (Status Locked)
+                  </span>
+                ) : isReseller && isDigitalks ? (
+                  <span className="text-xs text-amber-600 font-medium">
+                    Managed by Digitalks — only Admin can change status
+                  </span>
+                ) : null}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {statuses.map((s) => (
-                  <button
-                    key={s._id}
-                    disabled={isWon}
-                    onClick={() => setEditStatus(s._id)}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${editStatus === s._id
-                      ? 'bg-secondary text-white shadow'
-                      : isWon
-                        ? 'border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                        : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                {statuses.map((s) => {
+                  const isStatusDisabled = isWon || (isReseller && isDigitalks);
+                  return (
+                    <button
+                      key={s._id}
+                      disabled={isStatusDisabled}
+                      onClick={() => setEditStatus(s._id)}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                        editStatus === s._id
+                          ? 'bg-[#3B82F6] text-white shadow'
+                          : isStatusDisabled
+                          ? 'border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                          : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer'
                       }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -382,7 +410,19 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
                 </div>
 
                 {/* Add New Follow-up Section */}
-                {!isWon && (
+                {isDigitalks ? (
+                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg text-amber-700 flex-shrink-0">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-amber-900">Follow-ups Managed by Digitalks</h4>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        This lead is managed by Digitalks. Follow-ups and communications are handled directly by the Digitalks team.
+                      </p>
+                    </div>
+                  </div>
+                ) : !isWon ? (
                   <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Follow-up</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -427,7 +467,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh }: P
                       ) : 'Save Follow-up'}
                     </button>
                   </div>
-                )}
+                ) : null}
 
                 {/* Follow-up Table */}
                 {localFollowUps && localFollowUps.length > 0 ? (

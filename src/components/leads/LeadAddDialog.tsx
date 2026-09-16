@@ -31,6 +31,11 @@ export default function LeadAddDialog({
   const { role } = useSelector((state: any) => state.auth);
   const userRole = role?.toLowerCase() || '';
   const isAdmin = userRole === 'admin';
+  const isWonLead = mode === 'edit' && !!(
+    initialData?.isWon ||
+    (typeof initialData?.leadStatus === 'string' ? initialData.leadStatus : initialData?.leadStatus?.name)?.toLowerCase() === 'won' ||
+    (initialData as any)?.status?.toLowerCase() === 'won'
+  );
 
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
@@ -442,14 +447,20 @@ export default function LeadAddDialog({
               name="leadStatus"
               value={formik.values.leadStatus}
               onChange={(val) => formik.setFieldValue('leadStatus', val)}
-              disabled={!isAdmin && formik.values.managedBy === 'Digitalks'}
+              disabled={isWonLead || (!isAdmin && formik.values.managedBy === 'Digitalks')}
               options={statuses.map((s) => ({
                 value: s._id,
                 label: s.name,
               }))}
               placeholder="Select Lead Status"
               error={getFieldError('leadStatus')}
-              helperText={!isAdmin && formik.values.managedBy === 'Digitalks' ? 'Lead status for Digitalks managed leads can only be updated by Admin' : undefined}
+              helperText={
+                isWonLead
+                  ? 'Status cannot be changed for Won leads'
+                  : (!isAdmin && formik.values.managedBy === 'Digitalks'
+                      ? 'Lead status for Digitalks managed leads can only be updated by Admin'
+                      : undefined)
+              }
             />
 
             {/* Lead Source: Optional */}

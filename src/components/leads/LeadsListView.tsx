@@ -459,12 +459,12 @@ export default function LeadsListView({
         onPageSizeChange={handlePageSizeChange}
         searchQuery={filters.search}
         onSearch={onSearchChange}
-        actions={userRole !== 'admin'}
+        actions={!isPM}
         onView={handleView}
-        onEdit={!isPM && permissions?.update ? handleEdit : undefined}
-        onDelete={!isPM && permissions?.delete ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
-        canEdit={(row) => !isPM && row.status?.toLowerCase() !== 'won' && !row.isWon}
-        canDelete={(row) => !isPM && row.status?.toLowerCase() !== 'won' && !row.isWon}
+        onEdit={!isPM && (userRole === 'admin' || permissions?.update) ? handleEdit : undefined}
+        onDelete={!isPM && (userRole === 'admin' || permissions?.delete) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
+        canEdit={(row) => userRole === 'admin' ? true : (!isPM && row.status?.toLowerCase() !== 'won' && !row.isWon)}
+        canDelete={(row) => userRole === 'admin' ? true : (!isPM && row.status?.toLowerCase() !== 'won' && !row.isWon)}
         extraActions={!isPM && permissions?.update ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',

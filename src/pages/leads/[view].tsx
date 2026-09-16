@@ -688,6 +688,10 @@ export default function LeadsPage() {
         statuses={statuses}
         onClose={() => setViewingLead(null)}
         onRefresh={handleRefresh}
+        onEdit={(lead) => {
+          setViewingLead(null);
+          handleEdit(lead);
+        }}
       />
 
       {/* ── Bulk Import Dialog ─────────────────────────────────────────── */}
