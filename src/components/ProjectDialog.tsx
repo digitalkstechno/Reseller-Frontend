@@ -56,6 +56,8 @@ export default function ProjectDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectManagers, setProjectManagers] = useState<{ _id: string; fullName: string }[]>([]);
+  const [featurePoints, setFeaturePoints] = useState<string[]>([]);
+  const [featureInput, setFeatureInput] = useState('');
 
   // Array of 4 slots: each item is either { type: 'existing', url: string } | { type: 'new', file: File, preview: string } | null
   const [imageSlots, setImageSlots] = useState<(
@@ -112,13 +114,30 @@ export default function ProjectDialog({
         ? initialData.projectManager?._id || ''
         : initialData.projectManager || '';
 
+      let initialDesc = initialData.features || initialData.description || '';
+      const extractedPoints: string[] = [];
+
+      // Check for <li> elements in features
+      const liMatches = Array.from(initialDesc.matchAll(/<li[^>]*>(.*?)<\/li>/gi));
+      for (const match of liMatches) {
+        const cleanText = match[1].replace(/<[^>]+>/g, '').trim();
+        if (cleanText) extractedPoints.push(cleanText);
+      }
+
+      if (extractedPoints.length > 0) {
+        setFeaturePoints(extractedPoints);
+        initialDesc = initialDesc.replace(/<ul[^>]*>[\s\S]*?<\/ul>/gi, '').trim();
+      } else {
+        setFeaturePoints([]);
+      }
+
       formik.setValues({
         name: initialData.name || '',
         projectManager: pmId,
         demoLink: initialData.demoLink || '',
         demoId: initialData.demoId || '',
         demoPassword: initialData.demoPassword || '',
-        features: initialData.features || initialData.description || '',
+        features: initialDesc,
         status: initialData.status || 'active',
       });
 
@@ -136,6 +155,8 @@ export default function ProjectDialog({
       });
       setImageSlots(newSlots);
     } else {
+      setFeaturePoints([]);
+      setFeatureInput('');
       formik.resetForm({
         values: {
           name: '',
@@ -151,6 +172,17 @@ export default function ProjectDialog({
     }
     setError(null);
   }, [isOpen, initialData]);
+
+  const handleAddFeature = () => {
+    const trimmed = featureInput.trim();
+    if (!trimmed) return;
+    setFeaturePoints((prev) => [...prev, trimmed]);
+    setFeatureInput('');
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleFileSelect = (slotIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,14 +230,25 @@ export default function ProjectDialog({
     setError(null);
 
     try {
+      let finalFeatures = '';
+      if (featurePoints.length > 0) {
+        const listItems = featurePoints.map((p) => `<li>${p}</li>`).join('');
+        finalFeatures = `<ul>${listItems}</ul>`;
+        if (values.features && values.features.trim()) {
+          finalFeatures += `<br/>${values.features.trim()}`;
+        }
+      } else {
+        finalFeatures = values.features || '';
+      }
+
       const payload = new FormData();
       payload.append('name', values.name.trim());
       payload.append('projectManager', values.projectManager ? values.projectManager.trim() : '');
       payload.append('demoLink', values.demoLink ? values.demoLink.trim() : '');
       payload.append('demoId', values.demoId ? values.demoId.trim() : '');
       payload.append('demoPassword', values.demoPassword ? values.demoPassword.trim() : '');
-      payload.append('features', values.features || '');
-      payload.append('description', values.features || '');
+      payload.append('features', finalFeatures);
+      payload.append('description', finalFeatures);
       payload.append('status', values.status);
 
       // Existing images to retain
@@ -366,9 +409,72 @@ export default function ProjectDialog({
                 </div>
               </div>
 
+              {/* Features (Bullet Points) Section */}
+              <div className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-gray-800">
+                    Features
+                  </label>
+                  {featurePoints.length > 0 && (
+                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                      {featurePoints.length} {featurePoints.length === 1 ? 'bullet point' : 'bullet points'}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddFeature();
+                      }
+                    }}
+                    placeholder="Type a feature / bullet point (e.g. Custom Admin Panel) and click Add"
+                    className="flex-1 px-3.5 py-2 text-sm border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-gray-800 placeholder-gray-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddFeature}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <FiPlus size={16} />
+                    <span>Add</span>
+                  </button>
+                </div>
+
+                {/* Bullet list items */}
+                {featurePoints.length > 0 && (
+                  <ul className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                    {featurePoints.map((feat, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-center justify-between gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm text-gray-800 shadow-xs hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+                          <span className="break-words font-medium">{feat}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeature(idx)}
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 cursor-pointer"
+                          title="Delete bullet point"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="w-full">
                 <label className="block mb-1.5 text-sm font-semibold text-gray-700">
-                  Features & Details
+                  Additional Description / Details
                 </label>
                 <div className={`rounded-xl border overflow-hidden ${formik.touched.features && formik.errors.features ? 'border-red-500' : 'border-gray-300'}`}>
                   <DefaultEditor

@@ -58,13 +58,16 @@ export default function LeadsPage() {
   const [staffFilter, setStaffFilter] = useState<string[]>([]);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [resellerFilter, setResellerFilter] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [projectsList, setProjectsList] = useState<{ _id: string; name: string }[]>([]);
   
   // Temporary state for the filter popover
   const [tempStatusFilter, setTempStatusFilter] = useState<string[]>([]);
   const [tempStaffFilter, setTempStaffFilter] = useState<string[]>([]);
   const [tempResellerFilter, setTempResellerFilter] = useState<string[]>([]);
+  const [tempProjectFilter, setTempProjectFilter] = useState<string[]>([]);
   const [tempPaymentStatusFilter, setTempPaymentStatusFilter] = useState('');
   const [tempFromDate, setTempFromDate] = useState('');
   const [tempToDate, setTempToDate] = useState('');
@@ -76,11 +79,12 @@ export default function LeadsPage() {
       setTempStatusFilter(statusFilter);
       setTempStaffFilter(staffFilter);
       setTempResellerFilter(resellerFilter);
+      setTempProjectFilter(projectFilter);
       setTempPaymentStatusFilter(paymentStatusFilter);
       setTempFromDate(fromDate);
       setTempToDate(toDate);
     }
-  }, [showFilterPopover, statusFilter, staffFilter, resellerFilter, paymentStatusFilter, fromDate, toDate]);
+  }, [showFilterPopover, statusFilter, staffFilter, resellerFilter, projectFilter, paymentStatusFilter, fromDate, toDate]);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -111,7 +115,7 @@ export default function LeadsPage() {
 
   const userRole = role?.toLowerCase() || '';
 
-  // ── Fetch permissions ────────────────────────────────────────────────────
+  // ── Fetch permissions & projects ─────────────────────────────────────────
   useEffect(() => {
     if (!token) return;
 
@@ -120,6 +124,15 @@ export default function LeadsPage() {
     if (userRole !== 'project_manager' && userRole !== 'projectmanager' && userRole !== 'admin') {
       if (!lp.readAll && lp.readOwn) setActiveTab('my');
     }
+
+    axios.get(`${baseUrl.getAllProjects}?all=true`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      const data = res.data?.data || res.data?.projects || res.data || [];
+      if (Array.isArray(data)) setProjectsList(data);
+    })
+    .catch(err => console.error('Failed to fetch projects for filter:', err));
   }, [token, rawPerms, userRole]);
 
   const filters = useMemo(
@@ -128,11 +141,12 @@ export default function LeadsPage() {
       status: statusFilter.length > 0 ? statusFilter.join(',') : '',
       staff: staffFilter.length > 0 ? staffFilter.join(',') : '',
       reseller: resellerFilter.length > 0 ? resellerFilter.join(',') : '',
+      project: projectFilter.length > 0 ? projectFilter.join(',') : '',
       paymentStatus: paymentStatusFilter,
       from: fromDate,
       to: toDate,
     }),
-    [debouncedSearch, statusFilter, staffFilter, resellerFilter, paymentStatusFilter, fromDate, toDate]
+    [debouncedSearch, statusFilter, staffFilter, resellerFilter, projectFilter, paymentStatusFilter, fromDate, toDate]
   );
 
   // ── Data — pass kanbanSubView so hook fetches only what's needed ──────────
@@ -147,6 +161,9 @@ export default function LeadsPage() {
     loading,
     refetchAll,
     fetchLeadsList,
+    fetchLostLeads,
+    fetchWonLeads,
+    fetchCounts,
     findLeadById,
     listPagination,
     lostPagination,
@@ -157,18 +174,6 @@ export default function LeadsPage() {
     refetchAll();
     setRefreshTrigger(prev => prev + 1);
   }, [refetchAll]);
-
-  // ── Force 'Won' status for admin ─────────────────────────────────────────
-  useEffect(() => {
-    if (userRole === 'admin' && statuses.length > 0) {
-      const wonStatus = statuses.find((s: any) => s.name.toLowerCase() === 'won');
-      if (wonStatus) {
-        if (statusFilter.length !== 1 || statusFilter[0] !== wonStatus._id) {
-          setStatusFilter([wonStatus._id]);
-        }
-      }
-    }
-  }, [userRole, statuses, statusFilter]);
 
   // ── Sync URL → state ─────────────────────────────────────────────────────
   // ── Sync URL → state ─────────────────────────────────────────────────────
@@ -254,12 +259,12 @@ export default function LeadsPage() {
   };
 
   // ── Permission flags ──────────────────────────────────────────────────────
-  const isPM = userRole === 'project_manager' || userRole === 'projectmanager';
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
   const canCreate = isPM ? false : leadPermissions?.create !== false;
   const canRead = isPM ? true : (leadPermissions?.readAll || leadPermissions?.readOwn) !== false;
   const canReadAll = isPM ? true : leadPermissions?.readAll !== false;
   const canReadOwn = leadPermissions?.readOwn !== false;
-  const canUpdate = leadPermissions?.update !== false;
+  const canUpdate = isPM ? false : leadPermissions?.update !== false;
   const canDelete = isPM ? false : leadPermissions?.delete !== false;
   const canAssign = isPM ? false : leadPermissions?.assign !== false;
   const canTransfer = isPM ? false : leadPermissions?.transfer !== false;
@@ -269,31 +274,70 @@ export default function LeadsPage() {
     setStatusFilter(tempStatusFilter);
     setStaffFilter(tempStaffFilter);
     setResellerFilter(tempResellerFilter);
+    setProjectFilter(tempProjectFilter);
     setPaymentStatusFilter(tempPaymentStatusFilter);
     setFromDate(tempFromDate);
     setToDate(tempToDate);
     setShowFilterPopover(false);
+
+    const updatedFilters = {
+      search: debouncedSearch,
+      status: tempStatusFilter.length > 0 ? tempStatusFilter.join(',') : '',
+      staff: tempStaffFilter.length > 0 ? tempStaffFilter.join(',') : '',
+      reseller: tempResellerFilter.length > 0 ? tempResellerFilter.join(',') : '',
+      project: tempProjectFilter.length > 0 ? tempProjectFilter.join(',') : '',
+      paymentStatus: tempPaymentStatusFilter,
+      from: tempFromDate,
+      to: tempToDate,
+    };
+    if (viewMode === 'list') {
+      fetchLeadsList(activeTab, updatedFilters, 1);
+    } else {
+      if (kanbanSubView === 'lost') fetchLostLeads(activeTab, updatedFilters, 1);
+      if (kanbanSubView === 'won') fetchWonLeads(activeTab, updatedFilters, 1);
+    }
+    fetchCounts(activeTab, updatedFilters);
   };
 
   const handleClearFilters = () => {
     setTempStatusFilter([]);
     setTempStaffFilter([]);
     setTempResellerFilter([]);
+    setTempProjectFilter([]);
     setTempPaymentStatusFilter('');
     setTempFromDate('');
     setTempToDate('');
     setStatusFilter([]);
     setStaffFilter([]);
     setResellerFilter([]);
+    setProjectFilter([]);
     setPaymentStatusFilter('');
     setFromDate('');
     setToDate('');
     setSearch('');
     setShowFilterPopover(false);
+
+    const clearedFilters = {
+      search: '',
+      status: '',
+      staff: '',
+      reseller: '',
+      project: '',
+      paymentStatus: '',
+      from: '',
+      to: '',
+    };
+    if (viewMode === 'list') {
+      fetchLeadsList(activeTab, clearedFilters, 1);
+    } else {
+      if (kanbanSubView === 'lost') fetchLostLeads(activeTab, clearedFilters, 1);
+      if (kanbanSubView === 'won') fetchWonLeads(activeTab, clearedFilters, 1);
+    }
+    fetchCounts(activeTab, clearedFilters);
   };
 
   const hasActiveFilters = !!(
-    statusFilter.length > 0 || staffFilter.length > 0 || resellerFilter.length > 0 || paymentStatusFilter || fromDate || toDate || search
+    statusFilter.length > 0 || staffFilter.length > 0 || resellerFilter.length > 0 || projectFilter.length > 0 || paymentStatusFilter || fromDate || toDate || search
   );
 
   const headerActions = (
@@ -330,31 +374,29 @@ export default function LeadsPage() {
         </button>
 
         {showFilterPopover && (
-          <div className="absolute right-0 top-full mt-2 w-[320px] bg-white rounded-lg shadow-xl border border-gray-100 z-[100] overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <h3 className="text-sm font-semibold text-gray-900">Filter Leads</h3>
+          <div className="absolute right-0 top-full mt-2 w-[280px] bg-white rounded-xl shadow-2xl border border-gray-200 z-[100] overflow-hidden">
+            <div className="px-3.5 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/70">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Filter Leads</h3>
               <button
                 onClick={() => setShowFilterPopover(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-0.5 rounded transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
-              {userRole !== 'admin' && (
-                <div className="space-y-1.5">
-                  <FormMultiSelect
-                    label="Lead Status"
-                    value={tempStatusFilter}
-                    onChange={setTempStatusFilter}
-                    options={statuses.map((s) => ({ value: s._id, label: s.name }))}
-                  />
-                </div>
-              )}
+            <div className="p-3 space-y-2.5 max-h-[50vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-1">
+                <FormMultiSelect
+                  label="Lead Status"
+                  value={tempStatusFilter}
+                  onChange={setTempStatusFilter}
+                  options={statuses.map((s) => ({ value: s._id, label: s.name }))}
+                />
+              </div>
 
-              {userRole === 'admin' && (
-                <div className="space-y-1.5">
+              {(userRole === 'admin' || isPM) && (
+                <div className="space-y-1">
                   <FormMultiSelect
                     label="Reseller"
                     value={tempResellerFilter}
@@ -364,7 +406,16 @@ export default function LeadsPage() {
                 </div>
               )}
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
+                <FormMultiSelect
+                  label="Project"
+                  value={tempProjectFilter}
+                  onChange={setTempProjectFilter}
+                  options={projectsList.map((p) => ({ value: p._id, label: p.name }))}
+                />
+              </div>
+
+              <div className="space-y-1">
                 <FormSelect
                   label="Payment Status"
                   value={tempPaymentStatusFilter}
@@ -378,33 +429,33 @@ export default function LeadsPage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Date Range</label>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Date Range</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   <DatePicker
                     value={tempFromDate}
                     onChange={setTempFromDate}
-                    placeholder="Start Date"
+                    placeholder="Start"
                   />
                   <DatePicker
                     value={tempToDate}
                     onChange={setTempToDate}
-                    placeholder="End Date"
+                    placeholder="End"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3">
+            <div className="p-2.5 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
               <button
                 onClick={handleClearFilters}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-1.5 px-3 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 Clear All
               </button>
               <button
                 onClick={handleApplyFilters}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[#3B82F6] rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
+                className="flex-1 py-1.5 px-3 text-xs font-semibold text-white bg-[#3B82F6] rounded-lg hover:bg-blue-600 shadow-sm transition-colors cursor-pointer"
               >
                 Apply
               </button>
