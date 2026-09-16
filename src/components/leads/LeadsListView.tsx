@@ -226,6 +226,28 @@ export default function LeadsListView({
       ),
     },
     {
+      key: 'status',
+      label: 'STATUS',
+      render: (v) => {
+        const s = (v || 'New Lead').toString();
+        const lower = s.toLowerCase();
+        let badgeStyle = 'bg-blue-50 text-blue-700 border-blue-200';
+        if (lower === 'won') {
+          badgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold';
+        } else if (lower === 'lost') {
+          badgeStyle = 'bg-red-50 text-red-700 border-red-200 font-semibold';
+        } else if (lower.includes('follow') || lower.includes('in progress') || lower.includes('contacted')) {
+          badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200';
+        }
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs border ${badgeStyle}`}>
+            {s}
+          </span>
+        );
+      },
+    },
+    {
       key: 'paymentStatus',
       label: 'PAYMENT',
       render: (_, row) => {
@@ -271,7 +293,7 @@ export default function LeadsListView({
           '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return (
-          <div className="flex flex-col min-w-[190px] max-w-[230px] py-1 text-xs select-text">
+          <div className="flex flex-col min-w-[160px] max-w-[190px] py-0.5 text-xs select-text">
             <div className="flex items-center justify-between text-gray-500 gap-3 py-0.5">
               <div className="flex items-center gap-1.5 flex-shrink-0 text-gray-600">
                 <span className="text-[13px] leading-none">📄</span>
@@ -463,16 +485,44 @@ export default function LeadsListView({
         onView={handleView}
         onEdit={!isPM && (userRole === 'admin' || permissions?.update) ? handleEdit : undefined}
         onDelete={!isPM && (userRole === 'admin' || permissions?.delete) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
-        canEdit={(row) => userRole === 'admin' ? true : (!isPM && row.status?.toLowerCase() !== 'won' && !row.isWon)}
-        canDelete={(row) => userRole === 'admin' ? true : (!isPM && row.status?.toLowerCase() !== 'won' && !row.isWon)}
-        extraActions={!isPM && permissions?.update ? [
+        canEdit={(row) => {
+          if (isPM) return false;
+          const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
+          if (isWon) return false;
+          const isDigitalks = row.managedBy === 'Digitalks';
+          if (userRole === 'admin') {
+            return isDigitalks;
+          }
+          if (userRole === 'reseller') {
+            return !isDigitalks;
+          }
+          return true;
+        }}
+        canDelete={(row) => {
+          if (isPM) return false;
+          const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
+          if (isWon) return false;
+          const isDigitalks = row.managedBy === 'Digitalks';
+          if (userRole === 'admin') {
+            return isDigitalks;
+          }
+          if (userRole === 'reseller') {
+            return !isDigitalks;
+          }
+          return true;
+        }}
+        extraActions={!isPM && (userRole === 'admin' || permissions?.update) ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',
             icon: (row) => row.paymentStatus === 'Paid'
               ? <span className="text-xs group-hover:text-white">✓</span>
               : <span className="text-xs font-bold group-hover:text-white">₹</span>,
             color: (row) => row.paymentStatus === 'Paid' ? 'green' : 'blue',
-            show: (row) => row.status?.toLowerCase() === 'won' || !!row.isWon,
+            show: (row) => {
+              const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
+              const isDigitalks = row.managedBy === 'Digitalks';
+              return isWon && !isDigitalks;
+            },
             onClick: (row) => {
               setPaymentTarget(row);
               setShowPayment(true);

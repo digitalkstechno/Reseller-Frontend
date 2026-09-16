@@ -231,7 +231,10 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
             >
               Close
             </button>
-            {onEdit && lead && (isAdmin || (!isWon && !isPM)) && (
+            {onEdit && lead && !isWon && !isPM && (
+              (isAdmin && isDigitalks) ||
+              (isReseller && !isDigitalks)
+            ) && (
               <button
                 onClick={() => onEdit(lead)}
                 className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-[#3B82F6] hover:bg-blue-100 cursor-pointer transition-colors"
@@ -240,7 +243,10 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                 Edit Full Lead
               </button>
             )}
-            {!isWon && !(isReseller && isDigitalks) && (
+            {!isWon && !isPM && (
+              (isAdmin && isDigitalks) ||
+              (isReseller && !isDigitalks)
+            ) && (
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -374,11 +380,15 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                   <span className="text-xs text-amber-600 font-medium">
                     Managed by Digitalks — only Admin can change status
                   </span>
+                ) : isAdmin && !isDigitalks ? (
+                  <span className="text-xs text-amber-600 font-medium">
+                    Managed by Reseller — only Reseller can change status
+                  </span>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 {statuses.map((s) => {
-                  const isStatusDisabled = isWon || (isReseller && isDigitalks);
+                  const isStatusDisabled = isWon || (isReseller && isDigitalks) || (isAdmin && !isDigitalks);
                   return (
                     <button
                       key={s._id}

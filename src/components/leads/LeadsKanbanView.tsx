@@ -557,6 +557,7 @@ export default function LeadsKanbanView({
                                 label: (row) => row?.paymentStatus === 'Paid' ? 'Payment Details' : 'Payment',
                                 icon: <span className="text-xs font-bold">₹</span>,
                                 color: (row) => row?.paymentStatus === 'Paid' ? 'blue' : 'green',
+                                show: (row) => row?.managedBy !== 'Digitalks',
                                 onClick: (row) => {
                                     setPaymentTarget(row);
                                     setShowPayment(true);
