@@ -41,6 +41,8 @@ interface LeadSettlementItem {
   projectName: string;
   status: string;
   paymentAmount: number;
+  paidAmount?: number;
+  paymentStatus?: string;
   commissionAmount: number;
   commissionRate: number;
   paymentDate: string;
@@ -315,11 +317,22 @@ export default function SettlementDetailsPage() {
     {
       key: 'paymentAmount',
       label: 'LEAD REVENUE',
-      render: (value) => (
-        <span className="font-semibold text-gray-900">
-          ₹{(Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      )
+      render: (value, row) => {
+        const total = Number(value) || 0;
+        const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? total : 0));
+        return (
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-900">
+              ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            {paid > 0 && paid < total ? (
+              <span className="text-[11px] font-medium text-amber-600">
+                Paid: ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Partial)
+              </span>
+            ) : null}
+          </div>
+        );
+      }
     },
     {
       key: 'commissionAmount',
