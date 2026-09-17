@@ -63,6 +63,7 @@ export function TaskStatusContent() {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [statusToDelete, setStatusToDelete] = useState<TaskStatusItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     const token = typeof window !== 'undefined' ? getAuthToken() : null;
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -88,6 +89,7 @@ export function TaskStatusContent() {
     /* ================= LOAD DATA ================= */
 
     const fetchData = async () => {
+        setIsLoading(true);
         try {
             const res = await axios.get(baseUrl.taskStatuses, {
                 headers,
@@ -113,6 +115,8 @@ export function TaskStatusContent() {
             setAllData([]);
             setTotalRecords(0);
             toast.error(err?.response?.data?.message || 'Failed to load task statuses');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -259,6 +263,7 @@ export function TaskStatusContent() {
             <DataTable
                 data={allData}
                 columns={columns}
+                loading={isLoading}
                 searchable
                 pagination
                 currentPage={currentPage}

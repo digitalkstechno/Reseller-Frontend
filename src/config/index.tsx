@@ -66,6 +66,7 @@ export const baseUrl = {
   deleteReseller: `${API}reseller`,
   notification: `${API}notification`,
   settlements: `${API}settlement/all`,
+  settlementSummary: `${API}settlement/summary`,
   addSettlement: `${API}settlement/pay`,
   resellerLeadSettlements: `${API}settlement/leads`,
   settlementHistory: `${API}settlement/history`,

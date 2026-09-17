@@ -28,7 +28,7 @@ interface ReportSettlement {
 export default function SettlementsReport() {
   const router = useRouter();
   const [data, setData] = useState<ReportSettlement[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [fromDate, setFromDate] = useState('');

@@ -61,6 +61,7 @@ export function LeadSourcesContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [sourceToDelete, setSourceToDelete] = useState<LeadItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -85,6 +86,7 @@ export function LeadSourcesContent() {
   /* ================= LOAD DATA ================= */
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
       const res = await axios.get(baseUrl.leadSources, {
         headers,
@@ -108,6 +110,8 @@ export function LeadSourcesContent() {
       console.error('Failed to load lead sources', err);
       setAllData([]);
       setTotalRecords(0);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -197,6 +201,7 @@ export function LeadSourcesContent() {
       <DataTable
         data={allData}
         columns={columns}
+        loading={isLoading}
         searchable
         pagination
         currentPage={currentPage}

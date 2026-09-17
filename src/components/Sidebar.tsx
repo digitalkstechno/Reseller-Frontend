@@ -69,7 +69,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const menuItems: MenuItem[] = [];
 
   if (isProjectManager) {
-    // Project Managers only see Leads
+    // Project Managers see Dashboard and Leads
+    menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
     menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
   } else {
     menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });

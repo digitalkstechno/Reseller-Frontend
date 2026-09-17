@@ -64,7 +64,7 @@ export function LeadStatusContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // dialogs
   const [isDialogOpen, setIsDialogOpen] = useState(false);

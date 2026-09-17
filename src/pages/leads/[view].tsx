@@ -547,24 +547,92 @@ export default function LeadsPage() {
     <div className="flex flex-col h-full relative">
 
       {/* ── Page Header & Unified Toolbar ───────────────────────────────── */}
-      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border border-gray-200 px-3 py-3.5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200 px-3 py-2.5 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Mobile View Toggle */}
             {userRole !== 'admin' && (
-              <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-md w-fit">
+              <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-lg w-fit border border-gray-200">
                 <button
                   onClick={() => switchView('list')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-secondary text-white shadow-sm' : 'text-gray-700'}`}
+                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
                 >
                   <ListCollapse className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => switchView('kanban')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-secondary text-white shadow-sm' : 'text-gray-700'}`}
+                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
                 >
                   <Kanban className="h-4 w-4" />
                 </button>
+              </div>
+            )}
+
+            {/* Kanban Sub-View Tabs (Board / Lost / Won) placed cleanly in the top toolbar */}
+            {viewMode === 'kanban' && (
+              <div className="flex items-center bg-gray-100/90 p-1 rounded-xl border border-gray-200/80 shadow-2xs gap-1">
+                {(['board', 'lost', 'won'] as KanbanSubView[]).map((v) => {
+                  let boardCount = 0;
+                  let lostCount = 0;
+                  let wonCount = 0;
+
+                  if (counts?.statusWiseCounts) {
+                    counts.statusWiseCounts.forEach((s: any) => {
+                      if (s.statusName?.match(/^won$/i)) {
+                        wonCount += s.count;
+                      } else if (s.statusName?.match(/^lost$/i)) {
+                        lostCount += s.count;
+                      } else {
+                        boardCount += s.count;
+                      }
+                    });
+                  } else {
+                    lostCount = lostPagination?.totalItems ?? lostLeads?.length ?? 0;
+                    wonCount = wonPagination?.totalItems ?? wonLeads?.length ?? 0;
+                  }
+
+                  let label = '';
+                  let countVal = 0;
+                  if (v === 'board') {
+                    label = 'Board View';
+                    countVal = boardCount;
+                  } else if (v === 'lost') {
+                    label = 'Lost Leads';
+                    countVal = lostCount;
+                  } else {
+                    label = 'Won Leads';
+                    countVal = wonCount;
+                  }
+
+                  const isActive = kanbanSubView === v;
+
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setKanbanSubView(v)}
+                      className={`cursor-pointer px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 flex items-center gap-1.5 ${
+                        isActive
+                          ? v === 'lost'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : v === 'won'
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-[#3B82F6] text-white shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+                      }`}
+                    >
+                      <span>{label}</span>
+                      <span
+                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isActive
+                            ? 'bg-white/25 text-white'
+                            : 'bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {countVal}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -574,17 +642,17 @@ export default function LeadsPage() {
 
             {/* Desktop View toggle */}
             {userRole !== 'admin' && (
-              <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-md h-10 w-fit">
+              <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
                 <button
                   onClick={() => switchView('list')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200'}`}
+                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
                   title="List View"
                 >
                   <ListCollapse className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => switchView('kanban')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200'}`}
+                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
                   title="Kanban View"
                 >
                   <Kanban className="h-4 w-4" />
@@ -596,7 +664,7 @@ export default function LeadsPage() {
             {canCreate && (
               <button
                 onClick={handleOpenAdd}
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-md bg-[#3B82F6] px-5 h-10 text-sm font-semibold text-white shadow-md hover:bg-blue-600 active:scale-95 transition-all"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-5 h-10 text-sm font-semibold text-white shadow-md hover:bg-blue-600 active:scale-95 transition-all"
               >
                 <Plus className="h-4 w-4" />
                 Add Lead
@@ -607,7 +675,7 @@ export default function LeadsPage() {
       </div>
 
       {/* ── Main Content ─────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col p-3">
         {viewMode === 'list' ? (
           <LeadsListView
             statuses={statuses}
@@ -641,6 +709,7 @@ export default function LeadsPage() {
             statuses={statuses}
             counts={counts?.statusCounts}
             summary={counts}
+            subView={kanbanSubView}
             onEdit={canUpdate ? handleEdit : undefined}
             onView={handleView}
             onRefresh={handleRefresh}

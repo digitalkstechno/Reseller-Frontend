@@ -29,7 +29,7 @@ export function ProjectManagersContent() {
   const [managersData, setManagersData] = useState<ProjectManager[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingManager, setEditingManager] = useState<ProjectManager | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [managerToDelete, setManagerToDelete] = useState<ProjectManager | null>(null);
   const [page, setPage] = useState(1);
@@ -187,6 +187,7 @@ export function ProjectManagersContent() {
       <DataTable
         data={managersData}
         columns={columns}
+        loading={isLoading}
         searchable
         pagination
         currentPage={page}

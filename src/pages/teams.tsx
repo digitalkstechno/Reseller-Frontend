@@ -45,6 +45,7 @@ export function TeamsContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [toDelete, setToDelete] = useState<Team | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -80,6 +81,7 @@ export function TeamsContent() {
   }, [token, rawPerms]);
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
       const res = await axios.get(baseUrl.teams, {
         headers,
@@ -91,6 +93,8 @@ export function TeamsContent() {
       console.error('Failed to fetch teams', err);
       setData([]);
       toast.error(err?.response?.data?.message || 'Failed to load teams');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -182,6 +186,7 @@ export function TeamsContent() {
       <DataTable
         data={data}
         columns={columns}
+        loading={isLoading}
         searchable
         pagination
         currentPage={currentPage}

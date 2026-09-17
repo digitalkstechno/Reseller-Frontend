@@ -53,7 +53,8 @@ interface Props {
     };
     lostPagination?: PaginationShape;
     wonPagination?: PaginationShape;
-    onSubViewChange?: (subView: 'board' | 'lost' | 'won') => void;
+    subView?: SubView;
+    onSubViewChange?: (subView: SubView) => void;
     refreshTrigger?: number;
 }
 
@@ -66,10 +67,12 @@ export default function LeadsKanbanView({
     filters,
     lostPagination,
     wonPagination,
+    subView: controlledSubView,
     onSubViewChange,
     refreshTrigger,
 }: Props) {
-    const [subView, setSubView] = useState<SubView>('board');
+    const [internalSubView, setInternalSubView] = useState<SubView>('board');
+    const subView = controlledSubView !== undefined ? controlledSubView : internalSubView;
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [showPayment, setShowPayment] = useState(false);
@@ -120,7 +123,7 @@ export default function LeadsKanbanView({
 
     // Notify parent when sub-view changes
     const handleSubViewChange = (v: SubView) => {
-        setSubView(v);
+        setInternalSubView(v);
         onSubViewChange?.(v);
     };
 
@@ -143,8 +146,13 @@ export default function LeadsKanbanView({
                         my: scope === 'my' || undefined,
                         search: filters.search || undefined,
                         staff: filters.staff || undefined,
-                        date: filters.date || undefined,
+                        reseller: (filters as any).reseller || undefined,
+                        managedBy: (filters as any).managedBy || undefined,
+                        project: (filters as any).project || undefined,
                         paymentStatus: (filters as any).paymentStatus || undefined,
+                        from: (filters as any).from || undefined,
+                        to: (filters as any).to || undefined,
+                        date: filters.date || undefined,
                     },
                 });
 
@@ -174,7 +182,6 @@ export default function LeadsKanbanView({
         [scope, filters]
     );
 
-    // Initial fetch and re-fetch on filter change
     useEffect(() => {
         if (subView !== 'board') return;
         statuses.forEach((s) => {
@@ -284,7 +291,6 @@ export default function LeadsKanbanView({
             onRefresh();
         } catch {
             toast.error('Failed to update lead status');
-            // Re-fetch with loader to show the revert
             fetchStatusLeads(sourceStatusId, 1);
             fetchStatusLeads(newStatusId, 1);
         } finally {
@@ -381,110 +387,72 @@ export default function LeadsKanbanView({
     ];
 
     return (
-        <div className="flex flex-1 min-h-0 flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-1 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                    {(['board', 'lost', 'won'] as SubView[]).map((v) => {
-                        let boardCount = 0;
-                        let lostCount = 0;
-                        let wonCount = 0;
-
-                        if (summary?.statusWiseCounts) {
-                            summary.statusWiseCounts.forEach((s: any) => {
-                                if (s.statusName.match(/^won$/i)) {
-                                    wonCount += s.count;
-                                } else if (s.statusName.match(/^lost$/i)) {
-                                    lostCount += s.count;
-                                } else {
-                                    boardCount += s.count;
-                                }
-                            });
-                        } else {
-                            boardCount = Object.values(columnCounts).reduce((a, b) => a + b, 0);
-                            lostCount = lostPagination?.totalItems ?? lostLeads?.length ?? 0;
-                            wonCount = wonPagination?.totalItems ?? wonLeads?.length ?? 0;
-                        }
-
-                        let text = '';
-                        if (v === 'board') {
-                            text = `Board View (${boardCount})`;
-                        } else if (v === 'lost') {
-                            text = `Lost Leads (${lostCount})`;
-                        } else {
-                            text = `Won Leads (${wonCount})`;
-                        }
-
-                        return (
-                            <button
-                                key={v}
-                                onClick={() => handleSubViewChange(v)}
-                                className={`rounded-lg cursor-pointer px-4 py-1.5 text-sm font-medium capitalize transition-colors ${subView === v
-                                    ? v === 'lost' ? 'bg-red-600 text-white' : v === 'won' ? 'bg-green-600 text-white' : 'bg-[#3B82F6] text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                            >
-                                {text}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
+        <div className="flex flex-1 min-h-0 flex-col">
             {subView === 'board' && (
-                <div className="overflow-x-auto w-full pb-4">
-                    <div className="flex gap-4 h-[calc(100vh-280px)] min-w-max">
-                        {statusGroups.map((group) => (
-                            <div key={group.id} className="w-80 flex-shrink-0 flex flex-col">
-                                <div className="rounded-t-xl bg-secondary px-5 py-3">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold text-white capitalize">{group.title}</h3>
-                                        <span className="rounded-full bg-white px-3 py-0.5 text-sm font-semibold text-secondary">
+                <div className="overflow-x-auto w-full pb-4 pt-1">
+                    <div className="flex gap-4 h-[calc(100vh-220px)] min-w-max">
+                        {statusGroups.map((group) => {
+                            const isWonCol = group.title.toLowerCase() === 'won';
+                            const isLostCol = group.title.toLowerCase() === 'lost';
+
+                            return (
+                                <div key={group.id} className="w-80 flex-shrink-0 flex flex-col rounded-xl border border-gray-200/80 bg-gray-50/50 shadow-xs overflow-hidden">
+                                    {/* Clean Column Header */}
+                                    <div className="px-4 py-3 bg-white border-b border-gray-200/80 flex items-center justify-between">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                                                isWonCol ? 'bg-emerald-500' : isLostCol ? 'bg-red-500' : 'bg-[#3B82F6]'
+                                            }`} />
+                                            <h3 className="font-bold text-gray-900 text-sm capitalize truncate">{group.title}</h3>
+                                        </div>
+                                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">
                                             {group.count}
                                         </span>
                                     </div>
-                                </div>
 
-                                <div
-                                    className="flex-1 overflow-y-auto rounded-b-lg bg-[#f4f7fb] p-3 space-y-3"
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={() => handleDrop(group.id)}
-                                    onScroll={(e) => {
-                                        const t = e.target as HTMLDivElement;
-                                        if (Math.ceil(t.scrollTop + t.clientHeight) >= t.scrollHeight - 20) {
-                                            loadMore(group.id);
-                                        }
-                                    }}
-                                >
-                                    {group.isLoading ? (
-                                        <div className="flex h-full items-center justify-center py-10">
-                                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-transparent" />
-                                        </div>
-                                    ) : group.leads.length === 0 ? (
-                                        <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                                            No leads
-                                        </div>
-                                    ) : (
-                                        group.leads.map((lead: ApiLead) => (
-                                            <KanbanCard
-                                                key={lead._id}
-                                                lead={lead}
-                                                isUpdating={updatingId === lead._id}
-                                                onDragStart={() => { if (permissions?.update) setDraggingId(lead._id); }}
-                                                onView={() => onView?.(lead)}
-                                                onEdit={permissions?.update && !group.title.match(/^won$/i) ? () => onEdit?.(lead) : undefined}
-                                                onMarkLost={permissions?.update ? () => markLost(lead._id) : undefined}
-                                                onMarkWon={permissions?.update ? () => markWon(lead._id) : undefined}
-                                            />
-                                        ))
-                                    )}
-                                    {loadingMoreMap[group.id] && (
-                                        <div className="flex justify-center py-2">
-                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                        </div>
-                                    )}
+                                    {/* Column Cards Drop Area */}
+                                    <div
+                                        className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar"
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={() => handleDrop(group.id)}
+                                        onScroll={(e) => {
+                                            const t = e.target as HTMLDivElement;
+                                            if (Math.ceil(t.scrollTop + t.clientHeight) >= t.scrollHeight - 20) {
+                                                loadMore(group.id);
+                                            }
+                                        }}
+                                    >
+                                        {group.isLoading ? (
+                                            <div className="flex h-full items-center justify-center py-10">
+                                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3B82F6] border-t-transparent" />
+                                            </div>
+                                        ) : group.leads.length === 0 ? (
+                                            <div className="flex h-36 items-center justify-center text-xs font-medium text-gray-400 border border-dashed border-gray-200 rounded-xl">
+                                                No leads in {group.title}
+                                            </div>
+                                        ) : (
+                                            group.leads.map((lead: ApiLead) => (
+                                                <KanbanCard
+                                                    key={lead._id}
+                                                    lead={lead}
+                                                    isUpdating={updatingId === lead._id}
+                                                    onDragStart={() => { if (permissions?.update) setDraggingId(lead._id); }}
+                                                    onView={() => onView?.(lead)}
+                                                    onEdit={permissions?.update && !group.title.match(/^won$/i) ? () => onEdit?.(lead) : undefined}
+                                                    onMarkLost={permissions?.update ? () => markLost(lead._id) : undefined}
+                                                    onMarkWon={permissions?.update ? () => markWon(lead._id) : undefined}
+                                                />
+                                            ))
+                                        )}
+                                        {loadingMoreMap[group.id] && (
+                                            <div className="flex justify-center py-2">
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#3B82F6] border-t-transparent" />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}

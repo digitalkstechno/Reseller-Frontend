@@ -44,7 +44,7 @@ export function ResellersContent() {
   const [resellersData, setResellersData] = useState<Reseller[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingReseller, setEditingReseller] = useState<Reseller | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [resellerToDelete, setResellerToDelete] = useState<Reseller | null>(null);
   const [page, setPage] = useState(1);
@@ -304,6 +304,7 @@ export function ResellersContent() {
         <DataTable
           data={resellersData}
           columns={columns}
+          loading={isLoading}
           searchable
           pagination
           currentPage={page}

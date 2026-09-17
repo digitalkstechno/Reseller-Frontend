@@ -20,7 +20,7 @@ interface ReportReseller {
 
 export default function ResellersReport() {
   const [data, setData] = useState<ReportReseller[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);

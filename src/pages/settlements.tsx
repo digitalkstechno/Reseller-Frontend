@@ -1,140 +1,142 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import DataTable, { Column } from '@/components/DataTable';
-import Badge from '@/components/Badge';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
-import { IndianRupee, ReceiptText, Users, Percent, Banknote, Search } from 'lucide-react';
-import { useRouter } from 'next/router';
+import DataTable, { Column } from '@/components/DataTable';
+import Badge from '@/components/Badge';
+import {
+  IndianRupee,
+  ReceiptText,
+  Users,
+  Percent,
+  Banknote,
+  Search,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  TrendingUp,
+  CreditCard,
+  Building2,
+  X,
+  History,
+  FileSpreadsheet
+} from 'lucide-react';
+import { exportToExcel } from '@/utills/exportHelper';
 
-interface Settlement {
-  _id: string; // Reseller ID
+interface SettlementReseller {
+  _id: string;
   resellerName: string;
   resellerEmail: string;
-  commissionRate: string;
+  resellerPhone?: string;
+  commissionRate: number | string;
   totalLeadsCount: number;
   totalLeadsAmount: number;
   totalCommission: number;
   paidCommission: number;
   pendingCommission: number;
+  settledLeadsCount: number;
+  unsettledLeadsCount: number;
   resellerImage?: string;
+  bankDetails?: string;
+  upiId?: string;
+  projectNames?: string[];
 }
 
-interface LeadSettlement {
-  id: string;
-  customerName: string;
-  status: string;
-  paymentAmount: number;
-  commissionAmount: number;
-  paymentDate: string | null;
-  paymentMode: string;
+interface SummaryStats {
+  totalRevenue: number;
+  totalCommission: number;
+  totalPaid: number;
+  pendingCommission: number;
+  totalWonLeads: number;
+  settledLeadsCount: number;
+  unsettledLeadsCount: number;
+  payoutCount: number;
+  totalResellers: number;
 }
 
-export function SettlementsContent() {
+export default function SettlementsPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
-  const [resellerLeadsData, setResellerLeadsData] = useState<LeadSettlement[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [selectedReseller, setSelectedReseller] = useState<Settlement | null>(null);
-  const [payAmount, setPayAmount] = useState<string>('');
-  const [payMethod, setPayMethod] = useState<string>('Bank Transfer');
-  const [payRefId, setPayRefId] = useState<string>('');
-  const [payError, setPayError] = useState<string>('');
-  const [payNote, setPayNote] = useState<string>('');
-  const [isPaying, setIsPaying] = useState(false);
 
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [historyData, setHistoryData] = useState<any[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  // Summary KPI Data
+  const [summary, setSummary] = useState<SummaryStats>({
+    totalRevenue: 0,
+    totalCommission: 0,
+    totalPaid: 0,
+    pendingCommission: 0,
+    totalWonLeads: 0,
+    settledLeadsCount: 0,
+    unsettledLeadsCount: 0,
+    payoutCount: 0,
+    totalResellers: 0
+  });
+
+  // Table Data & Pagination
+  const [settlementsData, setSettlementsData] = useState<SettlementReseller[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [globalSelectedLeads, setGlobalSelectedLeads] = useState<any[]>([]);
-  const [globalSettlementMethod, setGlobalSettlementMethod] = useState<string>('Bank Transfer');
-  const [isSettlingLeads, setIsSettlingLeads] = useState(false);
-  const [activeTab, setActiveTab] = useState<'unsettled' | 'settled'>('unsettled');
-
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Quick Pay Modal
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [selectedReseller, setSelectedReseller] = useState<SettlementReseller | null>(null);
+  const [payAmount, setPayAmount] = useState<string>('');
+  const [payMethod, setPayMethod] = useState<string>('Bank Transfer');
+  const [payRefId, setPayRefId] = useState<string>('');
+  const [payNote, setPayNote] = useState<string>('');
+  const [payDate, setPayDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [payError, setPayError] = useState<string>('');
+  const [isPaying, setIsPaying] = useState(false);
+
+  // History Modal
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+
+  // Search Debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
       setCurrentPage(1);
-    }, 500);
+    }, 400);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Automatically default the settlement method based on the selected leads' paymentMode
-  useEffect(() => {
-    if (globalSelectedLeads.length > 0) {
-      const mode = globalSelectedLeads[0].paymentMode;
-      if (mode && mode !== '-') {
-        if (['Bank Transfer', 'UPI', 'GPay', 'Cash'].includes(mode)) {
-          setGlobalSettlementMethod(mode);
-        }
-      }
-    }
-  }, [globalSelectedLeads]);
-
-  const handleGlobalSettleLeads = async () => {
-    if (globalSelectedLeads.length === 0) return;
-    setIsSettlingLeads(true);
+  // Fetch KPI Summary
+  const fetchSummary = useCallback(async () => {
     try {
-      const leadIds = globalSelectedLeads.map(l => l.id);
-      await axios.post(
-        baseUrl.settleLeads,
-        { 
-          leadIds,
-          paymentMethod: globalSettlementMethod
-        },
-        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-      );
-      toast.success('Leads settled successfully!');
-      setGlobalSelectedLeads([]);
-      setActiveTab('settled');
-      fetchSettlements();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to settle leads');
-    } finally {
-      setIsSettlingLeads(false);
-    }
-  };
-
-  const token = typeof window !== 'undefined' ? getAuthToken() : null;
-
-  const getUserRole = useCallback((): string => {
-    if (!token) return '';
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(window.atob(parts[1]));
-        return payload?.role?.roleName?.toLowerCase() || '';
+      const res = await axios.get(baseUrl.settlementSummary, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+      if (res.data?.data) {
+        setSummary(res.data.data);
       }
     } catch (e) {
-      console.error('Failed to parse token payload:', e);
+      console.error('Failed to fetch settlement summary:', e);
     }
-    return '';
   }, [token]);
 
-  const userRole = getUserRole();
-
+  // Fetch Resellers Settlement Table
   const fetchSettlements = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: any = {
-        page: currentPage,
-        limit: rowsPerPage,
-        search: debouncedSearch
-      };
       const res = await axios.get(baseUrl.settlements, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        params
+        params: {
+          page: currentPage,
+          limit: rowsPerPage,
+          search: debouncedSearch
+        }
       });
 
       const payload = res.data?.data || [];
@@ -145,56 +147,54 @@ export function SettlementsContent() {
         setTotalRecords(pag.totalRecords || 0);
         setTotalPages(pag.totalPages || 1);
       }
-
-      if (getUserRole() === 'reseller') {
-        const leadsRes = await axios.get(`${baseUrl.resellerLeadSettlements}?limit=1000`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        setResellerLeadsData(leadsRes.data?.data?.data || []);
-      }
     } catch (error) {
       console.error('Failed to fetch settlements:', error);
       toast.error('Failed to load settlements data');
       setSettlementsData([]);
-      setResellerLeadsData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [token, getUserRole, currentPage, rowsPerPage, debouncedSearch]);
-
-  useEffect(() => {
-    fetchSettlements();
-  }, [fetchSettlements]);
+  }, [token, currentPage, rowsPerPage, debouncedSearch]);
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    fetchSummary();
+    fetchSettlements();
+  }, [fetchSummary, fetchSettlements]);
 
-  if (!isMounted) return null;
-
-  const fetchHistory = async (resellerId: string) => {
+  // Fetch History for Reseller
+  const handleOpenHistory = async (reseller: SettlementReseller) => {
+    setSelectedReseller(reseller);
+    setIsHistoryModalOpen(true);
     setIsHistoryLoading(true);
     try {
-      const res = await axios.get(`${baseUrl.settlementHistory}/${resellerId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      const res = await axios.get(`${baseUrl.settlementHistory}/${reseller._id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
       setHistoryData(res.data?.data || []);
-    } catch (error) {
-      console.error('Failed to fetch history:', error);
-      toast.error('Failed to load settlement history');
+    } catch (err) {
+      console.error('Failed to load payout history:', err);
+      toast.error('Failed to load payout history');
       setHistoryData([]);
     } finally {
       setIsHistoryLoading(false);
     }
   };
 
+  // Quick Pay Submit
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPayError('');
     if (!selectedReseller || !payAmount) return;
 
-    if (parseFloat(payAmount) > selectedReseller.pendingCommission) {
-      setPayError(`Settlement amount cannot exceed pending commission (₹${selectedReseller.pendingCommission.toLocaleString('en-IN')})`);
+    const numAmount = parseFloat(payAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setPayError('Please enter a valid amount greater than 0');
+      return;
+    }
+
+    if (numAmount > selectedReseller.pendingCommission) {
+      setPayError(`Amount cannot exceed pending balance (₹${selectedReseller.pendingCommission.toLocaleString('en-IN')})`);
       return;
     }
 
@@ -204,40 +204,63 @@ export function SettlementsContent() {
         baseUrl.addSettlement,
         {
           resellerId: selectedReseller._id,
-          amount: parseFloat(payAmount),
+          amount: numAmount,
           paymentMethod: payMethod,
           referenceId: payRefId,
-          note: payNote,
+          paymentDate: payDate,
+          note: payNote
         },
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
       );
-      toast.success('Settlement payment recorded successfully');
+
+      toast.success('Payout recorded and leads updated successfully!');
       setIsPayModalOpen(false);
       setPayAmount('');
-      setPayMethod('Bank Transfer');
       setPayRefId('');
       setPayNote('');
       setSelectedReseller(null);
+      fetchSummary();
       fetchSettlements();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to record payment');
+      toast.error(error.response?.data?.message || 'Failed to record payout');
     } finally {
       setIsPaying(false);
     }
   };
 
-  const columns: Column<Settlement>[] = [
+  // Export Table Data
+  const handleExportExcel = () => {
+    if (!settlementsData.length) {
+      toast.error('No settlement data to export');
+      return;
+    }
+    const exportRows = settlementsData.map((item) => ({
+      'Reseller Name': item.resellerName,
+      'Email': item.resellerEmail,
+      'Phone': item.resellerPhone || '-',
+      'Commission Rate (%)': item.commissionRate || 0,
+      'Total Paid Leads': item.totalLeadsCount,
+      'Total Revenue (₹)': item.totalLeadsAmount,
+      'Total Commission Earned (₹)': item.totalCommission,
+      'Paid Payout (₹)': item.paidCommission,
+      'Pending Balance (₹)': item.pendingCommission,
+      'Unsettled Leads': item.unsettledLeadsCount,
+      'Settled Leads': item.settledLeadsCount
+    }));
+    exportToExcel(exportRows, 'Settlements_Summary');
+  };
+
+  if (!isMounted) return null;
+
+  const columns: Column<SettlementReseller>[] = [
     {
       key: 'resellerName',
       label: 'RESELLER',
       render: (value, row) => (
         <div className="flex items-center gap-3">
-          <div className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-sky-900 bg-gray-50">
-            {/* Initials fallback underneath */}
+          <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-sky-900 bg-gray-50">
             <span className="text-xs font-bold text-gray-500">
-              {value?.charAt(0)?.toUpperCase() || '?'}
+              {value?.charAt(0)?.toUpperCase() || 'R'}
             </span>
             {row.resellerImage && (
               <img
@@ -252,408 +275,481 @@ export function SettlementsContent() {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-gray-900">{value}</span>
-            <a href={`mailto:${row.resellerEmail}`} className="text-xs text-primary underline">
-              {row.resellerEmail}
-            </a>
+            <span className="text-xs text-sky-950 underline">{row.resellerEmail}</span>
+            {row.resellerPhone && (
+              <span className="text-[11px] text-gray-400">{row.resellerPhone}</span>
+            )}
           </div>
         </div>
-      ),
+      )
+    },
+    {
+      key: 'projectNames',
+      label: 'PROJECT',
+      render: (value) => {
+        const list = Array.isArray(value) ? value.filter(Boolean) : [];
+        if (list.length === 0) {
+          return <span className="text-xs text-gray-400">-</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[170px]">
+            {list.slice(0, 2).map((p, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-[160px]"
+                title={p}
+              >
+                {p}
+              </span>
+            ))}
+            {list.length > 2 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-600">
+                +{list.length - 2}
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'commissionRate',
       label: 'COMMISSION RATE',
       render: (value) => (
-        <div className="flex flex-row items-center gap-0.5">
-          <span className="font-medium text-gray-700">{value}</span>
-          <Percent className="h-3 w-3 text-gray-500" />
-        </div>
-      ),
+        <span className="font-medium text-gray-700">{value || 0}%</span>
+      )
     },
     {
       key: 'totalLeadsCount',
       label: 'TOTAL LEADS',
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-blue-500" />
-          <span className="font-medium">{value}</span>
+      render: (value, row) => (
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5 font-medium text-gray-800">
+            <Users className="h-3.5 w-3.5 text-blue-500" />
+            <span>{value} Leads</span>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+            <span className="text-orange-600 font-medium">{row.unsettledLeadsCount || 0} pending</span>
+            <span className="text-gray-300">•</span>
+            <span className="text-emerald-600 font-medium">{row.settledLeadsCount || 0} settled</span>
+          </div>
         </div>
-      ),
+      )
     },
     {
       key: 'totalLeadsAmount',
       label: 'TOTAL LEAD AMOUNT',
       render: (value) => (
         <div className="flex items-center gap-1">
-          <IndianRupee className="h-3 w-3 text-emerald-600" />
+          <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
           <span className="font-semibold text-emerald-700">
-            {value.toLocaleString('en-IN')}
+            {(Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
-      ),
+      )
     },
     {
       key: 'totalCommission',
       label: 'TOTAL EARNED',
       render: (value) => (
         <div className="flex items-center gap-1">
-          <IndianRupee className="h-3 w-3 text-gray-600" />
+          <IndianRupee className="h-3.5 w-3.5 text-gray-600" />
           <span className="font-semibold text-gray-800">
-            {value.toLocaleString('en-IN')}
+            {(Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
-      ),
+      )
     },
     {
       key: 'paidCommission',
       label: 'PAID',
       render: (value) => (
         <Badge
-          label={`₹ ${value.toLocaleString('en-IN')}`}
+          label={`₹ ${(Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           className="bg-green-50 text-green-700 border-green-200 font-bold"
         />
-      ),
+      )
     },
     {
       key: 'pendingCommission',
       label: 'PENDING',
-      render: (value) => (
-        <Badge
-          label={`₹ ${value.toLocaleString('en-IN')}`}
-          className="bg-orange-50 text-orange-600 border-orange-200 font-bold"
-        />
-      ),
-    },
-  ];
-
-  // if (userRole === 'admin') {
-  //   columns.push({
-  //     key: '_id',
-  //     label: 'ACTIONS',
-  //     render: (_, row) => (
-  //       <div className="flex items-center gap-2">
-  //         {row.pendingCommission > 0 && (
-  //           <button
-  //             onClick={() => {
-  //               setSelectedReseller(row);
-  //               setPayAmount(row.pendingCommission.toString());
-  //               setIsPayModalOpen(true);
-  //             }}
-  //             className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 flex items-center gap-1 shadow-sm"
-  //           >
-  //             <Banknote className="h-3 w-3" />
-  //             Pay
-  //           </button>
-  //         )}
-  //         <button
-  //           onClick={() => {
-  //             setSelectedReseller(row);
-  //             fetchHistory(row._id);
-  //             setIsHistoryModalOpen(true);
-  //           }}
-  //           className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1 shadow-sm"
-  //         >
-  //           <ReceiptText className="h-3 w-3" />
-  //           View Payments
-  //         </button>
-  //       </div>
-  //     ),
-  //   });
-  // }
-
-  const resellerColumns: Column<LeadSettlement>[] = [
-    {
-      key: 'customerName',
-      label: 'LEAD NAME',
-      render: (value) => <span className="font-semibold text-gray-900">{value}</span>,
-    },
-    {
-      key: 'status',
-      label: 'STATUS',
-      render: (value) => (
-        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
-          {value}
-        </span>
-      ),
-    },
-    {
-      key: 'paymentAmount',
-      label: 'LEAD REVENUE',
-      render: (value) => (
-        <div className="flex items-center gap-1">
-          <IndianRupee className="h-3 w-3 text-emerald-600" />
-          <span className="font-semibold text-emerald-700">
-            {value.toLocaleString('en-IN')}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'commissionAmount',
-      label: 'COMMISSION EARNED',
-      render: (value) => (
-        <div className="flex items-center gap-1">
-          <IndianRupee className="h-3 w-3 text-gray-600" />
-          <span className="font-semibold text-gray-800">
-            {value.toLocaleString('en-IN')}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'paymentDate',
-      label: 'DATE',
-      render: (value) => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-    },
-  ];
-
-  // Calculate totals for summary cards
-  const totalLeadsAmount = settlementsData.reduce((acc, curr) => acc + curr.totalLeadsAmount, 0);
-  const totalCommissionAmount = settlementsData.reduce((acc, curr) => acc + curr.totalCommission, 0);
-  const totalPaid = settlementsData.reduce((acc, curr) => acc + curr.paidCommission, 0);
-  const totalPending = settlementsData.reduce((acc, curr) => acc + curr.pendingCommission, 0);
-  return (
-    <>
-      <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Total Leads Revenue</p>
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center"><IndianRupee className="h-5 w-5 mr-1 text-gray-600"/>{totalLeadsAmount.toLocaleString('en-IN')}</h3>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-              <ReceiptText className="h-6 w-6 text-emerald-600" />
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Total Commissions</p>
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center"><IndianRupee className="h-5 w-5 mr-1 text-gray-600"/>{totalCommissionAmount.toLocaleString('en-IN')}</h3>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <Banknote className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-green-200 p-6 shadow-sm bg-green-50 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-800 mb-1">Total Paid</p>
-              <h3 className="text-2xl font-bold text-green-700 flex items-center"><IndianRupee className="h-5 w-5 mr-1"/>{totalPaid.toLocaleString('en-IN')}</h3>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-green-200 flex items-center justify-center">
-              <IndianRupee className="h-6 w-6 text-green-700" />
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-orange-200 p-6 shadow-sm bg-orange-50 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-orange-800 mb-1">Total Pending</p>
-              <h3 className="text-2xl font-bold text-orange-700 flex items-center"><IndianRupee className="h-5 w-5 mr-1"/>{totalPending.toLocaleString('en-IN')}</h3>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-orange-200 flex items-center justify-center">
-              <IndianRupee className="h-6 w-6 text-orange-700" />
-            </div>
-          </div>
-        </div>
-
-        {userRole === 'reseller' ? (
-          <DataTable
-            data={resellerLeadsData}
-            columns={resellerColumns}
-            searchable={false}
-            pagination={false}
-            actions={false}
+      render: (value) => {
+        const val = Number(value) || 0;
+        return (
+          <Badge
+            label={`₹ ${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            className="bg-orange-50 text-orange-600 border-orange-200 font-bold"
           />
-        ) : (
-          <DataTable
-              data={settlementsData}
-              columns={columns}
-              loading={isLoading}
-              searchable={false}
-              headerActions={
-                <div className="flex items-center gap-3">
-                  {/* Search Bar */}
-                  <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
-                    <input
-                      type="search"
-                      placeholder="Search anything..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full sm:w-64 rounded-md border border-gray-200 bg-white pl-10 pr-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 hover:border-gray-300"
-                    />
-                  </div>
-                </div>
-              }
-              pagination={true}
-              serverSidePagination={true}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalRecords={totalRecords}
-              pageSize={rowsPerPage}
-              onPageChange={(p) => setCurrentPage(p)}
-              onPageSizeChange={(r) => {
-                setRowsPerPage(r);
-                setCurrentPage(1);
+        );
+      }
+    },
+    {
+      key: '_id',
+      label: 'ACTIONS',
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => router.push(`/settlements/${row._id}`)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#3B82F6] bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-200"
+            title="View Leads"
+          >
+            Leads
+            <ArrowRight className="w-3 h-3" />
+          </button>
+          {row.pendingCommission > 0 && (
+            <button
+              onClick={() => {
+                setSelectedReseller(row);
+                setPayAmount(row.pendingCommission.toString());
+                setIsPayModalOpen(true);
               }}
-              onRowClick={(row) => router.push(`/settlements/${row._id}`)}
-            />
-        )}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors shadow-xs cursor-pointer"
+              title="Quick Pay"
+            >
+              <Banknote className="w-3 h-3" />
+              Pay
+            </button>
+          )}
+          <button
+            onClick={() => handleOpenHistory(row)}
+            className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors cursor-pointer border border-gray-200"
+            title="Payout History"
+          >
+            <History className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="flex flex-col h-full gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <Head>
+        <title>Settlements | Reseller CRM</title>
+      </Head>
+
+      {/* 4 Standard KPI Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
+        <div className="bg-white rounded-md border border-gray-200 p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1">Total Leads Revenue</p>
+            <h3 className="text-xl font-bold text-gray-900 flex items-center">
+              <IndianRupee className="h-4 w-4 mr-1 text-gray-600" />
+              {(summary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+            <ReceiptText className="h-5 w-5 text-emerald-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-md border border-gray-200 p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1">Total Commissions</p>
+            <h3 className="text-xl font-bold text-gray-900 flex items-center">
+              <IndianRupee className="h-4 w-4 mr-1 text-gray-600" />
+              {(summary.totalCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <Banknote className="h-5 w-5 text-[#3B82F6]" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-md border border-green-200 p-5 shadow-xs bg-green-50/40 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-green-800 mb-1">Total Paid</p>
+            <h3 className="text-xl font-bold text-green-700 flex items-center">
+              <IndianRupee className="h-4 w-4 mr-1" />
+              {(summary.totalPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-green-200 flex items-center justify-center">
+            <CheckCircle2 className="h-5 w-5 text-green-700" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-md border border-orange-200 p-5 shadow-xs bg-orange-50/40 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-orange-800 mb-1">Total Pending</p>
+            <h3 className="text-xl font-bold text-orange-700 flex items-center">
+              <IndianRupee className="h-4 w-4 mr-1" />
+              {(summary.pendingCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-orange-200 flex items-center justify-center">
+            <Clock className="h-5 w-5 text-orange-700" />
+          </div>
+        </div>
       </div>
 
+      {/* Main Resellers Settlement DataTable */}
+      <div className="bg-white rounded-md border border-gray-200 flex-1 min-h-0 flex flex-col overflow-hidden">
+        <DataTable
+          data={settlementsData}
+          columns={columns}
+          loading={isLoading}
+          searchable={false}
+          headerActions={
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                <input
+                  type="search"
+                  placeholder="Search reseller..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-md border border-gray-200 bg-white pl-10 pr-4 py-2 text-xs text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 hover:border-gray-300"
+                />
+              </div>
+
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-md text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                Export
+              </button>
+            </div>
+          }
+          pagination={true}
+          serverSidePagination={true}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          pageSize={rowsPerPage}
+          onPageChange={(p) => setCurrentPage(p)}
+          onPageSizeChange={(r) => {
+            setRowsPerPage(r);
+            setCurrentPage(1);
+          }}
+          onRowClick={(row) => router.push(`/settlements/${row._id}`)}
+        />
+      </div>
+
+      {/* Quick Pay Modal */}
       {isPayModalOpen && selectedReseller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Record Settlement Payment</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Recording payment for <strong>{selectedReseller.resellerName}</strong>. 
-              Pending balance: <span className="font-semibold text-orange-600 flex items-center inline-flex"><IndianRupee className="h-3 w-3"/>{selectedReseller.pendingCommission.toLocaleString('en-IN')}</span>
-            </p>
-            <form noValidate onSubmit={handlePaySubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount (INR)</label>
-                  <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <IndianRupee className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      min="0.01"
-                      max={selectedReseller.pendingCommission}
-                      step="0.01"
-                      required
-                      className="block w-full rounded-xl border border-gray-300 pl-9 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                      value={payAmount}
-                      onChange={(e) => {
-                        setPayAmount(e.target.value);
-                        setPayError('');
-                      }}
-                    />
-                  </div>
-                  {payError && <p className="mt-1 text-sm text-red-500">{payError}</p>}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-gray-200 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <Banknote className="w-5 h-5" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <h2 className="text-base font-bold text-gray-900">Record Settlement Payment</h2>
+                  <p className="text-xs text-gray-500">{selectedReseller.resellerName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPayModalOpen(false)}
+                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {(selectedReseller.bankDetails || selectedReseller.upiId) && (
+              <div className="mt-3 p-2.5 bg-blue-50/70 border border-blue-100 rounded-md text-xs space-y-1">
+                <p className="font-semibold text-blue-900 flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                  Bank / UPI Destination:
+                </p>
+                {selectedReseller.upiId && (
+                  <p className="text-blue-800">
+                    UPI ID: <span className="font-semibold">{selectedReseller.upiId}</span>
+                  </p>
+                )}
+                {selectedReseller.bankDetails && (
+                  <p className="text-blue-800 whitespace-pre-wrap">{selectedReseller.bankDetails}</p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-3 p-3 bg-amber-50/80 border border-amber-200 rounded-md flex items-center justify-between">
+              <span className="text-xs text-amber-800 font-medium">Pending Balance:</span>
+              <span className="text-sm font-bold text-amber-900">
+                ₹{selectedReseller.pendingCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <form noValidate onSubmit={handlePaySubmit} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Payment Amount (INR) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <IndianRupee className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="number"
+                    min="0.01"
+                    max={selectedReseller.pendingCommission}
+                    step="0.01"
+                    required
+                    className="block w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 py-2 text-xs font-semibold text-gray-900 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all"
+                    value={payAmount}
+                    onChange={(e) => {
+                      setPayAmount(e.target.value);
+                      setPayError('');
+                    }}
+                  />
+                </div>
+                {payError && <p className="mt-1 text-xs font-semibold text-red-500">{payError}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Method</label>
                   <select
-                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all cursor-pointer"
                     value={payMethod}
                     onChange={(e) => setPayMethod(e.target.value)}
                   >
-                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Bank Transfer">Bank Transfer (IMPS/NEFT)</option>
                     <option value="UPI">UPI</option>
-                    <option value="GPay">GPay</option>
+                    <option value="GPay">Google Pay</option>
                     <option value="Cash">Cash</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reference ID (Optional)</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Date</label>
                   <input
-                    type="text"
-                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                    placeholder="e.g. UTR Number"
-                    value={payRefId}
-                    onChange={(e) => setPayRefId(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Note (Optional)</label>
-                  <textarea
-                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                    rows={3}
-                    placeholder="e.g. Bank Transfer ID 12345"
-                    value={payNote}
-                    onChange={(e) => setPayNote(e.target.value)}
+                    type="date"
+                    value={payDate}
+                    onChange={(e) => setPayDate(e.target.value)}
+                    className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all cursor-pointer"
                   />
                 </div>
               </div>
-              <div className="mt-6 flex justify-end gap-3">
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Transaction / Reference ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. UTR1234987654"
+                  value={payRefId}
+                  onChange={(e) => setPayRefId(e.target.value)}
+                  className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Note (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Settled commission for March batch"
+                  value={payNote}
+                  onChange={(e) => setPayNote(e.target.value)}
+                  className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPayModalOpen(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="rounded-md border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPaying}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="rounded-md bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {isPaying ? 'Recording...' : 'Record Payment'}
+                  {isPaying ? 'Processing...' : 'Confirm & Record'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* History Modal */}
       {isHistoryModalOpen && selectedReseller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Settlement History</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Payout records for <strong>{selectedReseller.resellerName}</strong>
-            </p>
-            <div className="flex-1 overflow-auto border border-gray-200 rounded-xl bg-gray-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+          <div className="w-full max-w-2xl max-h-[85vh] rounded-xl bg-white p-6 shadow-xl border border-gray-200 flex flex-col animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-50 text-[#3B82F6] border border-blue-100">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Settlement History Log</h2>
+                  <p className="text-xs text-gray-500">
+                    Payout records for <strong className="text-gray-800">{selectedReseller.resellerName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto mt-4 pr-1">
               {isHistoryLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                  <span className="ml-2 text-sm text-gray-500">Loading history...</span>
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#3B82F6] border-t-transparent" />
+                  <span className="mt-2 text-xs">Loading history...</span>
                 </div>
               ) : historyData.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ReceiptText className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-                  <p>No settlement history found.</p>
+                <div className="text-center py-10 text-gray-400 text-xs">
+                  No payout transactions recorded for this reseller yet.
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {historyData.map((item, idx) => (
-                    <div key={item._id || idx} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-gray-900 flex items-center"><IndianRupee className="h-4 w-4" />{item.amount.toLocaleString('en-IN')}</span>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${item.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{item.status || 'Completed'}</span>
+                <div className="space-y-2.5">
+                  {historyData.map((tx: any) => (
+                    <div
+                      key={tx._id}
+                      className="p-3.5 rounded-md border border-gray-200 bg-gray-50/50 hover:bg-white transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-xs">
+                            <IndianRupee className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-gray-900">
+                              ₹{(Number(tx.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                              <span className="font-semibold text-blue-700">{tx.paymentMethod}</span>
+                              {tx.referenceId && <span>Ref: {tx.referenceId}</span>}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
-                          <span>Date: {new Date(item.createdAt).toLocaleString('en-IN')}</span>
-                          <span>Method: {item.paymentMethod || 'Bank Transfer'}</span>
-                          {item.referenceId && <span>Ref: <span className="font-mono text-gray-700">{item.referenceId}</span></span>}
+
+                        <div className="text-right">
+                          <span className="text-xs font-medium text-gray-700">
+                            {new Date(tx.paymentDate || tx.createdAt).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
                         </div>
-                        {item.note && <p className="text-sm text-gray-700 mt-2 bg-gray-50 p-2 rounded-md italic">"{item.note}"</p>}
                       </div>
-                      <div className="text-xs text-gray-500 text-right sm:min-w-[120px]">
-                        {item.processedBy && (
-                          <>
-                            <p className="font-medium text-gray-700">Processed by:</p>
-                            <p>{item.processedBy.firstName} {item.processedBy.lastName}</p>
-                          </>
-                        )}
-                      </div>
+
+                      {tx.note && (
+                        <p className="mt-1.5 text-xs text-gray-600 bg-white p-1.5 rounded-md border border-gray-100">
+                          {tx.note}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsHistoryModalOpen(false);
-                  setHistoryData([]);
-                }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}
-    </>
-  );
-}
-
-export default function Settlements() {
-  return (
-    <>
-      <SettlementsContent />
-    </>
+    </div>
   );
 }

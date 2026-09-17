@@ -1,10 +1,17 @@
 // components/leads/useLeadsData.ts
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead, ApiStatus, ApiUser, LeadCountSummary } from './types';
+
+// Abort ref helper — cancels previous request if a new one starts
+const createAbort = (ref: React.MutableRefObject<AbortController | null>) => {
+  if (ref.current) ref.current.abort();
+  ref.current = new AbortController();
+  return ref.current.signal;
+};
 
 type Filters = {
   search?: string;
@@ -54,9 +61,17 @@ export function useLeadsData(
   const [wonTotalPages, setWonTotalPages] = useState(1);
   const [wonTotalItems, setWonTotalItems] = useState(0);
 
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(20);
 
   const getHeaders = () => ({ Authorization: `Bearer ${getAuthToken()}` });
+
+  // Abort controller refs — one per concurrent fetch type
+  const abortListRef = useRef<AbortController | null>(null);
+  const abortLostRef = useRef<AbortController | null>(null);
+  const abortWonRef = useRef<AbortController | null>(null);
+  const abortKanbanRef = useRef<AbortController | null>(null);
+  const abortCountsRef = useRef<AbortController | null>(null);
+
 
   const getUserRole = useCallback((): string => {
     if (typeof window === 'undefined') return '';
@@ -108,6 +123,7 @@ export function useLeadsData(
     tab = stateRef.current.activeTab,
     f: Filters = stateRef.current.filters
   ) => {
+    const signal = createAbort(abortKanbanRef);
     try {
       const useKanbanEndpoint = !!baseUrl.getKanbanData;
       const role = getUserRole();
@@ -115,6 +131,7 @@ export function useLeadsData(
       if (useKanbanEndpoint) {
         const res = await axios.get(baseUrl.getKanbanData, {
           headers: getHeaders(),
+          signal,
           params: {
             my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
             search: f.search || undefined,
@@ -133,8 +150,6 @@ export function useLeadsData(
         const data = res.data?.data;
 
         if (Array.isArray(data)) {
-          // Shape A: grouped → [{ leads: [...] }, ...]
-          // Shape B: flat array of leads
           const isGrouped = data.length > 0 && Array.isArray((data[0] as any)?.leads);
           setLeads(isGrouped ? (data as any[]).flatMap((g: any) => g.leads || []) : (data as ApiLead[]));
         } else {
@@ -145,6 +160,7 @@ export function useLeadsData(
         const url = getLeadsUrl(tab);
         const res = await axios.get(url, {
           headers: getHeaders(),
+          signal,
           params: {
             search: f.search || undefined,
             status: f.status || undefined,
@@ -160,7 +176,8 @@ export function useLeadsData(
         });
         setLeads(res.data?.data || []);
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchKanbanLeads error:', e);
       setLeads([]);
     }
@@ -173,10 +190,12 @@ export function useLeadsData(
     f: Filters = stateRef.current.filters,
     page = stateRef.current.listPage
   ) => {
+    const signal = createAbort(abortListRef);
     try {
       const url = getLeadsUrl(tab);
       const res = await axios.get(url, {
         headers: getHeaders(),
+        signal,
         params: {
           search: f.search || undefined,
           status: f.status || undefined,
@@ -196,7 +215,8 @@ export function useLeadsData(
       setLeadsList(arr);
       setListTotalItems(p.totalRecords ?? p.total ?? p.count ?? arr.length);
       setListTotalPages(p.totalPages ?? (p.totalRecords ? Math.ceil(p.totalRecords / stateRef.current.limit) : 1));
-    } catch (e) {
+    } catch (e: any) {
+      if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchLeadsList error:', e);
       setLeadsList([]);
     }
@@ -207,10 +227,12 @@ export function useLeadsData(
     f: Filters = stateRef.current.filters,
     page = stateRef.current.lostPage
   ) => {
+    const signal = createAbort(abortLostRef);
     try {
       const role = getUserRole();
       const res = await axios.get(baseUrl.getLostLeads, {
         headers: getHeaders(),
+        signal,
         params: {
           my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
           search: f.search || undefined,
@@ -232,7 +254,8 @@ export function useLeadsData(
       setLostLeads(arr);
       setLostTotalItems(p.totalRecords ?? p.total ?? p.count ?? arr.length);
       setLostTotalPages(p.totalPages ?? (p.totalRecords ? Math.ceil(p.totalRecords / stateRef.current.limit) : 1));
-    } catch (e) {
+    } catch (e: any) {
+      if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchLostLeads error:', e);
       setLostLeads([]);
     }
@@ -243,10 +266,12 @@ export function useLeadsData(
     f: Filters = stateRef.current.filters,
     page = stateRef.current.wonPage
   ) => {
+    const signal = createAbort(abortWonRef);
     try {
       const role = getUserRole();
       const res = await axios.get(baseUrl.getWonLeads, {
         headers: getHeaders(),
+        signal,
         params: {
           my: (tab === 'my' && role !== 'project_manager' && role !== 'projectmanager') || role === 'reseller' ? true : undefined,
           search: f.search || undefined,
@@ -268,7 +293,8 @@ export function useLeadsData(
       setWonLeads(arr);
       setWonTotalItems(p.totalRecords ?? p.total ?? p.count ?? arr.length);
       setWonTotalPages(p.totalPages ?? (p.totalRecords ? Math.ceil(p.totalRecords / stateRef.current.limit) : 1));
-    } catch (e) {
+    } catch (e: any) {
+      if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchWonLeads error:', e);
       setWonLeads([]);
     }
@@ -278,10 +304,12 @@ export function useLeadsData(
     tab = stateRef.current.activeTab,
     f: Filters = stateRef.current.filters
   ) => {
+    const signal = createAbort(abortCountsRef);
     try {
       const url = getLeadsCountUrl(tab);
       const res = await axios.get(url, {
         headers: getHeaders(),
+        signal,
         params: {
           search: f.search || undefined,
           status: f.status || undefined,
@@ -294,10 +322,11 @@ export function useLeadsData(
         },
       });
       setCounts(res.data?.data || null);
-    } catch (e) {
+    } catch (e: any) {
+      if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchCounts error:', e);
     }
-  }, [getLeadsCountUrl]); 
+  }, [getLeadsCountUrl]);
 
   const fetchMeta = useCallback(async () => {
     try {

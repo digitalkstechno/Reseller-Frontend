@@ -152,6 +152,7 @@ export default function Dashboard() {
   };
 
   const [summary, setSummary] = useState<LeadSummary | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [revenueChart, setRevenueChart] = useState<any[]>([]);
   const [leadsBySource, setLeadsBySource] = useState<
     { name: string; value: number; fill: string }[]
@@ -347,6 +348,8 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Dashboard data error:", err);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
@@ -1141,22 +1144,37 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="relative z-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {summaryCards.map((card) => (
-            <div
-              key={card.key}
-              className="bg-white p-4 rounded-3xl border border-gray-200/80 flex items-center gap-4 transition-all duration-300"
-            >
-              <div className={`p-3 rounded-xl ${card.iconBg} ${card.iconColor} transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}>
-                <card.Icon className="h-6 w-6" />
+          {dashboardLoading && !summary ? (
+            Array.from({ length: 5 }).map((_, idx) => (
+              <div
+                key={`skel-${idx}`}
+                className="bg-white p-4 rounded-3xl border border-gray-200/80 flex items-center gap-4 animate-pulse"
+              >
+                <div className="p-3 rounded-xl bg-gray-100 h-12 w-12 flex-shrink-0" />
+                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                  <div className="h-3 bg-gray-100 rounded w-24" />
+                  <div className="h-6 bg-gray-200 rounded w-16" />
+                </div>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[14px] text-gray-500 tracking-wider truncate">{card.label}</span>
-                <span className="text-2xl text-gray-900">{card.value}</span>
+            ))
+          ) : (
+            summaryCards.map((card) => (
+              <div
+                key={card.key}
+                className="bg-white p-4 rounded-3xl border border-gray-200/80 flex items-center gap-4 transition-all duration-300"
+              >
+                <div className={`p-3 rounded-xl ${card.iconBg} ${card.iconColor} transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}>
+                  <card.Icon className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[14px] text-gray-500 tracking-wider truncate">{card.label}</span>
+                  <span className="text-2xl text-gray-900">{card.value}</span>
+                </div>
+                {/* Decorative background element */}
+                <div className={`absolute -right-4 -bottom-4 h-20 w-20 rounded-full ${card.iconBg} opacity-0 group-hover:opacity-10 transition-opacity blur-2xl`}></div>
               </div>
-              {/* Decorative background element */}
-              <div className={`absolute -right-4 -bottom-4 h-20 w-20 rounded-full ${card.iconBg} opacity-0 group-hover:opacity-10 transition-opacity blur-2xl`}></div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-5 ">

@@ -45,6 +45,7 @@ export function OrganizationsContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [toDelete, setToDelete] = useState<Organization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -79,6 +80,7 @@ export function OrganizationsContent() {
   }, [token, rawPerms]);
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
       const res = await axios.get(baseUrl.organizations, {
         headers,
@@ -90,6 +92,8 @@ export function OrganizationsContent() {
       console.error('Failed to fetch organizations', err);
       setData([]);
       toast.error(err?.response?.data?.message || 'Failed to load organizations');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -182,6 +186,7 @@ export function OrganizationsContent() {
       <DataTable
         data={data}
         columns={columns}
+        loading={isLoading}
         searchable
         pagination
         currentPage={currentPage}

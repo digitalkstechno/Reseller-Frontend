@@ -28,7 +28,7 @@ export default function LeadsReport() {
   const router = useRouter();
   const { user, role } = useSelector((state: any) => state.auth);
   const [data, setData] = useState<ReportLead[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
