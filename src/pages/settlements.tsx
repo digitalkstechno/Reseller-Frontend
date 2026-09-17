@@ -229,25 +229,26 @@ export default function SettlementsPage() {
   };
 
   // Export Table Data
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!settlementsData.length) {
       toast.error('No settlement data to export');
       return;
     }
-    const exportRows = settlementsData.map((item) => ({
-      'Reseller Name': item.resellerName,
-      'Email': item.resellerEmail,
-      'Phone': item.resellerPhone || '-',
-      'Commission Rate (%)': item.commissionRate || 0,
-      'Total Paid Leads': item.totalLeadsCount,
-      'Total Revenue (₹)': item.totalLeadsAmount,
-      'Total Commission Earned (₹)': item.totalCommission,
-      'Paid Payout (₹)': item.paidCommission,
-      'Pending Balance (₹)': item.pendingCommission,
-      'Unsettled Leads': item.unsettledLeadsCount,
-      'Settled Leads': item.settledLeadsCount
-    }));
-    exportToExcel(exportRows, 'Settlements_Summary');
+    const columns = [
+      { header: 'Reseller Name', key: 'resellerName', width: 25 },
+      { header: 'Email', key: 'resellerEmail', width: 30 },
+      { header: 'Phone', key: 'resellerPhone', width: 15 },
+      { header: 'Commission Rate (%)', key: 'commissionRate', width: 20 },
+      { header: 'Total Paid Leads', key: 'totalLeadsCount', width: 18 },
+      { header: 'Total Revenue (₹)', key: 'totalLeadsAmount', width: 18 },
+      { header: 'Total Commission Earned (₹)', key: 'totalCommission', width: 25 },
+      { header: 'Paid Payout (₹)', key: 'paidCommission', width: 18 },
+      { header: 'Pending Balance (₹)', key: 'pendingCommission', width: 18 },
+      { header: 'Unsettled Leads', key: 'unsettledLeadsCount', width: 18 },
+      { header: 'Settled Leads', key: 'settledLeadsCount', width: 18 },
+    ];
+    const fileName = `Settlements_Summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+    await exportToExcel(fileName, 'Settlements', columns, settlementsData);
   };
 
   if (!isMounted) return null;
@@ -281,41 +282,6 @@ export default function SettlementsPage() {
             )}
           </div>
         </div>
-      )
-    },
-    {
-      key: 'projectNames',
-      label: 'PROJECT',
-      render: (value) => {
-        const list = Array.isArray(value) ? value.filter(Boolean) : [];
-        if (list.length === 0) {
-          return <span className="text-xs text-gray-400">-</span>;
-        }
-        return (
-          <div className="flex flex-wrap gap-1 max-w-[170px]">
-            {list.slice(0, 2).map((p, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 truncate max-w-[160px]"
-                title={p}
-              >
-                {p}
-              </span>
-            ))}
-            {list.length > 2 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-600">
-                +{list.length - 2}
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
-    {
-      key: 'commissionRate',
-      label: 'COMMISSION RATE',
-      render: (value) => (
-        <span className="font-medium text-gray-700">{value || 0}%</span>
       )
     },
     {
@@ -704,46 +670,121 @@ export default function SettlementsPage() {
                   No payout transactions recorded for this reseller yet.
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  {historyData.map((tx: any) => (
-                    <div
-                      key={tx._id}
-                      className="p-3.5 rounded-md border border-gray-200 bg-gray-50/50 hover:bg-white transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-xs">
-                            <IndianRupee className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-gray-900">
-                              ₹{(Number(tx.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                              <span className="font-semibold text-blue-700">{tx.paymentMethod}</span>
-                              {tx.referenceId && <span>Ref: {tx.referenceId}</span>}
+                <div className="space-y-3">
+                  {historyData.map((tx: any) => {
+                    const leadsList = Array.isArray(tx.leads) ? tx.leads : [];
+                    return (
+                      <div
+                        key={tx._id}
+                        className="p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 shadow-xs transition-all space-y-3"
+                      >
+                        {/* Transaction Header */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
+                              <IndianRupee className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-base font-bold text-gray-900">
+                                  ₹{(Number(tx.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  Completed
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                <span className="font-semibold text-blue-600">{tx.paymentMethod}</span>
+                                {tx.referenceId && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono text-gray-600">Ref: {tx.referenceId}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
+
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-gray-800">
+                              {new Date(tx.paymentDate || tx.createdAt).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            {tx.processedBy?.fullName && (
+                              <p className="text-[10px] text-gray-400 mt-0.5">By {tx.processedBy.fullName}</p>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="text-right">
-                          <span className="text-xs font-medium text-gray-700">
-                            {new Date(tx.paymentDate || tx.createdAt).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
+                        {/* Note */}
+                        {tx.note && (
+                          <div className="text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                            <span className="font-semibold text-gray-700">Note: </span>
+                            {tx.note}
+                          </div>
+                        )}
+
+                        {/* Settled Leads Details */}
+                        {leadsList.length > 0 ? (
+                          <div className="pt-2 border-t border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                Settled Leads ({leadsList.length})
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                              {leadsList.map((lead: any, lIdx: number) => {
+                                const leadCustName = lead.customerName || lead.fullName || 'Lead';
+                                const projName = lead.project?.projectName || lead.project?.name || lead.product || 'Project';
+                                const leadAmt = Number(lead.paymentAmount || lead.paidAmount || 0);
+                                const commAmt = Number(lead.commissionAmount || 0);
+                                const commRate = lead.commissionRate || 0;
+
+                                return (
+                                  <div
+                                    key={lead._id || lIdx}
+                                    className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50/80 border border-gray-100 text-xs hover:bg-blue-50/30 transition-colors"
+                                  >
+                                    <div className="flex flex-col min-w-0 pr-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-gray-900 truncate">{leadCustName}</span>
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                          {projName}
+                                        </span>
+                                      </div>
+                                      {(lead.customerContact || lead.customerEmail) && (
+                                        <span className="text-[11px] text-gray-400 mt-0.5 truncate">
+                                          {lead.customerContact || lead.customerEmail}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="text-right flex-shrink-0">
+                                      <div className="font-bold text-emerald-700">
+                                        ₹{commAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      </div>
+                                      <div className="text-[10px] text-gray-500">
+                                        Lead: ₹{leadAmt.toLocaleString('en-IN')} {commRate ? `(${commRate}%)` : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-1.5 border-t border-gray-100 text-[11px] text-gray-400 italic">
+                            Direct payout (Lump-sum advance / manual settlement)
+                          </div>
+                        )}
                       </div>
-
-                      {tx.note && (
-                        <p className="mt-1.5 text-xs text-gray-600 bg-white p-1.5 rounded-md border border-gray-100">
-                          {tx.note}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

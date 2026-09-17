@@ -278,6 +278,10 @@ export default function LeadAddDialog({
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
+    const selectedProj = projects.find((p) => p._id === projectId);
+    if (selectedProj && selectedProj.projectAmount && (!formik.values.paymentAmount || formik.values.paymentAmount === '0')) {
+      formik.setFieldValue('paymentAmount', String(selectedProj.projectAmount));
+    }
   };
 
   const getFieldError = (field: keyof typeof formik.values) => {

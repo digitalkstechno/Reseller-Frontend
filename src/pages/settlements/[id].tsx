@@ -232,31 +232,36 @@ export default function SettlementDetailsPage() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!leads.length) {
       toast.error('No data to export');
       return;
     }
-    const exportData = leads.map((l) => ({
-      'Customer Name': l.customerName,
-      'Contact': l.customerContact,
-      'Email': l.customerEmail,
-      'Company': l.companyName,
-      'Project': l.projectName,
-      'Lead Amount (₹)': l.paymentAmount,
-      'Commission Rate (%)': l.commissionRate,
-      'Commission Earned (₹)': l.commissionAmount,
-      'Payment Date': formatLeadDate(l.paymentDate),
-      'Status': l.isSettled ? 'Settled' : 'Awaiting Settlement',
-      'Settlement Date': formatLeadDate(l.settlementDate),
-      'Settlement Mode': l.settlementMethod || '-',
-      'Reference / UTR': l.settlementRef || '-'
+    const columns = [
+      { header: 'Customer Name', key: 'customerName', width: 20 },
+      { header: 'Contact', key: 'customerContact', width: 15 },
+      { header: 'Email', key: 'customerEmail', width: 25 },
+      { header: 'Company', key: 'companyName', width: 20 },
+      { header: 'Project', key: 'projectName', width: 20 },
+      { header: 'Lead Amount (₹)', key: 'paymentAmount', width: 18 },
+      { header: 'Commission Rate (%)', key: 'commissionRate', width: 18 },
+      { header: 'Commission Earned (₹)', key: 'commissionAmount', width: 22 },
+      { header: 'Payment Date', key: 'formattedPaymentDate', width: 15 },
+      { header: 'Status', key: 'settlementStatus', width: 18 },
+      { header: 'Settlement Date', key: 'formattedSettlementDate', width: 15 },
+      { header: 'Settlement Mode', key: 'settlementMethod', width: 18 },
+      { header: 'Reference / UTR', key: 'settlementRef', width: 20 }
+    ];
+
+    const exportRows = leads.map((l) => ({
+      ...l,
+      formattedPaymentDate: formatLeadDate(l.paymentDate),
+      settlementStatus: l.isSettled ? 'Settled' : 'Awaiting Settlement',
+      formattedSettlementDate: formatLeadDate(l.settlementDate),
     }));
 
-    exportToExcel(
-      exportData,
-      `${reseller?.fullName || 'Reseller'}_${activeTab === 'settled' ? 'Settled_Leads' : 'Unsettled_Leads'}`
-    );
+    const fileName = `${reseller?.fullName || 'Reseller'}_${activeTab === 'settled' ? 'Settled_Leads' : 'Unsettled_Leads'}.xlsx`;
+    await exportToExcel(fileName, 'Leads', columns, exportRows);
   };
 
   if (!isMounted || !router.isReady) return null;

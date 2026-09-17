@@ -181,16 +181,16 @@ export default function ProjectManagerDialog({
 
       if (isUpdate && pmId) {
         await axios.put(`${baseUrl.updateProjectManager}/${pmId}`, formData, { headers });
-        toast.success('Project Manager updated successfully!');
+        toast.success('Product Manager updated successfully!');
       } else {
         await axios.post(baseUrl.addProjectManager, formData, { headers });
-        toast.success('Project Manager created successfully!');
+        toast.success('Product Manager created successfully!');
       }
 
       parentOnSubmit?.(values);
       onClose();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to save Project Manager';
+      const msg = err?.response?.data?.message || 'Failed to save Product Manager';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -202,7 +202,7 @@ export default function ProjectManagerDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={isUpdate ? 'Edit Project Manager' : 'Add New Project Manager'}
+      title={isUpdate ? 'Edit Product Manager' : 'Add New Product Manager'}
       size="lg"
       footer={
         <div className="flex justify-end gap-3">
@@ -220,7 +220,7 @@ export default function ProjectManagerDialog({
             disabled={loading || formik.isSubmitting}
             className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
           >
-            {loading ? 'Saving...' : isUpdate ? 'Update Project Manager' : 'Save Project Manager'}
+            {loading ? 'Saving...' : isUpdate ? 'Update Product Manager' : 'Save Product Manager'}
           </button>
         </div>
       }

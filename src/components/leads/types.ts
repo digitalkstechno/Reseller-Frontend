@@ -84,6 +84,7 @@ export type ApiLead = {
     note?: string;
     createdAt?: string | Date;
   }[];
+  product?: string;
   city?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -102,6 +103,7 @@ export type AddLeadForm = {
 
 export type LeadCountSummary = {
   statusCounts: Record<string, number>;
+  statusWiseCounts?: Record<string, number>;
   totalLeads: number;
   totalLost: number;
   totalWon: number;

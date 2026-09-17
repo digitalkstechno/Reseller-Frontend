@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import DataTable, { Column } from '@/components/DataTable';

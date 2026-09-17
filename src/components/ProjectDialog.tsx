@@ -16,6 +16,8 @@ export interface Project {
   _id?: string;
   name: string;
   projectManager?: any;
+  projectManagers?: any[];
+  commissionRate?: number | string;
   demoLink?: string;
   demoId?: string;
   demoPassword?: string;
@@ -39,7 +41,13 @@ const validationSchema = Yup.object({
   name: Yup.string()
     .required('Project name is required')
     .min(2, 'Project name must be at least 2 characters'),
-  projectManager: Yup.string().optional(),
+  projectManagers: Yup.array().of(Yup.string()).optional(),
+  commissionRate: Yup.number()
+    .transform((value, originalValue) => (originalValue === '' ? undefined : value))
+    .min(0, 'Commission rate cannot be negative')
+    .max(100, 'Commission rate cannot exceed 100%')
+    .nullable()
+    .optional(),
   demoLink: Yup.string().url('Must be a valid URL (e.g. https://example.com)').nullable().optional(),
   demoId: Yup.string().optional(),
   demoPassword: Yup.string().optional(),
@@ -55,9 +63,12 @@ export default function ProjectDialog({
 }: ProjectDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [projectManagers, setProjectManagers] = useState<{ _id: string; fullName: string }[]>([]);
+  const [projectManagers, setProjectManagers] = useState<{ _id: string; fullName: string; email?: string }[]>([]);
+  const [isPMDropdownOpen, setIsPMDropdownOpen] = useState(false);
+  const [pmSearch, setPmSearch] = useState('');
   const [featurePoints, setFeaturePoints] = useState<string[]>([]);
   const [featureInput, setFeatureInput] = useState('');
+  const pmDropdownRef = useRef<HTMLDivElement>(null);
 
   // Array of 4 slots: each item is either { type: 'existing', url: string } | { type: 'new', file: File, preview: string } | null
   const [imageSlots, setImageSlots] = useState<(
@@ -77,13 +88,18 @@ export default function ProjectDialog({
 
   const formik = useFormik({
     initialValues: {
-      name: '',
-      projectManager: '',
-      demoLink: '',
-      demoId: '',
-      demoPassword: '',
-      features: '',
-      status: 'active' as 'active' | 'inactive',
+      name: initialData?.name || '',
+      projectManagers: (Array.isArray(initialData?.projectManagers) && initialData!.projectManagers!.length > 0
+        ? initialData!.projectManagers!.map((pm: any) => (typeof pm === 'object' && pm !== null ? pm._id || pm.id : pm)).filter(Boolean)
+        : initialData?.projectManager
+        ? [typeof initialData.projectManager === 'object' && initialData.projectManager !== null ? initialData.projectManager._id || initialData.projectManager.id : initialData.projectManager].filter(Boolean)
+        : []) as string[],
+      commissionRate: initialData?.commissionRate !== undefined && initialData?.commissionRate !== null ? String(initialData.commissionRate) : '',
+      demoLink: initialData?.demoLink || '',
+      demoId: initialData?.demoId || '',
+      demoPassword: initialData?.demoPassword || '',
+      features: initialData?.features || initialData?.description || '',
+      status: (initialData?.status || 'active') as 'active' | 'inactive',
     },
     validationSchema,
     validateOnChange: true,
@@ -93,6 +109,17 @@ export default function ProjectDialog({
     },
     enableReinitialize: true,
   });
+
+  // Close PM dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pmDropdownRef.current && !pmDropdownRef.current.contains(event.target as Node)) {
+        setIsPMDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -110,9 +137,17 @@ export default function ProjectDialog({
     fetchPMs();
 
     if (initialData?._id) {
-      const pmId = typeof initialData.projectManager === 'object' && initialData.projectManager !== null
-        ? initialData.projectManager?._id || ''
-        : initialData.projectManager || '';
+      let selectedPMIds: string[] = [];
+      if (Array.isArray(initialData.projectManagers) && initialData.projectManagers.length > 0) {
+        selectedPMIds = initialData.projectManagers.map((pm: any) =>
+          typeof pm === 'object' && pm !== null ? pm._id || pm.id : pm
+        ).filter(Boolean);
+      } else if (initialData.projectManager) {
+        const singleId = typeof initialData.projectManager === 'object' && initialData.projectManager !== null
+          ? initialData.projectManager._id || initialData.projectManager.id
+          : initialData.projectManager;
+        if (singleId) selectedPMIds = [singleId];
+      }
 
       let initialDesc = initialData.features || initialData.description || '';
       const extractedPoints: string[] = [];
@@ -133,7 +168,8 @@ export default function ProjectDialog({
 
       formik.setValues({
         name: initialData.name || '',
-        projectManager: pmId,
+        projectManagers: selectedPMIds,
+        commissionRate: initialData.commissionRate !== undefined && initialData.commissionRate !== null ? String(initialData.commissionRate) : '',
         demoLink: initialData.demoLink || '',
         demoId: initialData.demoId || '',
         demoPassword: initialData.demoPassword || '',
@@ -160,7 +196,8 @@ export default function ProjectDialog({
       formik.resetForm({
         values: {
           name: '',
-          projectManager: '',
+          projectManagers: [],
+          commissionRate: '',
           demoLink: '',
           demoId: '',
           demoPassword: '',
@@ -171,6 +208,8 @@ export default function ProjectDialog({
       setImageSlots([null, null, null, null]);
     }
     setError(null);
+    setIsPMDropdownOpen(false);
+    setPmSearch('');
   }, [isOpen, initialData]);
 
   const handleAddFeature = () => {
@@ -182,6 +221,18 @@ export default function ProjectDialog({
 
   const handleRemoveFeature = (index: number) => {
     setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const togglePMSelection = (pmId: string) => {
+    const current = formik.values.projectManagers || [];
+    if (current.includes(pmId)) {
+      formik.setFieldValue(
+        'projectManagers',
+        current.filter((id) => id !== pmId)
+      );
+    } else {
+      formik.setFieldValue('projectManagers', [...current, pmId]);
+    }
   };
 
   const handleFileSelect = (slotIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -243,7 +294,9 @@ export default function ProjectDialog({
 
       const payload = new FormData();
       payload.append('name', values.name.trim());
-      payload.append('projectManager', values.projectManager ? values.projectManager.trim() : '');
+      payload.append('projectManagers', JSON.stringify(values.projectManagers || []));
+      payload.append('projectManager', values.projectManagers?.[0] || '');
+      payload.append('commissionRate', String(Number(values.commissionRate) || 0));
       payload.append('demoLink', values.demoLink ? values.demoLink.trim() : '');
       payload.append('demoId', values.demoId ? values.demoId.trim() : '');
       payload.append('demoPassword', values.demoPassword ? values.demoPassword.trim() : '');
@@ -284,6 +337,11 @@ export default function ProjectDialog({
       setLoading(false);
     }
   };
+
+  const filteredPMs = projectManagers.filter((pm) =>
+    pm.fullName.toLowerCase().includes(pmSearch.toLowerCase()) ||
+    (pm.email && pm.email.toLowerCase().includes(pmSearch.toLowerCase()))
+  );
 
   return (
     <Dialog
@@ -341,18 +399,113 @@ export default function ProjectDialog({
                   placeholder="e.g. E-Commerce Web & App"
                 />
 
-                <FormSelect
-                  label="Project Manager"
-                  name="projectManager"
-                  value={formik.values.projectManager}
-                  onChange={(val) => formik.setFieldValue('projectManager', val)}
-                  options={projectManagers.map((pm) => ({
-                    value: pm._id,
-                    label: pm.fullName,
-                  }))}
-                  placeholder="Select Project Manager"
-                  error={formik.touched.projectManager && formik.errors.projectManager ? formik.errors.projectManager : undefined}
+                <FormInput
+                  label="Commission Rate (%)"
+                  name="commissionRate"
+                  type="text"
+                  value={formik.values.commissionRate}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val === '') {
+                      formik.setFieldValue('commissionRate', '');
+                      return;
+                    }
+                    const num = Math.max(0, Math.min(100, parseInt(val, 10)));
+                    formik.setFieldValue('commissionRate', num.toString());
+                  }}
+                  onBlur={formik.handleBlur}
+                  error={formik.touched.commissionRate && formik.errors.commissionRate ? (formik.errors.commissionRate as string) : undefined}
+                  placeholder="e.g. 20"
                 />
+              </div>
+
+              {/* Product Managers Multi-Select */}
+              <div className="w-full relative" ref={pmDropdownRef}>
+                <label className="block mb-1.5 text-sm font-semibold text-gray-700">
+                  Product Manager(s)
+                </label>
+
+                {/* Trigger / Selected Pills */}
+                <div
+                  onClick={() => setIsPMDropdownOpen((prev) => !prev)}
+                  className="min-h-[42px] px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:border-gray-400 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 cursor-pointer flex flex-wrap items-center gap-1.5 transition-colors"
+                >
+                  {formik.values.projectManagers.length > 0 ? (
+                    formik.values.projectManagers.map((pmId) => {
+                      const pm = projectManagers.find((p) => p._id === pmId);
+                      return (
+                        <span
+                          key={pmId}
+                          className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium px-2.5 py-1 rounded-md"
+                        >
+                          <span>{pm?.fullName || pmId}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePMSelection(pmId);
+                            }}
+                            className="hover:text-red-600 text-blue-400 font-bold ml-0.5"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-gray-400 text-sm py-1">
+                      Click to select Product Manager(s)...
+                    </span>
+                  )}
+                </div>
+
+                {/* Dropdown Menu */}
+                {isPMDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 max-h-60 overflow-y-auto space-y-1">
+                    <input
+                      type="text"
+                      placeholder="Search product managers..."
+                      value={pmSearch}
+                      onChange={(e) => setPmSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-500 mb-1"
+                    />
+
+                    {filteredPMs.length > 0 ? (
+                      filteredPMs.map((pm) => {
+                        const isSelected = formik.values.projectManagers.includes(pm._id);
+                        return (
+                          <div
+                            key={pm._id}
+                            onClick={() => togglePMSelection(pm._id)}
+                            className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-blue-50 text-blue-700 font-medium'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}}
+                                className="rounded text-blue-600 focus:ring-blue-500 pointer-events-none"
+                              />
+                              <span>{pm.fullName}</span>
+                            </div>
+                            {pm.email && (
+                              <span className="text-xs text-gray-400">{pm.email}</span>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-xs text-gray-400 p-2 text-center">
+                        No product managers found
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

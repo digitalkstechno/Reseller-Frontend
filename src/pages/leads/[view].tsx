@@ -576,8 +576,8 @@ export default function LeadsPage() {
                   let lostCount = 0;
                   let wonCount = 0;
 
-                  if (counts?.statusWiseCounts) {
-                    counts.statusWiseCounts.forEach((s: any) => {
+                  if (Array.isArray(counts?.statusWiseCounts)) {
+                    (counts.statusWiseCounts as any[]).forEach((s: any) => {
                       if (s.statusName?.match(/^won$/i)) {
                         wonCount += s.count;
                       } else if (s.statusName?.match(/^lost$/i)) {

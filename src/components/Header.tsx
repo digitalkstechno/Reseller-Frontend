@@ -8,7 +8,6 @@ import { baseUrl, clearAuthToken, getAuthToken } from '@/config';
 import { useRouter } from 'next/router';
 import { Bell, Check, CheckCircle, CheckCheck, LogOut, Menu, X } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { io } from 'socket.io-client';
 import Swal from 'sweetalert2';
 import DeleteDialog from './DeleteDialog';
@@ -75,7 +74,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const pathName = usePathname()
+  const pathName = router.pathname;
 
   // Profile Edit States
   const [showProfileModal, setShowProfileModal] = useState(false);

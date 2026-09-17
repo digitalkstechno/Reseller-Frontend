@@ -8,7 +8,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import Header from "@/components/Header";
 import axios from "axios";
 import { clearAuthToken } from "@/config";
@@ -61,7 +61,8 @@ function AuthGuard({ children, isLoginPage }: { children: React.ReactNode; isLog
 
 export default function App({ Component, pageProps }: AppProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const pathName = usePathname();
+  const router = useRouter();
+  const pathName = router.pathname;
   const isLoginPage = pathName === "/login";
 
   return (

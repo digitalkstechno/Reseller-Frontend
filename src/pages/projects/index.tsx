@@ -121,15 +121,45 @@ export function ProjectsContent() {
     {
       key: 'name',
       label: 'PROJECT NAME',
-      render: (value, row) => (
-        <div>
-          <span className="font-semibold text-gray-900 block">{value}</span>
-          {row.projectManager && (
-            <span className="text-[11px] text-blue-600 font-medium block mt-0.5">
-              Manager: {typeof row.projectManager === 'object' && row.projectManager !== null ? (row.projectManager as any).fullName : row.projectManager}
-            </span>
-          )}
-        </div>
+      render: (value, row) => {
+        let pmNames: string[] = [];
+        if (Array.isArray(row.projectManagers) && row.projectManagers.length > 0) {
+          pmNames = row.projectManagers
+            .map((pm: any) => (typeof pm === 'object' && pm !== null ? pm.fullName : pm))
+            .filter(Boolean);
+        } else if (row.projectManager) {
+          const single = typeof row.projectManager === 'object' && row.projectManager !== null
+            ? (row.projectManager as any).fullName
+            : row.projectManager;
+          if (single) pmNames = [single];
+        }
+
+        return (
+          <div>
+            <span className="font-semibold text-gray-900 block">{value}</span>
+            {pmNames.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {pmNames.map((name, i) => (
+                  <span
+                    key={i}
+                    className="inline-block text-[11px] bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded font-medium"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'commissionRate',
+      label: 'COMMISSION RATE',
+      render: (value) => (
+        <span className="font-semibold text-gray-800 text-sm">
+          {value !== undefined && value !== null && Number(value) > 0 ? `${value}%` : '0%'}
+        </span>
       ),
     },
     {
@@ -185,7 +215,22 @@ export function ProjectsContent() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (row: Project) => {
+  const handleEdit = async (row: Project) => {
+    try {
+      if (row._id) {
+        const res = await axios.get(`${baseUrl.getProjectById}/${row._id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const project = res.data?.data;
+        if (project) {
+          setEditingProject(project);
+          setIsFormOpen(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch full project details:', err);
+    }
     setEditingProject(row);
     setIsFormOpen(true);
   };

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useSelector } from "react-redux";
 import type { ComponentType } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import {
   PieChart,
   Pie,

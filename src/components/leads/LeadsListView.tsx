@@ -495,13 +495,7 @@ export default function LeadsListView({
           if (isPM) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
-          const isDigitalks = row.managedBy === 'Digitalks';
-          if (isAdmin) {
-            return isDigitalks;
-          }
-          if (isReseller) {
-            return !isDigitalks;
-          }
+          // Digitalks leads should be editable by Admin and authorized users
           return true;
         }}
         canDelete={(row) => {

@@ -1,9 +1,10 @@
 'use client';
 import { useSelector } from 'react-redux';
 
-import React from "react"
+import React from "react";
 import { useState, useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import {
   LayoutDashboard,
   Settings,
@@ -23,7 +24,6 @@ import {
   FolderKanban,
   UserCheck,
 } from 'lucide-react';
-import { useRouter } from "next/navigation";
 import axios from "axios";
 import { baseUrl, clearAuthToken, getAuthToken } from "@/config";
 import Swal from 'sweetalert2';
@@ -42,11 +42,9 @@ interface MenuItem {
 }
 
 export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['Reports']));
   const { role: userRole, permissions: rawPerms } = useSelector((state: any) => state.auth);
 
   const leadPerms = rawPerms?.lead || {};
@@ -71,14 +69,14 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   if (isProjectManager) {
     // Project Managers see Dashboard and Leads
     menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
-    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
+    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
   } else {
     menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
-    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads" });
+    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
 
     if (isAdmin) {
       menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
-      menuItems.push({ icon: UserCheck, label: "Project Managers", path: "/project-managers" });
+      menuItems.push({ icon: UserCheck, label: "Product Management", path: "/project-managers" });
       menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
       menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
       menuItems.push({ 
@@ -102,25 +100,39 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     }
   }
 
+  // Automatically expand parent menus when on a child page
+  useEffect(() => {
+    if (router.pathname.startsWith('/reports')) {
+      setExpandedItems((prev) => new Set(prev).add('Reports'));
+    }
+  }, [router.pathname]);
+
   const isActive = (path?: string) => {
     if (!path) return false;
-    if (path === '/') return pathname === '/';
+    const currentPath = router.pathname;
+    const currentAsPath = router.asPath;
 
-    if (path.includes('?')) {
-      const [basePath, query] = path.split('?');
-      if (pathname !== basePath) return false;
-      const params = new URLSearchParams(query);
-      for (const [key, value] of params.entries()) {
-        if (searchParams?.get(key) !== value) return false;
-      }
-      return true;
+    if (path === '/') {
+      return currentPath === '/' || currentAsPath === '/';
     }
 
-    if (path === '/setup' && searchParams && searchParams.toString().length > 0) {
-      return false;
+    if (path === '/leads' || path === '/leads/list') {
+      return currentPath.startsWith('/leads') || currentAsPath.startsWith('/leads');
     }
 
-    return pathname?.startsWith(path);
+    if (path === '/settlements') {
+      return currentPath === '/settlements' || currentPath.startsWith('/settlements');
+    }
+
+    if (path === '/projects') {
+      return currentPath === '/projects' || currentPath.startsWith('/projects');
+    }
+
+    if (path === '/ledger') {
+      return currentPath === '/ledger' || currentPath.startsWith('/ledger');
+    }
+
+    return currentPath === path || currentAsPath.startsWith(path);
   };
 
   const toggleExpand = (label: string) => {
@@ -145,13 +157,9 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     router.replace("/login");
   };
 
-  const handleNavigation = (path?: string) => {
-    if (path) {
-      router.push(path);
-      // Close sidebar on mobile after navigation
-      if (window.innerWidth < 768) {
-        toggleSidebar();
-      }
+  const handleLinkClick = () => {
+    if (window.innerWidth < 768) {
+      toggleSidebar();
     }
   };
 
@@ -188,7 +196,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {isOpen && (
               <button
                 onClick={toggleSidebar}
-                className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 group"
+                className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 group cursor-pointer"
                 aria-label="Close sidebar"
               >
                 <ChevronLeft className="h-5 w-5 text-white/70 group-hover:text-white transition-all" />
@@ -210,8 +218,9 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                     {hasChildren ? (
                       <div>
                         <button
+                          type="button"
                           onClick={() => toggleExpand(item.label)}
-                          className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200 group ${expanded
+                          className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200 group cursor-pointer ${expanded
                             ? 'text-white'
                             : 'text-white hover:bg-white/5 hover:text-white'
                             }`}
@@ -234,17 +243,18 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
                               return (
                                 <li key={child.label}>
-                                  <button
-                                    onClick={() => handleNavigation(child.path)}
-                                    className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 group ${isChildActive
-                                      ? 'bg-white text-[#3B82F6]'
-                                      : 'text-white hover:bg-white/5 hover:text-white'
+                                  <Link
+                                    href={child.path || '#'}
+                                    onClick={handleLinkClick}
+                                    className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 group ${isChildActive
+                                      ? 'bg-white text-[#3B82F6] font-semibold'
+                                      : 'text-white hover:bg-white/10 hover:text-white'
                                       }`}
                                   >
                                     <ChildIcon className={`h-4 w-4 flex-shrink-0 transition-transform group-hover:scale-110 ${isChildActive ? 'text-[#3B82F6]' : 'text-white'
                                       }`} />
                                     <span className="text-sm">{child.label}</span>
-                                  </button>
+                                  </Link>
                                 </li>
                               );
                             })}
@@ -252,11 +262,12 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                         )}
                       </div>
                     ) : (
-                      <button
-                        onClick={() => handleNavigation(item.path)}
-                        className={`flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200 group ${isItemActive
-                          ? 'bg-white text-[#3B82F6]'
-                          : 'text-white hover:bg-white/5 hover:text-white'
+                      <Link
+                        href={item.path || '#'}
+                        onClick={handleLinkClick}
+                        className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200 group ${isItemActive
+                          ? 'bg-white text-[#3B82F6] font-semibold'
+                          : 'text-white hover:bg-white/10 hover:text-white'
                           }`}
                       >
                         <Icon className={`h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110 ${isItemActive ? 'text-[#3B82F6]' : 'text-white'
@@ -264,15 +275,13 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                         {isOpen && (
                           <span className="text-sm font-medium">{item.label}</span>
                         )}
-                      </button>
+                      </Link>
                     )}
                   </li>
                 );
               })}
             </ul>
           </nav>
-
-
         </div>
       </aside>
 

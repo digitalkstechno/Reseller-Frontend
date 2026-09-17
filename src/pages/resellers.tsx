@@ -231,8 +231,9 @@ export function ResellersContent() {
       const item = res.data?.data;
       if (!item) throw new Error('Reseller not found');
 
-      const formatted: Reseller = {
+      const formatted: any = {
         id: item._id,
+        _id: item._id,
         image: item.profileImage || '',
         fullName: item.fullName || '',
         phone: item.phone || '',
@@ -245,6 +246,7 @@ export function ResellersContent() {
         state: item.state || '',
         pincode: item.pincode || '',
         commissionRate: String(item.commissionRate ?? '0'),
+        assignedProjects: item.assignedProjects || [],
       };
 
       setEditingReseller(formatted);
@@ -388,14 +390,15 @@ export function ResellersContent() {
         }}
         onSubmit={handleSubmit}
         initialData={editingReseller ? {
-          _id: editingReseller.id,
-          fullName: editingReseller.fullName,
-          email: editingReseller.email,
-          phone: editingReseller.phone,
-          role: editingReseller.role,
-          status: editingReseller.status,
-          profileImage: editingReseller.image,
-          commissionRate: editingReseller.commissionRate,
+          _id: (editingReseller as any)._id || (editingReseller as any).id,
+          fullName: (editingReseller as any).fullName,
+          email: (editingReseller as any).email,
+          phone: (editingReseller as any).phone,
+          role: (editingReseller as any).role,
+          status: (editingReseller as any).status,
+          profileImage: (editingReseller as any).image,
+          commissionRate: (editingReseller as any).commissionRate,
+          assignedProjects: (editingReseller as any).assignedProjects || [],
         } : null}
       />
     </>

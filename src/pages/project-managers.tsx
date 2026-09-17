@@ -106,12 +106,12 @@ export function ProjectManagersContent() {
       await axios.delete(`${baseUrl.deleteProjectManager}/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-      toast.success('Project Manager deleted successfully');
+      toast.success('Product Manager deleted successfully');
       setShowDeleteDialog(false);
       setManagerToDelete(null);
       fetchProjectManagers();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to delete Project Manager');
+      toast.error(error?.response?.data?.message || 'Failed to delete Product Manager');
     }
   };
 
@@ -122,7 +122,7 @@ export function ProjectManagersContent() {
   const columns: Column<ProjectManager>[] = [
     {
       key: 'fullName',
-      label: 'PROJECT MANAGER',
+      label: 'PRODUCT MANAGER',
       render: (_, row) => {
         const fullUrl = row.profileImage
           ? row.profileImage.startsWith('http')
@@ -207,7 +207,7 @@ export function ProjectManagersContent() {
         onDelete={handleDelete}
         actions
         addButton={{
-          label: 'Add Project Manager',
+          label: 'Add Product Manager',
           onClick: handleCreate,
         }}
       />
@@ -230,7 +230,7 @@ export function ProjectManagersContent() {
           setShowDeleteDialog(false);
           setManagerToDelete(null);
         }}
-        title="Delete Project Manager"
+        title="Delete Product Manager"
         size="md"
         footer={
           <>
@@ -254,7 +254,7 @@ export function ProjectManagersContent() {
       >
         <div className="py-4">
           <p className="text-gray-700">
-            Are you sure you want to delete Project Manager "{managerToDelete?.fullName}"?
+            Are you sure you want to delete Product Manager "{managerToDelete?.fullName}"?
           </p>
         </div>
       </DeleteDialog>
@@ -266,7 +266,7 @@ export default function ProjectManagersPage() {
   return (
     <>
       <Head>
-        <title>Project Managers | Reseller CRM</title>
+        <title>Product Management | Reseller CRM</title>
       </Head>
       <ProjectManagersContent />
     </>

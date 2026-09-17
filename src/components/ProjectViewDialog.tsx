@@ -22,10 +22,17 @@ export default function ProjectViewDialog({
   if (!project) return null;
 
   const images = project.images || [];
-  const projectManager =
-    typeof project.projectManager === 'object' && project.projectManager !== null
+  let pmNames: string[] = [];
+  if (Array.isArray(project.projectManagers) && project.projectManagers.length > 0) {
+    pmNames = project.projectManagers
+      .map((pm: any) => (typeof pm === 'object' && pm !== null ? pm.fullName : pm))
+      .filter(Boolean);
+  } else if (project.projectManager) {
+    const single = typeof project.projectManager === 'object' && project.projectManager !== null
       ? project.projectManager.fullName
       : project.projectManager;
+    if (single) pmNames = [single];
+  }
 
   const nextImage = () => {
     if (images.length > 0) {
@@ -64,13 +71,26 @@ export default function ProjectViewDialog({
               <Badge variant={project.status === 'active' ? 'success' : 'default'}>
                 {project.status === 'active' ? 'Active' : 'Inactive'}
               </Badge>
+              {project.commissionRate !== undefined && project.commissionRate !== null && Number(project.commissionRate) > 0 && (
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {project.commissionRate}% Commission
+                </span>
+              )}
             </div>
-            {project.projectManager && (
-              <p className="text-xs text-blue-700 font-semibold mt-1">
-                Project Manager: <span className="text-gray-900">{projectManager || 'N/A'}</span>
-              </p>
+            {pmNames.length > 0 && (
+              <div className="text-xs text-blue-700 font-semibold mt-1.5 flex items-center gap-1.5 flex-wrap">
+                <span>Product Manager(s):</span>
+                {pmNames.map((name, i) => (
+                  <span
+                    key={i}
+                    className="bg-white text-gray-900 border border-blue-200 px-2 py-0.5 rounded-md shadow-2xs font-medium"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
             )}
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 mt-1">
               Created on{' '}
               {project.createdAt
                 ? new Date(project.createdAt).toLocaleDateString('en-US', {

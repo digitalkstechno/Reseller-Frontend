@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/slices/authSlice';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { baseUrl, setAuthToken } from '../config';
 import axios from 'axios';
