@@ -340,7 +340,16 @@ export default function LeadsListView({
     {
       key: 'commissionAmount',
       label: 'COMMISSION',
-      render: (v) => (v && Number(v) > 0 ? <span className="font-bold text-blue-600">{formatIndianCurrency(v)}</span> : <span className="text-gray-400">-</span>)
+      render: (v, row) => {
+        if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
+          return <span className="text-gray-400 font-medium">-</span>;
+        }
+        return v && Number(v) > 0 ? (
+          <span className="font-bold text-blue-600">{formatIndianCurrency(v)}</span>
+        ) : (
+          <span className="text-gray-400 font-medium">-</span>
+        );
+      },
     },
   ];
 

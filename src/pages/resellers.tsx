@@ -19,10 +19,10 @@ interface Reseller {
   role: string;
   roleName?: string;
   address?: string;
-  city: string;
-  state: string;
-  pincode: string;
-  commissionRate: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  assignedProjects?: any[];
 }
 
 // Debounce hook
@@ -112,7 +112,7 @@ export function ResellersContent() {
         city?: string;
         state?: string;
         pincode?: string;
-        commissionRate?: number;
+        assignedProjects?: any[];
       }[]) || [];
       const pagination = res.data?.pagination || {};
 
@@ -129,7 +129,7 @@ export function ResellersContent() {
         city: item.city || '',
         state: item.state || '',
         pincode: item.pincode || '',
-        commissionRate: String(item.commissionRate ?? '0'),
+        assignedProjects: item.assignedProjects || [],
       }));
 
       setResellersData(formatted);
@@ -158,12 +158,8 @@ export function ResellersContent() {
       key: 'image',
       label: 'IMAGE',
       render: (value, row) => (
-        <div className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-sky-900 bg-gray-50">
-          {/* Initials fallback underneath */}
-          <span className="text-xs font-bold text-gray-500">
-            {row.fullName?.charAt(0)?.toUpperCase() || '?'}
-          </span>
-          {value && (
+        <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-blue-100 bg-blue-50 text-blue-700 shadow-2xs font-semibold text-xs">
+          {value ? (
             <img
               src={value?.includes('http') ? value : `${baseUrl.getImageUrl}/images/ResellerProfileImages/${value}`}
               alt={row.fullName}
@@ -172,33 +168,58 @@ export function ResellersContent() {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-          )}
+          ) : null}
+          <span>{row.fullName?.charAt(0)?.toUpperCase() || 'R'}</span>
         </div>
       ),
     },
     {
       key: 'fullName',
       label: 'FULL NAME',
-      render: (value) => <span className="font-semibold">{value}</span>,
+      render: (value, row) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900">{value}</span>
+          {row.roleName && (
+            <span className="text-[11px] text-gray-400 font-medium capitalize">{row.roleName}</span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'phone',
       label: 'PHONE',
+      render: (value) => (
+        <span className="font-medium text-gray-700">
+          {value ? `+91 ${String(value).replace(/\D/g, '').slice(-10)}` : '-'}
+        </span>
+      ),
     },
     {
       key: 'email',
       label: 'EMAIL',
       render: (value) => (
-        <a href={`mailto:${value}`} className="text-sky-950 underline">
+        <a
+          href={`mailto:${value}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-sm"
+        >
           {value}
         </a>
       ),
     },
-   
     {
-      key: 'commissionRate',
-      label: 'COMMISSION RATE',
-      render: (value) => <span className="font-medium">{value}%</span>,
+      key: 'assignedProjects',
+      label: 'ASSIGNED PROJECTS',
+      render: (_, row) => {
+        const activeCount = Array.isArray(row.assignedProjects)
+          ? row.assignedProjects.filter((p: any) => p.isSelected !== false).length
+          : 0;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            {activeCount} {activeCount === 1 ? 'Project' : 'Projects'}
+          </span>
+        );
+      },
     },
     {
       key: 'status',
@@ -245,7 +266,6 @@ export function ResellersContent() {
         city: item.city || '',
         state: item.state || '',
         pincode: item.pincode || '',
-        commissionRate: String(item.commissionRate ?? '0'),
         assignedProjects: item.assignedProjects || [],
       };
 
@@ -397,7 +417,6 @@ export function ResellersContent() {
           role: (editingReseller as any).role,
           status: (editingReseller as any).status,
           profileImage: (editingReseller as any).image,
-          commissionRate: (editingReseller as any).commissionRate,
           assignedProjects: (editingReseller as any).assignedProjects || [],
         } : null}
       />
