@@ -53,6 +53,7 @@ type TableLead = {
   paymentProof?: string;
   paymentStatus?: string;
   commissionAmount?: number;
+  commissionRate?: number;
   _raw?: any;
 };
 
@@ -129,6 +130,13 @@ function mapLead(item: any): TableLead {
     paymentProof: item.paymentProof,
     paymentStatus: item.paymentStatus,
     commissionAmount: item.commissionAmount,
+    commissionRate: item.commissionRate !== undefined && item.commissionRate !== null
+      ? Number(item.commissionRate)
+      : (item.assignedTo && typeof item.assignedTo === 'object' && item.assignedTo.commissionRate !== undefined
+        ? Number(item.assignedTo.commissionRate)
+        : (item.paymentAmount > 0 && item.commissionAmount > 0
+          ? Math.round((Number(item.commissionAmount) / Number(item.paymentAmount)) * 100)
+          : undefined)),
     _raw: item,
   };
 }
@@ -338,6 +346,29 @@ export default function LeadsListView({
       },
     },
     {
+      key: 'commissionRate',
+      label: 'Percent %',
+      render: (_, row) => {
+        if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
+          return <span className="text-gray-400 font-medium text-xs">-</span>;
+        }
+        const rate = row.commissionRate !== undefined && row.commissionRate !== null && !isNaN(Number(row.commissionRate))
+          ? Number(row.commissionRate)
+          : (row.paymentAmount && row.commissionAmount && Number(row.paymentAmount) > 0 && Number(row.commissionAmount) > 0
+            ? Math.round((Number(row.commissionAmount) / Number(row.paymentAmount)) * 100)
+            : null);
+
+        if (rate !== null && rate > 0) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+              {rate}%
+            </span>
+          );
+        }
+        return <span className="text-gray-400 font-medium text-xs">0%</span>;
+      },
+    },
+    {
       key: 'commissionAmount',
       label: 'COMMISSION',
       render: (v, row) => {
@@ -355,7 +386,7 @@ export default function LeadsListView({
 
   let columns = baseColumns.filter((col) => {
     if (isPM) {
-      if (col.key === 'managedBy' || col.key === 'paymentAmount' || col.key === 'commissionAmount') {
+      if (col.key === 'managedBy' || col.key === 'paymentAmount' || col.key === 'commissionRate' || col.key === 'commissionAmount') {
         return false;
       }
     }
