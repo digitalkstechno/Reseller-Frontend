@@ -54,12 +54,12 @@ export function ResellersContent() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   const debouncedSearch = useDebounce(search, 500);
-  const token = typeof window !== 'undefined' ? getAuthToken() : null;
 
   const getUserRole = useCallback((): string => {
-    if (!token) return '';
+    const currentToken = typeof window !== 'undefined' ? getAuthToken() : null;
+    if (!currentToken) return '';
     try {
-      const parts = token.split('.');
+      const parts = currentToken.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(window.atob(parts[1]));
         return payload?.role?.roleName?.toLowerCase() || '';
@@ -68,12 +68,13 @@ export function ResellersContent() {
       console.error('Failed to parse token payload:', e);
     }
     return '';
-  }, [token]);
+  }, []);
 
   const getUserId = useCallback((): string => {
-    if (!token) return '';
+    const currentToken = typeof window !== 'undefined' ? getAuthToken() : null;
+    if (!currentToken) return '';
     try {
-      const parts = token.split('.');
+      const parts = currentToken.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(window.atob(parts[1]));
         return payload?.id || payload?._id || '';
@@ -82,7 +83,7 @@ export function ResellersContent() {
       console.error('Failed to parse token payload:', e);
     }
     return '';
-  }, [token]);
+  }, []);
 
   const fetchResellers = useCallback(async () => {
     if (getUserRole() === 'reseller') {
@@ -91,8 +92,9 @@ export function ResellersContent() {
 
     setIsLoading(true);
     try {
+      const currentToken = typeof window !== 'undefined' ? getAuthToken() : null;
       const res = await axios.get(baseUrl.getAllResellers, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : undefined,
         params: {
           page,
           limit,
@@ -147,7 +149,7 @@ export function ResellersContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, debouncedSearch, token, getUserRole]);
+  }, [page, limit, debouncedSearch, getUserRole]);
 
   useEffect(() => {
     fetchResellers();
@@ -245,8 +247,9 @@ export function ResellersContent() {
 
   const handleEdit = async (row: Reseller) => {
     try {
+      const currentToken = typeof window !== 'undefined' ? getAuthToken() : null;
       const res = await axios.get(`${baseUrl.findResellerById}/${row.id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : undefined,
       });
 
       const item = res.data?.data;
@@ -286,8 +289,9 @@ export function ResellersContent() {
     if (!resellerToDelete) return;
 
     try {
+      const currentToken = typeof window !== 'undefined' ? getAuthToken() : null;
       await axios.delete(`${baseUrl.deleteReseller}/${resellerToDelete.id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : undefined,
       });
       fetchResellers();
       toast.success('Reseller deactivated successfully');

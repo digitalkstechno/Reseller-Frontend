@@ -44,6 +44,12 @@ const createValidationSchema = Yup.object({
   password: Yup.string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
+  commissionRate: Yup.number()
+    .transform((value, originalValue) => (originalValue === '' ? 0 : value))
+    .min(0, 'Commission rate cannot be less than 0')
+    .max(100, 'Commission rate cannot exceed 100%')
+    .optional()
+    .nullable(),
   status: Yup.string().required('Status is required'),
 });
 
@@ -62,6 +68,12 @@ const updateValidationSchema = Yup.object({
     'Password must be at least 6 characters',
     val => !val || val.length >= 6
   ),
+  commissionRate: Yup.number()
+    .transform((value, originalValue) => (originalValue === '' ? 0 : value))
+    .min(0, 'Commission rate cannot be less than 0')
+    .max(100, 'Commission rate cannot exceed 100%')
+    .optional()
+    .nullable(),
   status: Yup.string().required('Status is required'),
 });
 
@@ -75,11 +87,12 @@ export default function ResellerDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [allProjects, setAllProjects] = useState<{ _id: string; name: string }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ _id: string; name: string; commissionRate?: number }[]>([]);
   const [assignedProjects, setAssignedProjects] = useState<{
     project: string;
     projectName: string;
     isSelected: boolean;
+    commissionRate?: string;
   }[]>([]);
 
   const isUpdate = !!initialData?._id;
@@ -98,6 +111,7 @@ export default function ResellerDialog({
       email: '',
       phone: '',
       password: '',
+      commissionRate: '',
       role: '',
       status: 'active',
       profileImage: null as File | null,
@@ -115,13 +129,14 @@ export default function ResellerDialog({
     if (error) setError(null);
   }, [formik.values]);
 
-  const resetForm = (projects: { _id: string; name: string }[] = allProjects) => {
+  const resetForm = (projects: { _id: string; name: string; commissionRate?: number }[] = allProjects) => {
     formik.resetForm({
       values: {
         fullName: '',
         email: '',
         phone: '',
         password: '',
+        commissionRate: '',
         role: '',
         status: 'active',
         profileImage: null,
@@ -134,6 +149,7 @@ export default function ResellerDialog({
       project: p._id,
       projectName: p.name,
       isSelected: true,
+      commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
     }));
     setAssignedProjects(initialAssigned);
   };
@@ -148,10 +164,14 @@ export default function ResellerDialog({
         });
 
         if (match) {
+          const matchComm = match.commissionRate !== undefined && match.commissionRate !== null && match.commissionRate !== ''
+            ? String(match.commissionRate)
+            : (p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '');
           return {
             project: p._id,
             projectName: p.name,
             isSelected: match.isSelected !== false,
+            commissionRate: matchComm,
           };
         }
 
@@ -159,6 +179,7 @@ export default function ResellerDialog({
           project: p._id,
           projectName: p.name,
           isSelected: true,
+          commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
         };
       });
       setAssignedProjects(mapped);
@@ -167,6 +188,7 @@ export default function ResellerDialog({
         project: p._id,
         projectName: p.name,
         isSelected: true,
+        commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
       }));
       setAssignedProjects(initialAssigned);
     }
@@ -198,6 +220,7 @@ export default function ResellerDialog({
         email: initialData.email || '',
         phone: initialData.phone ? String(initialData.phone).replace(/\D/g, '').slice(-10) : '',
         password: '',
+        commissionRate: initialData.commissionRate !== undefined && initialData.commissionRate !== null ? String(initialData.commissionRate) : '',
         role: initialData.role || '',
         status: initialData.status || 'active',
         profileImage: null,
@@ -213,7 +236,7 @@ export default function ResellerDialog({
         syncAssignedProjects(allProjects, initialData);
       }
     } else {
-      resetForm();
+      resetForm(allProjects);
     }
   }, [initialData, isOpen]);
 
@@ -223,6 +246,18 @@ export default function ResellerDialog({
         item.project === projectId ? { ...item, isSelected: !item.isSelected } : item
       )
     );
+  };
+
+  const handleProjectCommissionChange = (projectId: string, rateStr: string) => {
+    const val = rateStr.replace(/\D/g, '');
+    const num = Number(val);
+    if (val === '' || (num >= 0 && num <= 100)) {
+      setAssignedProjects((prev) =>
+        prev.map((item) =>
+          item.project === projectId ? { ...item, commissionRate: val } : item
+        )
+      );
+    }
   };
 
   const handleToggleAllProjects = () => {
@@ -279,12 +314,26 @@ export default function ResellerDialog({
       }
       payload.append('status', values.status);
 
-      // Append Assigned Projects
-      const formattedAssigned = assignedProjects.map((p) => ({
-        project: p.project,
-        isSelected: p.isSelected,
-        commissionRate: 0,
-      }));
+      const defaultComm = values.commissionRate ? parseInt(values.commissionRate, 10) : 0;
+      payload.append('commissionRate', String(defaultComm));
+
+      // Append Assigned Projects with their individual commission rates
+      const formattedAssigned = assignedProjects.map((p) => {
+        const projObj = allProjects.find(proj => proj._id === p.project);
+        const fallbackRate = (projObj?.commissionRate !== undefined && projObj?.commissionRate !== null)
+          ? projObj.commissionRate
+          : defaultComm;
+
+        const itemComm = p.commissionRate !== '' && p.commissionRate !== undefined && p.commissionRate !== null
+          ? parseInt(p.commissionRate, 10)
+          : fallbackRate;
+
+        return {
+          project: p.project,
+          isSelected: p.isSelected,
+          commissionRate: Number.isNaN(itemComm) ? 0 : itemComm,
+        };
+      });
       payload.append('assignedProjects', JSON.stringify(formattedAssigned));
 
       if (values.password.trim()) {
@@ -429,6 +478,29 @@ export default function ResellerDialog({
                   required={!isUpdate}
                   placeholder={isUpdate ? 'Leave blank to keep current' : 'Min 6 characters'}
                 />
+
+                <div className="sm:col-span-2">
+                  <FormInput
+                    label="Default Commission Rate (%)"
+                    name="commissionRate"
+                    type="text"
+                    value={formik.values.commissionRate}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      const num = Number(val);
+                      if (val === '' || (num >= 0 && num <= 100)) {
+                        formik.setFieldValue('commissionRate', val);
+                      }
+                    }}
+                    onBlur={formik.handleBlur}
+                    error={formik.touched.commissionRate && formik.errors.commissionRate ? (formik.errors.commissionRate as string) : undefined}
+                    placeholder="e.g. 20"
+                    icon={<span className="text-gray-500 font-bold text-sm">%</span>}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Standard percentage commission the reseller earns on closed Digitalks deals
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -442,13 +514,13 @@ export default function ResellerDialog({
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                        Assigned Projects
+                        Assigned Projects & Rates
                       </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
-                        {activeProjectsCount} of {assignedProjects.length} Active
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                        {activeProjectsCount} / {assignedProjects.length} Active
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-400">Select accessible projects for this reseller</p>
+                    <p className="text-[11px] text-gray-400">Select accessible projects and specify custom commission %</p>
                   </div>
                 </div>
 
@@ -464,45 +536,70 @@ export default function ResellerDialog({
               </div>
 
               {assignedProjects.length > 0 ? (
-                <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                  {assignedProjects.map((item) => (
-                    <div
-                      key={item.project}
-                      onClick={() => handleToggleProject(item.project)}
-                      className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border transition-all cursor-pointer ${
-                        item.isSelected
-                          ? 'bg-blue-50/40 border-blue-200 shadow-2xs hover:bg-blue-50/70'
-                          : 'bg-gray-50/60 border-gray-200 opacity-60 hover:opacity-80'
-                      }`}
-                    >
-                      <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 select-none">
-                        <input
-                          type="checkbox"
-                          checked={item.isSelected}
-                          onChange={() => {}}
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer pointer-events-none"
-                        />
-                        <div className="truncate">
-                          <span className={`text-xs font-semibold block truncate ${item.isSelected ? 'text-gray-900' : 'text-gray-500'}`}>
-                            {item.projectName}
-                          </span>
-                          <span className="text-[10px] text-gray-400 block">
-                            {item.isSelected ? 'Allowed for lead creation' : 'Disabled for this reseller'}
-                          </span>
-                        </div>
-                      </label>
-
-                      <span
-                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  {assignedProjects.map((item) => {
+                    const projectBaseRate = allProjects.find(p => p._id === item.project)?.commissionRate;
+                    return (
+                      <div
+                        key={item.project}
+                        className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-lg border transition-all ${
                           item.isSelected
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            : 'bg-gray-200 text-gray-600'
+                            ? 'bg-blue-50/20 border-blue-200 hover:border-blue-300 hover:bg-blue-50/40 shadow-2xs'
+                            : 'bg-gray-50/50 border-gray-200 opacity-60'
                         }`}
                       >
-                        {item.isSelected ? 'Active' : 'Disabled'}
-                      </span>
-                    </div>
-                  ))}
+                        <label 
+                          onClick={() => handleToggleProject(item.project)}
+                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.isSelected}
+                            onChange={() => {}}
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer pointer-events-none"
+                          />
+                          <div className="truncate">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className={`text-xs font-bold truncate ${item.isSelected ? 'text-gray-900' : 'text-gray-500'}`}>
+                                {item.projectName}
+                              </span>
+                              {projectBaseRate !== undefined && projectBaseRate !== null && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-500 font-medium border border-gray-200/60">
+                                  Default: {projectBaseRate}%
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-gray-400 block mt-0.5">
+                              {item.isSelected ? 'Enabled for lead creation' : 'Disabled for this reseller'}
+                            </span>
+                          </div>
+                        </label>
+
+                        <div className="flex items-center gap-2">
+                          {item.isSelected ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-medium text-gray-500">Rate:</span>
+                              <div className="relative flex items-center">
+                                <input
+                                  type="text"
+                                  placeholder={String(projectBaseRate ?? formik.values.commissionRate ?? '0')}
+                                  value={item.commissionRate ?? ''}
+                                  onChange={(e) => handleProjectCommissionChange(item.project, e.target.value)}
+                                  className="w-14 h-7 text-xs font-bold text-center pr-4 text-blue-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
+                                  title="Project commission % (editable)"
+                                />
+                                <span className="absolute right-1.5 text-[10px] font-bold text-gray-400 pointer-events-none">%</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
+                              Disabled
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-6 text-center text-gray-400 text-xs italic bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
@@ -637,4 +734,3 @@ export default function ResellerDialog({
     </Dialog>
   );
 }
-
