@@ -21,6 +21,7 @@ interface Reseller {
   status: string;
   profileImage?: string;
   assignedProjects?: any[];
+  commissionRate?: any;
 }
 
 interface ResellerDialogProps {

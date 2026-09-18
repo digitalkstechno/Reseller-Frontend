@@ -41,6 +41,7 @@ export default function LeadAddDialog({
   const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
   const [sources, setSources] = useState<{ _id: string; name: string }[]>([]);
   const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>([]);
+  const [resellers, setResellers] = useState<{ _id: string; fullName: string; email: string }[]>([]);
   const [requiredFields, setRequiredFields] = useState<string[]>([]);
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
   const token = getAuthToken;
@@ -50,16 +51,18 @@ export default function LeadAddDialog({
     const fetchDropdowns = async () => {
       try {
         const headers = { Authorization: `Bearer ${token()}` };
-        const [statusRes, sourceRes, projectRes, reqRes] = await Promise.all([
+        const [statusRes, sourceRes, projectRes, reqRes, resellerRes] = await Promise.all([
           axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
           axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
           axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
           axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers }).catch(() => ({ data: [] })),
+          isAdmin ? axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         ]);
 
         setStatuses(statusRes.data?.data || statusRes.data || []);
         setSources(sourceRes.data?.data || sourceRes.data || []);
         setProjects(projectRes.data?.data || projectRes.data?.projects || []);
+        setResellers(resellerRes.data?.data || resellerRes.data || []);
 
         let reqs = reqRes.data?.data?.requiredLeads || [];
         reqs = reqs.filter((r: string) => r !== 'customerEmail' && r !== 'leadSource');
@@ -138,7 +141,7 @@ export default function LeadAddDialog({
       customerContact: '',
       companyName: '',
       address: '',
-      managedBy: 'Manage by Me',
+      managedBy: isAdmin ? 'Digitalks' : 'Manage by Me',
       project: '',
       paymentAmount: '',
       leadStatus: '',
@@ -165,7 +168,7 @@ export default function LeadAddDialog({
           customerContact: values.customerContact.trim(),
           companyName: values.companyName?.trim() || '',
           address: values.address?.trim() || '',
-          managedBy: values.managedBy || 'Manage by Me',
+          managedBy: values.managedBy || (isAdmin ? 'Digitalks' : 'Manage by Me'),
           project: values.project || undefined,
           projectAmount: finalAmount,
           paymentAmount: finalAmount,
@@ -226,7 +229,7 @@ export default function LeadAddDialog({
             (initialData as any).customerContact || (initialData as any).contact || '',
           companyName: initialData.companyName || '',
           address: (initialData as any).address || '',
-          managedBy: (initialData as any).managedBy || 'Manage by Me',
+          managedBy: (initialData as any).managedBy || (isAdmin ? 'Digitalks' : 'Manage by Me'),
           project: projId,
           paymentAmount:
             (initialData as any).paymentAmount != null
@@ -258,7 +261,7 @@ export default function LeadAddDialog({
             customerContact: '',
             companyName: '',
             address: '',
-            managedBy: 'Manage by Me',
+            managedBy: isAdmin ? 'Digitalks' : 'Manage by Me',
             project: '',
             paymentAmount: '',
             leadStatus: defaultStatusId,
@@ -481,6 +484,22 @@ export default function LeadAddDialog({
               error={getFieldError('leadSource')}
               required={false}
             />
+
+            {/* Assign Reseller (For Admin) */}
+            {isAdmin && (
+              <FormSelect
+                label="Assign Reseller"
+                name="assignedTo"
+                value={formik.values.assignedTo}
+                onChange={(val) => formik.setFieldValue('assignedTo', val)}
+                options={resellers.map((r) => ({
+                  value: r._id,
+                  label: `${r.fullName} (${r.email})`,
+                }))}
+                placeholder="Select Reseller"
+                error={getFieldError('assignedTo')}
+              />
+            )}
           </div>
 
           {/* Description / Remarks Field */}

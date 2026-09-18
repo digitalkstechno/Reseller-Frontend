@@ -397,7 +397,7 @@ export function useLeadsData(
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 3. Re-fetch when viewMode / activeTab / filters change
-  const prevKey = useRef('');
+  const prevKey = useRef(JSON.stringify({ viewMode, activeTab, filters }));
   useEffect(() => {
     const key = JSON.stringify({ viewMode, activeTab, filters });
     if (key === prevKey.current) return;

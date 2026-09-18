@@ -48,7 +48,8 @@ interface Reseller {
   city: string;
   state: string;
   pincode: string;
-  commissionRate: string;
+  profileImage?: string;
+  commissionRate?: any;
 }
 
 export default function Header({ toggleSidebar }: HeaderProps) {

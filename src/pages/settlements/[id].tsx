@@ -5,19 +5,26 @@ import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
 import DataTable, { Column } from '@/components/DataTable';
-import Badge from '@/components/Badge';
 import {
   ArrowLeft,
   CheckCircle2,
   Clock,
   IndianRupee,
   Search,
-  Download,
   CreditCard,
   Building2,
   X,
   FileSpreadsheet,
-  Banknote
+  Banknote,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Scale,
+  User,
+  Mail,
+  Phone,
+  Percent,
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { exportToExcel } from '@/utills/exportHelper';
 
@@ -39,15 +46,20 @@ interface LeadSettlementItem {
   customerEmail: string;
   companyName: string;
   projectName: string;
+  baseProjectAmount?: number;
   status: string;
   paymentAmount: number;
   paidAmount?: number;
   paymentStatus?: string;
   commissionAmount: number;
   commissionRate: number;
+  settlementType?: 'payable' | 'receivable';
+  settlementAmount?: number;
+  resellerProfit?: number;
   paymentDate: string;
   paymentMode: string;
   isSettled: boolean;
+  managedBy?: string;
   settlementDate?: string | null;
   settlementRef?: string;
   settlementMethod?: string;
@@ -55,7 +67,6 @@ interface LeadSettlementItem {
 
 const formatLeadDate = (dateVal: any): string => {
   if (!dateVal) return '-';
-  // If paymentDate is an object like { startDate: '...' }
   const raw = typeof dateVal === 'object' ? dateVal.startDate || dateVal.date || null : dateVal;
   if (!raw) return '-';
   const d = new Date(raw);
@@ -82,6 +93,12 @@ export default function SettlementDetailsPage() {
   const [leads, setLeads] = useState<LeadSettlementItem[]>([]);
   const [unsettledCount, setUnsettledCount] = useState(0);
   const [settledCount, setSettledCount] = useState(0);
+  const [totalPayableCommission, setTotalPayableCommission] = useState(0);
+  const [totalReceivableProjectCost, setTotalReceivableProjectCost] = useState(0);
+  const [netBalance, setNetBalance] = useState(0);
+  const [payableCount, setPayableCount] = useState(0);
+  const [receivableCount, setReceivableCount] = useState(0);
+  const [managedByFilter, setManagedByFilter] = useState<'all' | 'Digitalks' | 'Manage by Me'>('all');
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters & Pagination
@@ -137,6 +154,11 @@ export default function SettlementDetailsPage() {
         setTotalPages(responseData.totalPages || 1);
         setUnsettledCount(responseData.unsettledCount || 0);
         setSettledCount(responseData.settledCount || 0);
+        setTotalPayableCommission(responseData.totalPayableCommission || 0);
+        setTotalReceivableProjectCost(responseData.totalReceivableProjectCost || 0);
+        setNetBalance(responseData.netBalance || 0);
+        setPayableCount(responseData.payableCount || 0);
+        setReceivableCount(responseData.receivableCount || 0);
         if (responseData.reseller) {
           setReseller(responseData.reseller);
         }
@@ -243,9 +265,11 @@ export default function SettlementDetailsPage() {
       { header: 'Email', key: 'customerEmail', width: 25 },
       { header: 'Company', key: 'companyName', width: 20 },
       { header: 'Project', key: 'projectName', width: 20 },
+      { header: 'Managed By', key: 'managedBy', width: 20 },
       { header: 'Lead Amount (₹)', key: 'paymentAmount', width: 18 },
       { header: 'Commission Rate (%)', key: 'commissionRate', width: 18 },
-      { header: 'Commission Earned (₹)', key: 'commissionAmount', width: 22 },
+      { header: 'Reseller Earnings (₹)', key: 'resellerProfit', width: 22 },
+      { header: 'Settlement Amount (₹)', key: 'settlementAmount', width: 22 },
       { header: 'Payment Date', key: 'formattedPaymentDate', width: 15 },
       { header: 'Status', key: 'settlementStatus', width: 18 },
       { header: 'Settlement Date', key: 'formattedSettlementDate', width: 15 },
@@ -280,13 +304,15 @@ export default function SettlementDetailsPage() {
       render: (_, row) => {
         const isChecked = selectedLeads.some((item) => item.id === row.id);
         return (
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={(e) => handleToggleSelectLead(row, e.target.checked)}
-            className="h-4 w-4 rounded-sm border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={(e) => handleToggleSelectLead(row, e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         );
       }
     });
@@ -297,27 +323,55 @@ export default function SettlementDetailsPage() {
       key: 'customerName',
       label: 'CUSTOMER & COMPANY',
       render: (value, row) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-900">{value}</span>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-            {row.companyName && row.companyName !== '-' && (
-              <span className="font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-sm">
-                {row.companyName}
-              </span>
-            )}
-            <span>{row.customerContact}</span>
+        <div className="flex items-start gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+            {value ? value.charAt(0).toUpperCase() : 'C'}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-gray-900 text-sm leading-tight hover:text-blue-600 transition-colors">
+              {value}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 mt-1">
+              {row.companyName && row.companyName !== '-' && (
+                <span className="font-medium text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-[11px]">
+                  {row.companyName}
+                </span>
+              )}
+              {row.customerContact && row.customerContact !== '-' && (
+                <span className="text-gray-500 flex items-center gap-0.5 text-[11px]">
+                  <Phone className="w-3 h-3 text-gray-400" />
+                  {row.customerContact}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )
     },
     {
       key: 'projectName',
-      label: 'PROJECT / PRODUCT',
-      render: (value) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-          {value || '-'}
-        </span>
-      )
+      label: 'PROJECT & TYPE',
+      render: (value, row) => {
+        const isDigitalks = row.managedBy === 'Digitalks';
+        return (
+          <div className="flex flex-col gap-1.5 items-start">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200/70">
+              <Layers className="w-3.5 h-3.5 text-gray-500" />
+              <span>{value || 'Project'}</span>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                isDigitalks
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isDigitalks ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+              {isDigitalks ? 'Digitalks (Commission)' : 'Manage by Me (Direct)'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'paymentAmount',
@@ -327,37 +381,79 @@ export default function SettlementDetailsPage() {
         const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? total : 0));
         return (
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900">
+            <span className="font-bold text-gray-900 text-sm">
               ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             {paid > 0 && paid < total ? (
-              <span className="text-[11px] font-medium text-amber-600">
-                Paid: ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Partial)
+              <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
+                Paid: ₹{paid.toLocaleString('en-IN')} (Partial)
               </span>
-            ) : null}
+            ) : (
+              <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5 mt-0.5">
+                <CheckCircle2 className="w-3 h-3" /> Paid Full
+              </span>
+            )}
           </div>
         );
       }
     },
     {
-      key: 'commissionAmount',
-      label: 'COMMISSION PAYABLE',
-      render: (value, row) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-emerald-700 text-sm">
-            ₹{(Number(value) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-[11px] text-gray-500">
-            Rate: {row.commissionRate || reseller?.commissionRate || 0}%
-          </span>
-        </div>
-      )
+      key: 'settlementAmount',
+      label: 'SETTLEMENT DIRECTION & AMOUNT',
+      render: (_, row) => {
+        const isDigitalks = row.managedBy === 'Digitalks';
+        const amt = Number(row.settlementAmount || (isDigitalks ? row.commissionAmount : row.baseProjectAmount) || 0);
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <span className={`font-black text-sm tracking-tight ${isDigitalks ? 'text-emerald-700' : 'text-rose-700'}`}>
+              {isDigitalks ? '−' : '+'} ₹{amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border ${
+                isDigitalks
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}
+            >
+              {isDigitalks ? (
+                <>
+                  <ArrowDownLeft className="w-3 h-3 text-emerald-600" />
+                  Company owes Reseller
+                </>
+              ) : (
+                <>
+                  <ArrowUpRight className="w-3 h-3 text-rose-600" />
+                  Reseller owes Company
+                </>
+              )}
+            </span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'resellerProfit',
+      label: 'RESELLER EARNING / PROFIT',
+      render: (value, row) => {
+        const isDigitalks = row.managedBy === 'Digitalks';
+        const amt = Number(value || (isDigitalks ? row.commissionAmount : 0));
+        return (
+          <div className="flex flex-col">
+            <span className="font-bold text-blue-700 text-sm">
+              ₹{amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] font-medium text-gray-500 mt-0.5">
+              {isDigitalks ? `Commission (${row.commissionRate || reseller?.commissionRate || 0}%)` : 'Selling Margin'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'paymentDate',
       label: 'PAYMENT DATE',
       render: (value) => (
-        <span className="text-xs text-gray-700 font-medium">
+        <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
           {formatLeadDate(value)}
         </span>
       )
@@ -385,27 +481,33 @@ export default function SettlementDetailsPage() {
     );
   }
 
+  const filteredLeads = leads.filter((l) => {
+    if (managedByFilter === 'all') return true;
+    if (managedByFilter === 'Digitalks') return l.managedBy === 'Digitalks';
+    return l.managedBy !== 'Digitalks';
+  });
+
   return (
-    <div className="flex flex-col h-full gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="flex flex-col h-full gap-4 animate-in fade-in duration-300">
       <Head>
         <title>{reseller?.fullName || 'Reseller'} | Lead Settlements</title>
       </Head>
 
-      {/* Standard App Header Toolbar */}
-      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border border-gray-200 px-4 py-3 rounded-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Top Header Card */}
+      <div className="bg-white border border-gray-200/80 shadow-xs rounded-lg px-4 py-2.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/settlements')}
-              className="p-2 bg-white hover:bg-gray-100 text-gray-700 rounded-md transition-colors border border-gray-200 cursor-pointer shadow-xs"
+              className="p-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md transition-all border border-gray-200 cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
               title="Back to Resellers"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
             <div className="flex items-center gap-2.5">
-              <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-sky-900 bg-gray-50">
-                <span className="text-xs font-bold text-gray-500">
+              <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-blue-500/30 bg-blue-50 text-blue-700 shadow-2xs">
+                <span className="text-xs font-bold">
                   {reseller?.fullName?.charAt(0)?.toUpperCase() || '?'}
                 </span>
                 {reseller?.profileImage && (
@@ -423,96 +525,205 @@ export default function SettlementDetailsPage() {
                   />
                 )}
               </div>
+
               <div>
-                <h1 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  {reseller?.fullName || 'Reseller Details'}
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#3B82F6] border border-blue-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-sm font-bold text-gray-900 tracking-tight">
+                    {reseller?.fullName || 'Reseller Settlement'}
+                  </h1>
+                  <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                    <Percent className="w-2.5 h-2.5" />
                     {reseller?.commissionRate || 0}% Comm.
                   </span>
-                </h1>
-                <p className="text-xs text-gray-500 flex items-center gap-2">
-                  <span>{reseller?.email}</span>
-                  {reseller?.phone && <span>• {reseller.phone}</span>}
-                </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-gray-500 mt-0.5">
+                  {reseller?.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-gray-400" />
+                      {reseller.email}
+                    </span>
+                  )}
+                  {reseller?.phone && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      {reseller.phone}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {reseller?.upiId && (
-              <div className="px-2.5 py-1 rounded-md bg-purple-50 text-purple-800 border border-purple-200 text-xs font-medium flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5 text-purple-600" />
-                UPI: <span className="font-semibold">{reseller.upiId}</span>
+              <div className="px-2.5 py-1 rounded-md bg-purple-50/80 text-purple-900 border border-purple-200 text-[11px] font-medium flex items-center gap-1">
+                <CreditCard className="w-3 h-3 text-purple-600 flex-shrink-0" />
+                <span>UPI: <strong className="font-semibold text-purple-950">{reseller.upiId}</strong></span>
               </div>
             )}
             {reseller?.bankDetails && (
-              <div className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-xs font-medium flex items-center gap-1 max-w-xs truncate">
-                <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+              <div className="px-2.5 py-1 rounded-md bg-blue-50/80 text-blue-900 border border-blue-200 text-[11px] font-medium flex items-center gap-1 max-w-xs truncate" title={reseller.bankDetails}>
+                <Building2 className="w-3 h-3 text-blue-600 flex-shrink-0" />
                 <span className="truncate">{reseller.bankDetails}</span>
               </div>
             )}
             <button
               onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-md text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-md text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:border-gray-300"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-              Export
+              <span>Export</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Multi-Select Action Bar (Light CRM Theme Styled) */}
+      {/* Multi-Select Action Banner */}
       {selectedLeads.length > 0 && (
-        <div className="bg-blue-50/80 border border-blue-200 text-gray-900 px-4 py-3 rounded-md shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in slide-in-from-top-2 duration-200">
-          <div>
-            <span className="text-xs font-medium text-blue-700">Selected for Settlement:</span>
-            <div className="text-sm font-bold text-gray-900 flex items-center gap-2 mt-0.5">
-              <span>{selectedLeads.length} Lead(s) Selected</span>
-              <span className="text-emerald-700 font-bold">
-                (Payout: ₹{selectedTotalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })})
-              </span>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-gray-900 px-4 py-2.5 rounded-lg shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-blue-600 text-white shadow-2xs">
+              <Banknote className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                <span>{selectedLeads.length} Lead(s) Selected</span>
+                <span className="text-emerald-700 font-extrabold">
+                  (Payout: ₹{selectedTotalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })})
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedLeads([])}
-              className="px-3 py-1.5 rounded-md bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+              className="px-2.5 py-1 rounded-md bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
             >
-              Clear Selection
+              Clear
             </button>
             <button
               onClick={() => setIsSettleModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-[#3B82F6] hover:bg-blue-600 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-xs transition-all cursor-pointer hover:shadow-md"
             >
-              <Banknote className="w-4 h-4" />
-              Process Settlement Payout
+              <Banknote className="w-3.5 h-3.5" />
+              Process Payout
             </button>
           </div>
         </div>
       )}
 
+      {/* Financial Settlement KPI Cards (Compact & Sleek) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {/* Payable to Reseller (Digitalks Leads) */}
+        <div className="bg-white border border-gray-200 border-l-4 border-l-emerald-500 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <div className="p-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                <ArrowDownLeft className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-bold text-gray-700">Payable to Reseller</span>
+            </div>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              {payableCount} Digitalks
+            </span>
+          </div>
+          <div className="my-1">
+            <p className="text-lg sm:text-xl font-bold text-emerald-700 tracking-tight">
+              ₹{totalPayableCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <span className="text-[10px] text-gray-500">
+            Commission company owes to reseller
+          </span>
+        </div>
+
+        {/* Receivable from Reseller (Manage by Me Leads) */}
+        <div className="bg-white border border-gray-200 border-l-4 border-l-rose-500 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <div className="p-1 rounded bg-rose-50 text-rose-700 border border-rose-200/60">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-bold text-gray-700">Receivable from Reseller</span>
+            </div>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+              {receivableCount} Manage by Me
+            </span>
+          </div>
+          <div className="my-1">
+            <p className="text-lg sm:text-xl font-bold text-rose-700 tracking-tight">
+              ₹{totalReceivableProjectCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <span className="text-[10px] text-gray-500">
+            Project cost reseller owes to company
+          </span>
+        </div>
+
+        {/* Net Settlement Balance */}
+        <div className={`bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs ${
+          netBalance > 0
+            ? 'border-l-4 border-l-emerald-500'
+            : netBalance < 0
+            ? 'border-l-4 border-l-rose-500'
+            : 'border-l-4 border-l-blue-500'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <div className="p-1 rounded bg-blue-50 text-blue-700 border border-blue-200/60">
+                <Scale className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-bold text-gray-700">Net Settlement</span>
+            </div>
+            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${
+              netBalance > 0
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : netBalance < 0
+                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            }`}>
+              {netBalance > 0 ? '🟢 Company Pays' : netBalance < 0 ? '🔴 Reseller Pays' : '⚖️ Balanced'}
+            </span>
+          </div>
+          <div className="my-1">
+            <p className={`text-lg sm:text-xl font-bold tracking-tight ${
+              netBalance > 0 ? 'text-emerald-700' : netBalance < 0 ? 'text-rose-700' : 'text-gray-900'
+            }`}>
+              ₹{Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <span className="text-[10px] text-gray-500">
+            {netBalance > 0
+              ? 'Net payout due to reseller'
+              : netBalance < 0
+              ? 'Net amount due from reseller'
+              : 'All accounts balanced (₹0.00)'}
+          </span>
+        </div>
+      </div>
+
       {/* Tabs & DataTable Container */}
-      <div className="bg-white rounded-md border border-gray-200 flex-1 min-h-0 flex flex-col overflow-hidden">
-        {/* Standard Tab Navigation */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 pt-2.5 flex-shrink-0 bg-gray-50/50">
-          <div className="flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-gray-200/80 shadow-xs flex-1 min-h-0 flex flex-col overflow-hidden">
+        {/* Navigation & Segmented Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 px-5 pt-3 pb-2.5 bg-gray-50/50 gap-3">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-6">
             <button
               onClick={() => handleTabChange('unsettled')}
-              className={`pb-2.5 text-xs font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer ${
+              className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
                 activeTab === 'unsettled'
-                  ? 'text-[#3B82F6] border-b-2 border-[#3B82F6]'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-4 h-4" />
               <span>Awaiting Settlement</span>
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                   activeTab === 'unsettled'
-                    ? 'bg-blue-100 text-[#3B82F6]'
-                    : 'bg-gray-200 text-gray-700'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-200/80 text-gray-600'
                 }`}
               >
                 {unsettledCount}
@@ -521,55 +732,91 @@ export default function SettlementDetailsPage() {
 
             <button
               onClick={() => handleTabChange('settled')}
-              className={`pb-2.5 text-xs font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer ${
+              className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
                 activeTab === 'settled'
                   ? 'text-emerald-700 border-b-2 border-emerald-600'
                   : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Settled Leads (Paid)</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Settled Leads</span>
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                   activeTab === 'settled'
                     ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-gray-200 text-gray-700'
+                    : 'bg-gray-200/80 text-gray-600'
                 }`}
               >
                 {settledCount}
               </span>
             </button>
           </div>
+
+          {/* Managed By Filter Segmented Control */}
+          <div className="inline-flex items-center p-1 bg-gray-200/60 rounded-lg gap-1">
+            <button
+              onClick={() => setManagedByFilter('all')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                managedByFilter === 'all'
+                  ? 'bg-white text-gray-900 shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              All Leads
+            </button>
+            <button
+              onClick={() => setManagedByFilter('Digitalks')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                managedByFilter === 'Digitalks'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-gray-600 hover:text-emerald-700'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Digitalks (Payable)
+            </button>
+            <button
+              onClick={() => setManagedByFilter('Manage by Me')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                managedByFilter === 'Manage by Me'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-gray-600 hover:text-blue-700'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              Manage by Me (Receivable)
+            </button>
+          </div>
         </div>
 
         {/* DataTable */}
         <DataTable
-          data={leads}
+          data={filteredLeads}
           columns={columns}
           loading={isLoading}
           searchable={false}
           headerActions={
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {activeTab === 'unsettled' && leads.length > 0 && (
-                <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer mr-2 bg-gray-50 px-2.5 py-1.5 rounded-md border border-gray-200">
+              {activeTab === 'unsettled' && filteredLeads.length > 0 && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 transition-colors shadow-2xs">
                   <input
                     type="checkbox"
                     checked={isAllCurrentPageSelected}
                     onChange={handleToggleSelectAll}
-                    className="h-4 w-4 rounded-sm border-gray-300 text-[#3B82F6] focus:ring-[#3B82F6] cursor-pointer"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                   <span>Select All on Page</span>
                 </label>
               )}
 
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
                 <input
                   type="search"
                   placeholder="Search lead name, company, contact..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-md border border-gray-200 bg-white pl-10 pr-4 py-2 text-xs text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 hover:border-gray-300"
+                  className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-4 py-2 text-xs text-gray-800 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 hover:border-gray-300 shadow-2xs"
                 />
               </div>
             </div>
@@ -588,51 +835,51 @@ export default function SettlementDetailsPage() {
         />
       </div>
 
-      {/* Settle Selected Leads Modal (Consistent Dialog Theme) */}
+      {/* Settle Selected Leads Modal */}
       {isSettleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl border border-gray-200 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-50 text-[#3B82F6] border border-blue-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-gray-200 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
                   <Banknote className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Settle Selected Leads</h2>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Recording commission payout for {selectedLeads.length} leads
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsSettleModalOpen(false)}
-                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Total Payout Summary */}
-            <div className="mt-4 p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+            <div className="mt-4 p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-emerald-800">Total Payout Amount:</span>
-                <p className="text-lg font-black text-emerald-900">
+                <p className="text-xl font-black text-emerald-900 mt-0.5">
                   ₹{selectedTotalCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="text-right text-xs text-emerald-700 font-medium">
-                <span>{selectedLeads.length} Leads</span>
+              <div className="text-right text-xs text-emerald-700 font-semibold bg-emerald-100/70 px-2.5 py-1 rounded-full border border-emerald-200">
+                {selectedLeads.length} Leads Selected
               </div>
             </div>
 
-            <form noValidate onSubmit={handleConfirmSettlement} className="mt-4 space-y-3.5">
+            <form noValidate onSubmit={handleConfirmSettlement} className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Method</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Payment Method</label>
                   <select
                     value={settleMethod}
                     onChange={(e) => setSettleMethod(e.target.value)}
-                    className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all cursor-pointer"
+                    className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer shadow-2xs"
                   >
                     <option value="Bank Transfer">Bank Transfer (IMPS/NEFT)</option>
                     <option value="UPI">UPI</option>
@@ -642,18 +889,18 @@ export default function SettlementDetailsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Date</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Payment Date</label>
                   <input
                     type="date"
                     value={settleDate}
                     onChange={(e) => setSettleDate(e.target.value)}
-                    className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all cursor-pointer"
+                    className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
                   Transaction / UTR Reference ID
                 </label>
                 <input
@@ -661,33 +908,33 @@ export default function SettlementDetailsPage() {
                   placeholder="e.g. UTR89327498234"
                   value={settleRefId}
                   onChange={(e) => setSettleRefId(e.target.value)}
-                  className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all"
+                  className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Note (Optional)</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Note (Optional)</label>
                 <textarea
                   rows={2}
                   placeholder="e.g. Commission cleared for closed won deals"
                   value={settleNote}
                   onChange={(e) => setSettleNote(e.target.value)}
-                  className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]/20 transition-all"
+                  className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all shadow-2xs"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-3 flex justify-end gap-2.5 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsSettleModalOpen(false)}
-                  className="rounded-md border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingSettle}
-                  className="rounded-md bg-[#3B82F6] px-5 py-2 text-xs font-semibold text-white hover:bg-blue-600 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmittingSettle ? 'Settling...' : 'Confirm & Mark Settled'}
                 </button>

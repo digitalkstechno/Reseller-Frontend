@@ -315,7 +315,7 @@ export default function SettlementsPage() {
     },
     {
       key: 'totalCommission',
-      label: 'TOTAL EARNED',
+      label: 'PAYABLE COMMISSION (DIGITALKS)',
       render: (value) => (
         <div className="flex items-center gap-1">
           <IndianRupee className="h-3.5 w-3.5 text-gray-600" />
@@ -337,7 +337,7 @@ export default function SettlementsPage() {
     },
     {
       key: 'pendingCommission',
-      label: 'PENDING',
+      label: 'PENDING PAYOUT',
       render: (value) => {
         const val = Number(value) || 0;
         return (
@@ -410,7 +410,7 @@ export default function SettlementsPage() {
 
         <div className="bg-white rounded-md border border-gray-200 p-5 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Total Commissions</p>
+            <p className="text-xs font-medium text-gray-500 mb-1">Payable Commissions (Digitalks)</p>
             <h3 className="text-xl font-bold text-gray-900 flex items-center">
               <IndianRupee className="h-4 w-4 mr-1 text-gray-600" />
               {(summary.totalCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -436,7 +436,7 @@ export default function SettlementsPage() {
 
         <div className="bg-white rounded-md border border-orange-200 p-5 shadow-xs bg-orange-50/40 flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-orange-800 mb-1">Total Pending</p>
+            <p className="text-xs font-medium text-orange-800 mb-1">Pending Payouts</p>
             <h3 className="text-xl font-bold text-orange-700 flex items-center">
               <IndianRupee className="h-4 w-4 mr-1" />
               {(summary.pendingCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
