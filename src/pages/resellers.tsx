@@ -185,7 +185,7 @@ export function ResellersContent() {
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900">{value}</span>
           {row.roleName && (
-            <span className="text-[11px] text-gray-400 font-medium capitalize">{row.roleName}</span>
+            <span className="text-[11px] text-gray-400 font-medium capitalize">{row.roleName?.replace(/_/g, ' ')}</span>
           )}
         </div>
       ),

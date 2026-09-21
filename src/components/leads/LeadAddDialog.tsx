@@ -45,10 +45,10 @@ export default function LeadAddDialog({
   initialProjects,
   initialResellers,
 }: Props) {
-  const { role } = useSelector((state: any) => state.auth);
-  const userRole = role?.toLowerCase() || '';
-  const isAdmin = userRole === 'admin';
-  const isWonLead = mode === 'edit' && !!(
+  const { role, user: authUser } = useSelector((state: any) => state.auth || {});
+  const userRole = (role || authUser?.role?.roleName || authUser?.role || '').toLowerCase();
+  const isAdmin = /admin/i.test(userRole) || Boolean(authUser?.email && /admin/i.test(authUser.email));
+  const isWonLead = mode === 'edit' && !isAdmin && !!(
     initialData?.isWon ||
     (typeof initialData?.leadStatus === 'string' ? initialData.leadStatus : initialData?.leadStatus?.name)?.toLowerCase() === 'won' ||
     (initialData as any)?.status?.toLowerCase() === 'won'
@@ -263,6 +263,7 @@ export default function LeadAddDialog({
     },
   });
 
+  // Only initialize/reset form when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -273,12 +274,10 @@ export default function LeadAddDialog({
         resolvedProjectId = (initialData as any).project?._id || '';
       } else if (typeof (initialData as any).project === 'string') {
         const rawProj = (initialData as any).project.trim();
-        // Check if rawProj is an ID in projects list
         const matchById = projects.find(p => p._id === rawProj);
         if (matchById) {
           resolvedProjectId = matchById._id;
         } else {
-          // It might be project Name from TableLead
           const matchByName = projects.find(p => p.name?.toLowerCase() === rawProj.toLowerCase());
           resolvedProjectId = matchByName ? matchByName._id : rawProj;
         }
@@ -350,7 +349,7 @@ export default function LeadAddDialog({
       });
     }
     formik.setStatus(null);
-  }, [isOpen, mode, initialData, statuses, projects]);
+  }, [isOpen, mode, initialData]);
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);

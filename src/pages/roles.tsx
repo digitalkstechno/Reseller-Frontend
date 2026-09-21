@@ -177,7 +177,7 @@ export default function RolesPage() {
   const handleOpenEdit = (role: RoleData) => {
     setModalMode('edit');
     setSelectedRole(role);
-    setFormRoleName(role.roleName);
+    setFormRoleName(role.roleName?.replace(/_/g, ' '));
     
     if (role.roleName?.toLowerCase() === 'admin') {
       // Admin has all permissions fully enabled
@@ -431,7 +431,7 @@ export default function RolesPage() {
                             {role.roleName?.slice(0, 2)}
                           </div>
                           <span className="font-bold text-gray-900 capitalize flex items-center gap-1.5">
-                            {role.roleName}
+                            {role.roleName?.replace(/_/g, ' ')}
                             {isSys && (
                               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                                 System

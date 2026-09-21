@@ -80,10 +80,10 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
     }
   }, [authUser, authRole]);
 
-  const userRole = (authRole || staffInfo?.role?.roleName || '').toLowerCase();
-  const isAdmin = userRole === 'admin';
+  const userRole = (authRole || staffInfo?.role?.roleName || authUser?.role?.roleName || authUser?.role || '').toLowerCase();
+  const isAdmin = /admin/i.test(userRole) || Boolean(authUser?.email && /admin/i.test(authUser.email));
   const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
-  const isReseller = userRole === 'reseller';
+  const isReseller = userRole === 'reseller' || (!isAdmin && !isPM);
   const isDigitalks = (lead as any)?.managedBy === 'Digitalks';
   const isWon = ((typeof lead?.leadStatus === 'string' ? lead.leadStatus : lead?.leadStatus?.name) || '').toLowerCase() === 'won' || (lead as any)?.status?.name?.toLowerCase() === 'won' || lead?.isWon;
 
@@ -235,8 +235,8 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
             >
               Close
             </button>
-            {onEdit && lead && !isWon && !isPM && (
-              isAdmin || (isReseller && !isDigitalks)
+            {onEdit && lead && (
+              (isAdmin && isDigitalks) || (!isAdmin && !isWon && !isPM && isReseller && !isDigitalks)
             ) && (
               <button
                 onClick={() => onEdit(lead)}
@@ -246,8 +246,8 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                 Edit Full Lead
               </button>
             )}
-            {!isWon && !isPM && (
-              isAdmin || (isReseller && !isDigitalks)
+            {(
+              isAdmin || (!isWon && !isPM && isReseller && !isDigitalks)
             ) && (
               <button
                 onClick={handleSave}
@@ -374,11 +374,11 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Status</span>
-                {isWon ? (
+                {isWon && !isAdmin ? (
                   <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     Won Lead (Status Locked)
                   </span>
-                ) : isReseller && isDigitalks ? (
+                ) : !isAdmin && isReseller && isDigitalks ? (
                   <span className="text-xs text-amber-600 font-medium">
                     Managed by Digitalks — only Admin can change status
                   </span>
@@ -386,7 +386,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               </div>
               <div className="flex flex-wrap gap-2">
                 {statuses.map((s) => {
-                  const isStatusDisabled = isWon || (isReseller && isDigitalks);
+                  const isStatusDisabled = !isAdmin && (isWon || (isReseller && isDigitalks));
                   return (
                     <button
                       key={s._id}

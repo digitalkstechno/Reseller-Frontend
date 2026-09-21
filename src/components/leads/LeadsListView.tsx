@@ -495,11 +495,15 @@ export default function LeadsListView({
         onEdit={!isPM && (isAdmin || Boolean(permissions?.update)) ? handleEdit : undefined}
         onDelete={!isPM && (isAdmin || Boolean(permissions?.delete)) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
         canEdit={(row) => {
+          const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
+          if (isAdmin) {
+            return isDigitalks;
+          }
           if (isPM) return false;
-          if (!isAdmin && !permissions?.update) return false;
+          if (!permissions?.update) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
-          return true;
+          return !isDigitalks;
         }}
         canDelete={(row) => {
           if (isAdmin) {
