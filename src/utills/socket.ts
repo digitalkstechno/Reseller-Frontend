@@ -4,7 +4,8 @@ let socket: Socket | null = null;
 
 export const getSocket = (userId: string): Socket => {
   if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5005", {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    socket = io(socketUrl, {
       transports: ["websocket"],
     });
   }

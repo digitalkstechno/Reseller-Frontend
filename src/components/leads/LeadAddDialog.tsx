@@ -55,7 +55,7 @@ export default function LeadAddDialog({
           axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
           axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
           axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
-          axios.get(baseUrl.settingsRequiredFields || 'http://localhost:5005/v1/api/settings/required-fields', { headers }).catch(() => ({ data: [] })),
+          axios.get(baseUrl.settingsRequiredFields, { headers }).catch(() => ({ data: [] })),
           isAdmin ? axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         ]);
 

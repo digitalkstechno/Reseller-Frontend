@@ -295,7 +295,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
     ).replace(/\/api\/?$/, '');
 
 
-    socket = io(socketUrl || 'http://localhost:5000', {
+    socket = io(socketUrl || (typeof window !== 'undefined' ? window.location.origin : ''), {
       transports: ['websocket', 'polling'],
     });
 
