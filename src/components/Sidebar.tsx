@@ -48,14 +48,12 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const { role: userRole, permissions: rawPerms } = useSelector((state: any) => state.auth);
 
   const leadPerms = rawPerms?.lead || {};
-  const taskPerms = rawPerms?.task || {};
   const staffPerms = rawPerms?.staff || {};
   const rolePerms = rawPerms?.role || {};
   const leadStatusPerms = rawPerms?.leadStatus || {};
   const leadSourcePerms = rawPerms?.leadSource || {};
 
   const canViewLead = !!(leadPerms.readOwn || leadPerms.readAll);
-  const canViewTask = !!(taskPerms.readOwn || taskPerms.readAll);
   const canViewStaff = !!staffPerms.readAll;
   const canViewRole = !!rolePerms.readAll;
   const canViewLeadStatus = !!leadStatusPerms.readAll;

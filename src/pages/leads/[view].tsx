@@ -221,9 +221,10 @@ export default function LeadsPage() {
   };
 
   const handleEdit = (lead: ApiLead) => {
-    if (leadPermissions?.update === false) return;
-    setEditingLead(lead);
-    setShowAddDialog(true);
+    if (isAdmin || userRole === 'admin' || leadPermissions?.update !== false) {
+      setEditingLead(lead);
+      setShowAddDialog(true);
+    }
   };
 
   const handleView = (lead: ApiLead) => {
@@ -273,16 +274,17 @@ export default function LeadsPage() {
   };
 
   // ── Permission flags ──────────────────────────────────────────────────────
+  const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole)));
   const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
-  const canCreate = isPM ? false : leadPermissions?.create !== false;
-  const canRead = isPM ? true : (leadPermissions?.readAll || leadPermissions?.readOwn) !== false;
-  const canReadAll = isPM ? true : leadPermissions?.readAll !== false;
-  const canReadOwn = leadPermissions?.readOwn !== false;
-  const canUpdate = isPM ? false : leadPermissions?.update !== false;
-  const canDelete = isPM ? false : leadPermissions?.delete !== false;
-  const canAssign = isPM ? false : leadPermissions?.assign !== false;
-  const canTransfer = isPM ? false : leadPermissions?.transfer !== false;
-  const canConvert = isPM ? false : leadPermissions?.convert !== false;
+  const canCreate = isPM ? false : (isAdmin || leadPermissions?.create !== false);
+  const canRead = isPM ? true : (isAdmin || (leadPermissions?.readAll || leadPermissions?.readOwn) !== false);
+  const canReadAll = isPM ? true : (isAdmin || leadPermissions?.readAll !== false);
+  const canReadOwn = isAdmin || leadPermissions?.readOwn !== false;
+  const canUpdate = isPM ? false : (isAdmin || leadPermissions?.update !== false);
+  const canDelete = isPM ? false : (isAdmin || leadPermissions?.delete !== false);
+  const canAssign = isPM ? false : (isAdmin || leadPermissions?.assign !== false);
+  const canTransfer = isPM ? false : (isAdmin || leadPermissions?.transfer !== false);
+  const canConvert = isPM ? false : (isAdmin || leadPermissions?.convert !== false);
 
   const handleApplyFilters = () => {
     setStatusFilter(tempStatusFilter);

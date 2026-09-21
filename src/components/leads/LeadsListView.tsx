@@ -184,9 +184,9 @@ export default function LeadsListView({
       }
     } catch { }
     return '';
-  })()).toString().toLowerCase();
+  })()).toString().toLowerCase().trim();
 
-  const isAdmin = userRole === 'admin' || authUser?.email === 'admin@gmail.com';
+  const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole))) || Boolean(authUser?.email && /admin/i.test(authUser.email));
   const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
   const isReseller = userRole === 'reseller';
 
@@ -248,7 +248,7 @@ export default function LeadsListView({
         } else if (lower === 'lost') {
           badgeStyle = 'bg-red-50 text-red-700 border-red-200 font-semibold';
         } else if (lower.includes('follow') || lower.includes('in progress') || lower.includes('contacted')) {
-          badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200';
+          badgeStyle = 'bg-purple-50 text-purple-700 border-purple-200';
         }
 
         return (
@@ -288,64 +288,24 @@ export default function LeadsListView({
     },
     {
       key: 'paymentAmount',
-      label: 'TOTAL AMOUNT',
-      render: (_, row) => {
-        const total = Number(row.paymentAmount) || 0;
-        const paid = Array.isArray(row.payments) && row.payments.length > 0
-          ? row.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
-          : (Number(row.paidAmount) || (row.paymentStatus === 'Paid' ? total : 0));
-        const pending = Math.max(0, total - paid);
-
-        if (!total && !paid) {
+      label: 'AMOUNT',
+      render: (v, row) => {
+        if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
           return <span className="text-gray-400 font-medium">-</span>;
         }
-
-        const formatDec = (n: number) =>
-          '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        return (
-          <div className="flex flex-col min-w-[160px] max-w-[190px] py-0.5 text-xs select-text">
-            <div className="flex items-center justify-between text-gray-500 gap-3 py-0.5">
-              <div className="flex items-center gap-1.5 flex-shrink-0 text-gray-600">
-                <span className="text-[13px] leading-none">📄</span>
-                <span className="font-medium text-[11px] whitespace-nowrap">Total Amount</span>
-              </div>
-              <span className="font-bold text-gray-900 text-xs tabular-nums text-right">
-                {formatDec(total)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-gray-500 gap-3 py-0.5">
-              <div className="flex items-center gap-1.5 flex-shrink-0 text-gray-600">
-                <span className="text-gray-500 font-semibold text-xs leading-none">₹</span>
-                <span className="font-medium text-[11px] whitespace-nowrap">Paid Amount</span>
-              </div>
-              <span className="font-bold text-gray-900 text-xs tabular-nums text-right">
-                {formatDec(paid)}
-              </span>
-            </div>
-
-            <div className="border-t border-dashed border-gray-300 my-1 w-full" />
-
-            <div className={`flex items-center justify-between gap-3 py-0.5 font-bold ${pending > 0 ? 'text-emerald-600' : 'text-emerald-600'}`}>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="font-bold text-xs leading-none">₹</span>
-                <span className="text-[11px] whitespace-nowrap">{pending > 0 ? 'Pending' : 'Total'}</span>
-              </div>
-              <span className="text-xs tabular-nums text-right font-bold">
-                {formatDec(pending > 0 ? pending : total)}
-              </span>
-            </div>
-          </div>
+        return v && Number(v) > 0 ? (
+          <span className="font-semibold text-gray-900">{formatIndianCurrency(v)}</span>
+        ) : (
+          <span className="text-gray-400 font-medium">-</span>
         );
       },
     },
     {
       key: 'commissionRate',
-      label: 'Percent %',
+      label: 'COMMISSION RATE',
       render: (_, row) => {
         if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
-          return <span className="text-gray-400 font-medium text-xs">-</span>;
+          return <span className="text-gray-400 font-medium">-</span>;
         }
         const rate = row.commissionRate !== undefined && row.commissionRate !== null && !isNaN(Number(row.commissionRate))
           ? Number(row.commissionRate)
@@ -397,79 +357,87 @@ export default function LeadsListView({
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleView = async (row: TableLead) => {
-    try {
-      const res = await axios.get(`${baseUrl.findLeadById}/${row.id}`, {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const d = res.data.data;
-      onView?.(d);
-    } catch {
-      // fallback
-      if (row._raw) {
-        onView?.(row._raw);
-      } else {
-        const apiLead: ApiLead = {
-          _id: row.id,
-          fullName: row.name,
-          contact: row.phone,
-          email: row.email,
-        };
-        onView?.(apiLead);
-      }
+  const handleView = (row: TableLead) => {
+    // 1. Immediately open view modal with instant local data (0ms delay)
+    if (row._raw) {
+      onView?.(row._raw);
+    } else {
+      const apiLead = {
+        _id: row.id,
+        fullName: row.name,
+        contact: row.phone,
+        email: row.email,
+        companyName: row.companyName,
+        address: row.address,
+        product: row.companyName,
+        managedBy: row.managedBy,
+        project: row.project as any,
+        leadStatus: row.status as any,
+        assignedTo: row.staff as any,
+        priority: (row.priority?.toLowerCase() || 'medium') as any,
+        paymentAmount: row.paymentAmount,
+        paidAmount: row.paidAmount,
+        payments: row.payments,
+        commissionAmount: row.commissionAmount,
+        commissionRate: row.commissionRate,
+      } as any as ApiLead;
+      onView?.(apiLead);
     }
+
+    // 2. Refresh full lead data in background to ensure all attachments/fields are up to date
+    axios.get(`${baseUrl.findLeadById}/${row.id}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    }).then(res => {
+      if (res.data?.data) {
+        onView?.(res.data.data);
+      }
+    }).catch(() => {
+      // background fetch error, continue with local data
+    });
   };
 
-  const handleEdit = async (row: TableLead) => {
-    try {
-      const res = await axios.get(`${baseUrl.findLeadById}/${row.id}`, {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const d = res.data.data;
-      const apiLead: ApiLead = {
-        ...d,
-        _id: d._id,
-        fullName: d.fullName,
-        companyName: d.companyName,
-        address: d.address,
-        contact: d.contact,
-        email: d.email,
-
-        leadStatus: d.leadStatus,
-        assignedTo: d.assignedTo,
-        priority: d.priority,
-        lastFollowUp: d.lastFollowUp,
-        nextFollowupDate: d.nextFollowupDate,
-        nextFollowupTime: d.nextFollowupTime,
-        note: d.note,
-        isActive: d.isActive,
-      };
+  const handleEdit = (row: TableLead) => {
+    // 1. Immediately open edit modal (0ms delay)
+    if (row._raw) {
+      onEdit?.(row._raw);
+    } else {
+      const apiLead = {
+        _id: row.id,
+        fullName: row.name,
+        contact: row.phone,
+        email: row.email,
+        companyName: row.companyName,
+        address: row.address,
+        product: row.companyName,
+        managedBy: row.managedBy,
+        project: row.project as any,
+        leadStatus: row.status as any,
+        assignedTo: row.staff as any,
+        priority: (row.priority?.toLowerCase() || 'medium') as any,
+        lastFollowUp: row.lastFollowUp,
+        nextFollowupDate: row.nextFollowupDate,
+        nextFollowupTime: row.nextFollowupTime,
+        note: row.note,
+        isActive: row.isActive,
+        paymentAmount: row.paymentAmount,
+        paidAmount: row.paidAmount,
+        payments: row.payments,
+        commissionAmount: row.commissionAmount,
+        commissionRate: row.commissionRate,
+      } as any as ApiLead;
       onEdit?.(apiLead);
-    } catch {
-      console.error('Failed to fetch lead for edit, using local raw data fallback');
-      if (row._raw) {
-        const d = row._raw;
-        const apiLead: ApiLead = {
-          ...d,
-          _id: d._id,
-          fullName: d.fullName,
-          companyName: d.companyName,
-          address: d.address,
-          contact: d.contact,
-          email: d.email,
-
-          leadStatus: d.leadStatus,
-          assignedTo: d.assignedTo,
-          priority: d.priority,
-          lastFollowUp: d.lastFollowUp,
-          nextFollowupDate: d.nextFollowupDate,
-          nextFollowupTime: d.nextFollowupTime,
-          note: d.note,
-          isActive: d.isActive,
-        };
-        onEdit?.(apiLead);
-      }
     }
+
+    // 2. Sync full lead details from backend in background
+    axios.get(`${baseUrl.findLeadById}/${row.id}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    }).then(res => {
+      if (res.data?.data) {
+        onEdit?.(res.data.data);
+      }
+    }).catch(() => {
+      // already opened with local data
+    });
   };
 
   const handleDelete = async () => {
@@ -527,29 +495,28 @@ export default function LeadsListView({
         onSearch={onSearchChange}
         actions={!isPM}
         onView={handleView}
-        onEdit={!isPM && (isAdmin || permissions?.update) ? handleEdit : undefined}
-        onDelete={!isPM && (isAdmin || permissions?.delete) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
+        onEdit={!isPM && (isAdmin || permissions?.update !== false) ? handleEdit : undefined}
+        onDelete={!isPM && (isAdmin || permissions?.delete !== false) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
         canEdit={(row) => {
           if (isPM) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
-          // Digitalks leads should be editable by Admin and authorized users
           return true;
         }}
         canDelete={(row) => {
           if (isPM) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
-          const isDigitalks = row.managedBy === 'Digitalks';
           if (isAdmin) {
-            return isDigitalks;
+            return true;
           }
+          const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
           if (isReseller) {
             return !isDigitalks;
           }
           return true;
         }}
-        extraActions={!isPM && (isAdmin || permissions?.update) ? [
+        extraActions={!isPM && (isAdmin || permissions?.update !== false) ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',
             icon: (row) => row.paymentStatus === 'Paid'
@@ -557,7 +524,7 @@ export default function LeadsListView({
               : <span className="text-xs font-bold group-hover:text-white">₹</span>,
             show: (row) => {
               const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
-              const isDigitalks = row.managedBy === 'Digitalks';
+              const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
               const hasAmount = (Number(row.paymentAmount) > 0) || (Number(row.paidAmount) > 0);
               if (isAdmin) {
                 return isDigitalks && (hasAmount || isWon);

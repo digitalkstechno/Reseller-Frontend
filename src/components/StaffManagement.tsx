@@ -72,8 +72,6 @@ export default function SalesExecutiveForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ _id: string; roleName: string }[]>([]);
-  const [teams, setTeams] = useState<{ _id: string; name: string }[]>([]);
-  const [organizations, setOrganizations] = useState<{ _id: string; name: string }[]>([]);
   const [token, setToken] = useState<string | null>(null);
 
   const statusOptions = ['Active', 'Inactive', 'Pending'];
@@ -96,8 +94,6 @@ export default function SalesExecutiveForm({
       password: '',
       status: 'Active',
       role: '',
-      teams: [] as string[],
-      organizations: [] as string[],
       id: undefined as string | number | undefined,
       image: undefined as string | undefined,
     },
@@ -130,8 +126,6 @@ export default function SalesExecutiveForm({
         password: '',
         status: initialData.status || 'Active',
         role: initialData.role || '',
-        teams: initialData.teams || [],
-        organizations: initialData.organizations || [],
       });
 
       if (initialData.image) {
@@ -152,14 +146,6 @@ export default function SalesExecutiveForm({
     axios.get(baseUrl.getAllRoles, { headers })
       .then((res) => setRoles(res.data?.data || res.data?.roles || []))
       .catch(() => setRoles([]));
-
-    axios.get(baseUrl.teams, { headers })
-      .then((res) => setTeams(res.data?.data ?? []))
-      .catch(() => setTeams([]));
-
-    axios.get(baseUrl.organizations, { headers })
-      .then((res) => setOrganizations(res.data?.data ?? []))
-      .catch(() => setOrganizations([]));
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

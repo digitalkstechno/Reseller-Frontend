@@ -531,10 +531,15 @@ export default function SettlementDetailsPage() {
                   <h1 className="text-sm font-bold text-gray-900 tracking-tight">
                     {reseller?.fullName || 'Reseller Settlement'}
                   </h1>
-                  <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                    <Percent className="w-2.5 h-2.5" />
-                    {reseller?.commissionRate || 0}% Comm.
-                  </span>
+                  {reseller?.commissionRate !== undefined && Number(reseller.commissionRate) > 0 ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      {reseller.commissionRate}% Commission
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                      Project-Based Commission
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-gray-500 mt-0.5">
                   {reseller?.email && (

@@ -128,6 +128,8 @@ export default function LeadAddDialog({
         setDynamicSchema(Yup.object().shape(schemaShape));
       } catch (err) {
         console.error('Failed to fetch dropdowns:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
