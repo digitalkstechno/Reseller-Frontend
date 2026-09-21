@@ -78,8 +78,11 @@ import { store } from '@/store';
 import { setCredentials, logout } from '@/store/slices/authSlice';
 
 export function setAuthToken(token: string, days: number = 7) {
-  // Sync to Redux store
   try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token);
+      sessionStorage.setItem('auth_token', token);
+    }
     store.dispatch(setCredentials({
       token,
       user: store.getState().auth.user,
@@ -93,15 +96,26 @@ export function setAuthToken(token: string, days: number = 7) {
 
 export function getAuthToken(): string | null {
   try {
-    return store.getState().auth.token;
+    const storeToken = store.getState().auth.token;
+    if (storeToken) return storeToken;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    }
+    return null;
   } catch (e) {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    }
     return null;
   }
 }
 
 export function clearAuthToken() {
-  // Clear Redux store
   try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
+    }
     store.dispatch(logout());
   } catch (e) {
     console.error("Failed to clear auth token from Redux store:", e);

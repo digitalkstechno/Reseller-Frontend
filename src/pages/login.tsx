@@ -46,19 +46,23 @@ export default function LoginPage() {
         });
 
         if (result.status === 'Success') {
-          setAuthToken(result.token);
-          
+          const userPayload = {
+            _id: result.data._id,
+            fullName: result.data.fullName,
+            email: result.data.email,
+            phone: result.data.phone,
+          };
+          const roleName = result.data.role?.roleName || (typeof result.data.role === 'string' ? result.data.role : 'reseller');
+          const permissions = result.data.role?.permissions?.[0] || null;
+
           dispatch(setCredentials({
             token: result.token,
-            user: {
-              _id: result.data._id,
-              fullName: result.data.fullName,
-              email: result.data.email,
-              phone: result.data.phone,
-            },
-            role: result.data.role?.roleName || null,
-            permissions: result.data.role?.permissions?.[0] || null,
+            user: userPayload,
+            role: roleName,
+            permissions: permissions,
           }));
+
+          setAuthToken(result.token);
 
           toast.success(result.message || 'Login successful');
           router.push('/');

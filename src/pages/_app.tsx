@@ -21,6 +21,15 @@ const poppins = Poppins({
 });
 
 if (typeof window !== "undefined") {
+  axios.interceptors.request.use((config) => {
+    const { getAuthToken } = require("@/config");
+    const token = getAuthToken();
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
   axios.interceptors.response.use(
     (response) => response,
     (error) => {
