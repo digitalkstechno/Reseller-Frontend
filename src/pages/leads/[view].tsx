@@ -732,6 +732,9 @@ export default function LeadsPage() {
         onClose={handleDialogClose}
         mode={editingLead ? 'edit' : 'add'}
         initialData={editingLead}
+        initialStatuses={statuses}
+        initialProjects={projectsList}
+        initialResellers={staffMembers}
         onLeadCreated={() => {
           handleRefresh();
           handleDialogClose();

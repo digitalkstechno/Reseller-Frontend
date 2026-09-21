@@ -18,7 +18,20 @@ interface Props {
   initialData?: ApiLead | null;
   onLeadCreated?: (lead: any) => void;
   onLeadUpdated?: (lead: any) => void;
+  initialStatuses?: { _id: string; name: string }[];
+  initialSources?: { _id: string; name: string }[];
+  initialProjects?: { _id: string; name: string; projectAmount?: number }[];
+  initialResellers?: { _id: string; fullName: string; email: string }[];
 }
+
+// Module-level cache for dropdowns to prevent redundant network delays
+let cachedDropdowns: {
+  statuses?: { _id: string; name: string }[];
+  sources?: { _id: string; name: string }[];
+  projects?: { _id: string; name: string; projectAmount?: number }[];
+  resellers?: { _id: string; fullName: string; email: string }[];
+  requiredFields?: string[];
+} = {};
 
 export default function LeadAddDialog({
   isOpen,
@@ -27,6 +40,10 @@ export default function LeadAddDialog({
   initialData,
   onLeadCreated,
   onLeadUpdated,
+  initialStatuses,
+  initialSources,
+  initialProjects,
+  initialResellers,
 }: Props) {
   const { role } = useSelector((state: any) => state.auth);
   const userRole = role?.toLowerCase() || '';
@@ -38,11 +55,11 @@ export default function LeadAddDialog({
   );
 
   const [loading, setLoading] = useState(false);
-  const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
-  const [sources, setSources] = useState<{ _id: string; name: string }[]>([]);
-  const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>([]);
-  const [resellers, setResellers] = useState<{ _id: string; fullName: string; email: string }[]>([]);
-  const [requiredFields, setRequiredFields] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>(() => initialStatuses || cachedDropdowns.statuses || []);
+  const [sources, setSources] = useState<{ _id: string; name: string }[]>(() => initialSources || cachedDropdowns.sources || []);
+  const [projects, setProjects] = useState<{ _id: string; name: string; projectAmount?: number }[]>(() => initialProjects || cachedDropdowns.projects || []);
+  const [resellers, setResellers] = useState<{ _id: string; fullName: string; email: string }[]>(() => initialResellers || cachedDropdowns.resellers || []);
+  const [requiredFields, setRequiredFields] = useState<string[]>(() => cachedDropdowns.requiredFields || ['customerContact', 'project']);
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
   const token = getAuthToken;
 
@@ -52,23 +69,37 @@ export default function LeadAddDialog({
       try {
         const headers = { Authorization: `Bearer ${token()}` };
         const [statusRes, sourceRes, projectRes, reqRes, resellerRes] = await Promise.all([
-          axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
-          axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
-          axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
-          axios.get(baseUrl.settingsRequiredFields, { headers }).catch(() => ({ data: [] })),
-          isAdmin ? axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          cachedDropdowns.statuses?.length ? Promise.resolve({ data: cachedDropdowns.statuses }) : axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
+          cachedDropdowns.sources?.length ? Promise.resolve({ data: cachedDropdowns.sources }) : axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
+          cachedDropdowns.projects?.length ? Promise.resolve({ data: cachedDropdowns.projects }) : axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
+          cachedDropdowns.requiredFields?.length ? Promise.resolve({ data: { data: { requiredLeads: cachedDropdowns.requiredFields } } }) : axios.get(baseUrl.settingsRequiredFields, { headers }).catch(() => ({ data: [] })),
+          isAdmin ? (cachedDropdowns.resellers?.length ? Promise.resolve({ data: cachedDropdowns.resellers }) : axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] }))) : Promise.resolve({ data: [] }),
         ]);
 
-        setStatuses(statusRes.data?.data || statusRes.data || []);
-        setSources(sourceRes.data?.data || sourceRes.data || []);
-        setProjects(projectRes.data?.data || projectRes.data?.projects || []);
-        setResellers(resellerRes.data?.data || resellerRes.data || []);
+        const fetchedStatuses = statusRes.data?.data || statusRes.data || [];
+        const fetchedSources = sourceRes.data?.data || sourceRes.data || [];
+        const fetchedProjects = projectRes.data?.data || projectRes.data?.projects || [];
+        const fetchedResellers = resellerRes.data?.data || resellerRes.data || [];
+
+        setStatuses(fetchedStatuses);
+        setSources(fetchedSources);
+        setProjects(fetchedProjects);
+        setResellers(fetchedResellers);
 
         let reqs = reqRes.data?.data?.requiredLeads || [];
         reqs = reqs.filter((r: string) => r !== 'customerEmail' && r !== 'leadSource');
         if (!reqs.includes('customerContact')) reqs.push('customerContact');
         if (!reqs.includes('project')) reqs.push('project');
         setRequiredFields(reqs);
+
+        // Update module cache
+        cachedDropdowns = {
+          statuses: fetchedStatuses,
+          sources: fetchedSources,
+          projects: fetchedProjects,
+          resellers: fetchedResellers,
+          requiredFields: reqs,
+        };
 
         const schemaShape: any = {
           customerName: Yup.string()
@@ -214,72 +245,67 @@ export default function LeadAddDialog({
 
   useEffect(() => {
     if (!isOpen) return;
-    setLoading(true);
-    try {
-      const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+    const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
 
-      if (mode === 'edit' && initialData) {
-        const projId =
-          typeof (initialData as any).project === 'object'
-            ? (initialData as any).project?._id || ''
-            : (initialData as any).project || '';
+    if (mode === 'edit' && initialData) {
+      const projId =
+        typeof (initialData as any).project === 'object'
+          ? (initialData as any).project?._id || ''
+          : (initialData as any).project || '';
 
-        formik.setValues({
-          customerName: (initialData as any).customerName || initialData.fullName || '',
-          customerEmail: (initialData as any).customerEmail || initialData.email || '',
-          customerContact:
-            (initialData as any).customerContact || (initialData as any).contact || '',
-          companyName: initialData.companyName || '',
-          address: (initialData as any).address || '',
-          managedBy: (initialData as any).managedBy || (isAdmin ? 'Digitalks' : 'Manage by Me'),
-          project: projId,
-          paymentAmount:
-            (initialData as any).paymentAmount != null
-              ? String((initialData as any).paymentAmount)
-              : (initialData as any).projectAmount != null
-              ? String((initialData as any).projectAmount)
-              : '',
-          leadStatus:
-            typeof initialData.leadStatus === 'object'
-              ? initialData.leadStatus?._id || ''
-              : initialData.leadStatus || defaultStatusId,
-          leadSource:
-            typeof (initialData as any).leadSource === 'object'
-              ? (initialData as any).leadSource?.name || (initialData as any).leadSource?._id || ''
-              : (initialData as any).leadSource || (initialData as any).source || '',
-          assignedTo:
-            typeof initialData.assignedTo === 'object'
-              ? initialData.assignedTo?._id || ''
-              : initialData.assignedTo || '',
-          description: (initialData as any).description || (initialData as any).remarks || '',
-          remarks: (initialData as any).remarks || (initialData as any).description || '',
-          isActive: initialData.isActive ?? true,
-        });
-      } else {
-        formik.resetForm({
-          values: {
-            customerName: '',
-            customerEmail: '',
-            customerContact: '',
-            companyName: '',
-            address: '',
-            managedBy: isAdmin ? 'Digitalks' : 'Manage by Me',
-            project: '',
-            paymentAmount: '',
-            leadStatus: defaultStatusId,
-            leadSource: '',
-            assignedTo: '',
-            description: '',
-            remarks: '',
-            isActive: true,
-          },
-        });
-      }
-      formik.setStatus(null);
-    } finally {
-      setLoading(false);
+      formik.setValues({
+        customerName: (initialData as any).customerName || initialData.fullName || '',
+        customerEmail: (initialData as any).customerEmail || initialData.email || '',
+        customerContact:
+          (initialData as any).customerContact || (initialData as any).contact || '',
+        companyName: initialData.companyName || '',
+        address: (initialData as any).address || '',
+        managedBy: (initialData as any).managedBy || (isAdmin ? 'Digitalks' : 'Manage by Me'),
+        project: projId,
+        paymentAmount:
+          (initialData as any).paymentAmount != null
+            ? String((initialData as any).paymentAmount)
+            : (initialData as any).projectAmount != null
+            ? String((initialData as any).projectAmount)
+            : '',
+        leadStatus:
+          typeof initialData.leadStatus === 'object'
+            ? initialData.leadStatus?._id || ''
+            : initialData.leadStatus || defaultStatusId,
+        leadSource:
+          typeof (initialData as any).leadSource === 'object'
+            ? (initialData as any).leadSource?.name || (initialData as any).leadSource?._id || ''
+            : (initialData as any).leadSource || (initialData as any).source || '',
+        assignedTo:
+          typeof initialData.assignedTo === 'object'
+            ? initialData.assignedTo?._id || ''
+            : initialData.assignedTo || '',
+        description: (initialData as any).description || (initialData as any).remarks || '',
+        remarks: (initialData as any).remarks || (initialData as any).description || '',
+        isActive: initialData.isActive ?? true,
+      });
+    } else if (mode === 'add') {
+      formik.resetForm({
+        values: {
+          customerName: '',
+          customerEmail: '',
+          customerContact: '',
+          companyName: '',
+          address: '',
+          managedBy: isAdmin ? 'Digitalks' : 'Manage by Me',
+          project: '',
+          paymentAmount: '',
+          leadStatus: defaultStatusId,
+          leadSource: '',
+          assignedTo: '',
+          description: '',
+          remarks: '',
+          isActive: true,
+        },
+      });
     }
-  }, [isOpen, mode, initialData, statuses]);
+    formik.setStatus(null);
+  }, [isOpen, mode, initialData]);
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
