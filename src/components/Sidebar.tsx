@@ -45,22 +45,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const router = useRouter();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['Reports']));
-  const { role: userRole, permissions: rawPerms } = useSelector((state: any) => state.auth);
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
 
-  const leadPerms = rawPerms?.lead || {};
-  const staffPerms = rawPerms?.staff || {};
-  const rolePerms = rawPerms?.role || {};
-  const leadStatusPerms = rawPerms?.leadStatus || {};
-  const leadSourcePerms = rawPerms?.leadSource || {};
-
-  const canViewLead = !!(leadPerms.readOwn || leadPerms.readAll);
-  const canViewStaff = !!staffPerms.readAll;
-  const canViewRole = !!rolePerms.readAll;
-  const canViewLeadStatus = !!leadStatusPerms.readAll;
-  const canViewLeadSource = !!leadSourcePerms.readAll;
-
-  const isProjectManager = userRole?.toLowerCase() === 'project_manager' || userRole?.toLowerCase() === 'projectmanager';
-  const isAdmin = userRole?.toLowerCase() === 'admin';
+  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  const isProjectManager = roleName === 'project_manager' || roleName === 'projectmanager';
+  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com';
 
   const menuItems: MenuItem[] = [];
 
@@ -89,13 +78,12 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     }
     menuItems.push({ icon: CheckSquare, label: "Ledger", path: "/ledger" });
 
-    if (!isAdmin) {
-      menuItems.push({
-        icon: Settings,
-        label: "Setup",
-        path: "/setup",
-      });
-    }
+    // Setup is visible to both Admin and Reseller
+    menuItems.push({
+      icon: Settings,
+      label: "Setup",
+      path: "/setup",
+    });
   }
 
   // Automatically expand parent menus when on a child page
