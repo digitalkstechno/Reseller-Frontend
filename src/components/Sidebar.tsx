@@ -45,7 +45,7 @@ interface MenuItem {
 export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const router = useRouter();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['Reports']));
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
 
   const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
@@ -106,15 +106,6 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       ]
     });
   }
-
-
-
-  // Automatically expand parent menus when on a child page
-  useEffect(() => {
-    if (router.pathname.startsWith('/reports')) {
-      setExpandedItems((prev) => new Set(prev).add('Reports'));
-    }
-  }, [router.pathname]);
 
   const isActive = (path?: string) => {
     if (!path) return false;
@@ -241,7 +232,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
                         {/* Submenu */}
                         {isOpen && expanded && (
-                          <ul className="mt-1 ml-4 space-y-1 border-l border-white/10 pl-3">
+                          <ul className="mt-1 ml-4 space-y-1 border-l border-white/10 pl-3 animate-in fade-in slide-in-from-top-2 duration-200">
                             {item.children?.map((child) => {
                               const ChildIcon = child.icon;
                               const isChildActive = isActive(child.path);
@@ -252,7 +243,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                                     href={child.path || '#'}
                                     onClick={handleLinkClick}
                                     className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 group ${isChildActive
-                                      ? 'bg-white text-[#3B82F6] font-semibold'
+                                      ? 'bg-white text-[#3B82F6] font-semibold shadow-xs'
                                       : 'text-white hover:bg-white/10 hover:text-white'
                                       }`}
                                   >
