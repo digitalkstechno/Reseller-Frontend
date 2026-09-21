@@ -130,11 +130,23 @@ export default function LeadsPage() {
     convert?: boolean;
   } | null>(null);
 
+  const { role: authRole, user: authUser, permissions: rawPerms } = useSelector((state: any) => state.auth || {});
+
+  const userRole = (authRole || authUser?.role?.roleName || authUser?.role || (() => {
+    if (typeof window === 'undefined') return '';
+    const t = getAuthToken();
+    if (!t) return '';
+    try {
+      const parts = t.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(window.atob(parts[1]));
+        return payload?.role?.roleName || payload?.role || '';
+      }
+    } catch {}
+    return '';
+  })()).toString().toLowerCase().trim();
+
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
-
-  const { role, permissions: rawPerms } = useSelector((state: any) => state.auth);
-
-  const userRole = role?.toLowerCase() || '';
 
   // ── Fetch permissions & projects ─────────────────────────────────────────
   useEffect(() => {
@@ -274,17 +286,19 @@ export default function LeadsPage() {
   };
 
   // ── Permission flags ──────────────────────────────────────────────────────
-  const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole)));
-  const isPM = userRole === 'project_manager' || userRole === 'projectmanager';
-  const canCreate = isAdmin || Boolean(rawPerms?.lead?.create);
-  const canRead = isAdmin || Boolean(rawPerms?.lead?.readAll || rawPerms?.lead?.readOwn) || isPM;
-  const canReadAll = isAdmin || Boolean(rawPerms?.lead?.readAll) || isPM;
-  const canReadOwn = isAdmin || Boolean(rawPerms?.lead?.readOwn);
-  const canUpdate = isAdmin || Boolean(rawPerms?.lead?.update);
-  const canDelete = isAdmin || Boolean(rawPerms?.lead?.delete);
-  const canAssign = isAdmin || Boolean(rawPerms?.lead?.update);
-  const canTransfer = isAdmin || Boolean(rawPerms?.lead?.update);
-  const canConvert = isAdmin || Boolean(rawPerms?.lead?.update);
+  const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole))) || Boolean(authUser?.email && /admin/i.test(authUser.email));
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
+  const isReseller = userRole === 'reseller' || (!isAdmin && !isPM);
+
+  const canCreate = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.create) : isReseller);
+  const canRead = isAdmin || isPM || isReseller || Boolean(rawPerms?.lead?.readAll || rawPerms?.lead?.readOwn);
+  const canReadAll = isAdmin || isPM || Boolean(rawPerms?.lead?.readAll);
+  const canReadOwn = isAdmin || isReseller || Boolean(rawPerms?.lead?.readOwn);
+  const canUpdate = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.update) : false);
+  const canDelete = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.delete) : false);
+  const canAssign = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.update) : false);
+  const canTransfer = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.update) : false);
+  const canConvert = isAdmin || (rawPerms?.lead ? Boolean(rawPerms.lead.update) : false);
 
   const handleApplyFilters = () => {
     setStatusFilter(tempStatusFilter);
