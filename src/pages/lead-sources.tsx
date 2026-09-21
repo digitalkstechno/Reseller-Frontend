@@ -1,6 +1,5 @@
-'use client';
-
 import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Dialog from '@/components/Dialog';
@@ -191,6 +190,12 @@ export function LeadSourcesContent() {
   ];
 
   /* ================= UI ================= */
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
+  const canCreate = isAdmin || Boolean(rawPerms?.leadSource?.create || rawPerms?.setup?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.leadSource?.update || rawPerms?.setup?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.leadSource?.delete || rawPerms?.setup?.delete);
 
   return (
     <div className="space-y-6">
@@ -217,7 +222,7 @@ export function LeadSourcesContent() {
           setPageSize(s);
           setCurrentPage(1);
         }}
-        onEdit={async (row) => {
+        onEdit={canUpdate ? async (row) => {
           try {
             const res = await axios.get(`${baseUrl.leadSources}/${row._id}`, { headers });
             const data = res.data.data;
@@ -231,16 +236,16 @@ export function LeadSourcesContent() {
             console.error('Failed to fetch by id', err);
             toast.error(err.response?.data?.message || 'Failed to fetch data');
           }
-        }}
-        onDelete={handleDeleteClick}
-        addButton={{
+        } : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
+        addButton={canCreate ? {
           label: 'Add Source',
           onClick: () => {
             formik.resetForm();
             formik.setFieldValue('order', allData.length + 1);
             setIsDialogOpen(true);
           },
-        }}
+        } : undefined}
       />
 
       {/* DELETE CONFIRMATION DIALOG */}

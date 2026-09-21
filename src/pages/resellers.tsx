@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import DataTable, { Column } from '@/components/DataTable';
 import Badge from '@/components/Badge';
 import ResellerDialog from '@/components/ResellerDialog';
@@ -118,7 +119,9 @@ export function ResellersContent() {
       }[]) || [];
       const pagination = res.data?.pagination || {};
 
-      const formatted: Reseller[] = payload.map((item) => ({
+      const formatted: Reseller[] = payload
+        .filter((item) => item.email !== 'admin@gmail.com' && (typeof item.role === 'object' ? item.role?.roleName?.toLowerCase() !== 'admin' : true))
+        .map((item) => ({
         id: item._id,
         image: item.profileImage || '',
         fullName: item.fullName || '',
@@ -320,13 +323,16 @@ export function ResellersContent() {
     );
   }
 
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
+  const canCreate = isAdmin || Boolean(rawPerms?.reseller?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.reseller?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.reseller?.delete);
+
   return (
     <>
       <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reseller Management</h1>
-        </div> */}
-
         <DataTable
           data={resellersData}
           columns={columns}
@@ -346,9 +352,10 @@ export function ResellersContent() {
             setSearch(value);
             setPage(1);
           }}
-          onEdit={handleEdit}
-          onDelete={handleDeleteClick}
+          onEdit={canUpdate ? handleEdit : undefined}
+          onDelete={canDelete ? handleDeleteClick : undefined}
           canEdit={(row) => {
+            if (!canUpdate) return false;
             const rowRole = row.roleName?.toLowerCase() || '';
             const myId = getUserId();
             if (rowRole === 'admin') {
@@ -357,6 +364,7 @@ export function ResellersContent() {
             return true;
           }}
           canDelete={(row) => {
+            if (!canDelete) return false;
             const rowRole = row.roleName?.toLowerCase() || '';
             if (rowRole === 'admin') {
               return false;
@@ -364,10 +372,10 @@ export function ResellersContent() {
             return true;
           }}
           actions
-          addButton={{
+          addButton={canCreate ? {
             label: 'Add Reseller',
             onClick: handleAdd,
-          }}
+          } : undefined}
         />
       </div>
 

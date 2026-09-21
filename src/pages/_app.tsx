@@ -45,7 +45,7 @@ if (typeof window !== "undefined") {
 }
 
 function AuthGuard({ children, isLoginPage }: { children: React.ReactNode; isLoginPage: boolean }) {
-  const token = useSelector((state: RootState) => state.auth.token);
+  const { token, user } = useSelector((state: RootState) => state.auth);
   const router = useRouter();
 
   useEffect(() => {
@@ -55,6 +55,39 @@ function AuthGuard({ children, isLoginPage }: { children: React.ReactNode; isLog
       router.replace("/");
     }
   }, [token, isLoginPage, router]);
+
+  // Sync fresh permissions & role from server on mount/route change
+  useEffect(() => {
+    if (!token || isLoginPage) return;
+    const syncProfile = async () => {
+      try {
+        const { baseUrl } = require("@/config");
+        const { setCredentials } = require("@/store/slices/authSlice");
+        const res = await axios.get(baseUrl.myProfile, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data?.data) {
+          const u = res.data.data;
+          const roleName = u.role?.roleName || (typeof u.role === 'string' ? u.role : 'reseller');
+          const perms = u.role?.permissions?.[0] || null;
+          store.dispatch(setCredentials({
+            token,
+            user: {
+              _id: u._id,
+              fullName: u.fullName,
+              email: u.email,
+              phone: u.phone,
+            },
+            role: roleName,
+            permissions: perms,
+          }));
+        }
+      } catch (err) {
+        // Silently continue if network fails
+      }
+    };
+    syncProfile();
+  }, [token, isLoginPage, router.pathname]);
 
   // Show clean spinner while routing if unauthenticated
   if (!token && !isLoginPage) {

@@ -41,7 +41,9 @@ export default function Setup() {
     }, undefined, { shallow: true });
   };
 
-  const { permissions: rawPerms } = useSelector((state: any) => state.auth);
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const roleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com';
 
   useEffect(() => {
     setPermissions(rawPerms || {});
@@ -159,28 +161,33 @@ export default function Setup() {
   };
 
 
-  // const canViewLeadSource = useMemo(() => !!(permissions?.leadSource?.readAll || permissions?.setup?.readAll), [permissions]);
-  // const canViewLeadStatus = useMemo(() => !!(permissions?.leadStatus?.readAll || permissions?.setup?.readAll), [permissions]);
+  const canViewLeadSource = useMemo(() => isAdmin || !!(permissions?.leadSource?.readAll || permissions?.setup?.readAll), [isAdmin, permissions]);
+  const canViewLeadStatus = useMemo(() => isAdmin || !!(permissions?.leadStatus?.readAll || permissions?.setup?.readAll), [isAdmin, permissions]);
+  const canViewKanbanStatus = useMemo(() => isAdmin || !!(permissions?.leadStatus?.readAll || permissions?.setup?.readAll), [isAdmin, permissions]);
+
   const menuItems = useMemo(() => {
-    const items = [
-      // { name: "Lead Sources", icon: Link2, visible: canViewLeadSource },
-      // { name: "Lead Status", icon: Flag, visible: canViewLeadStatus },
-      { name: "Lead Sources", icon: Link2, visible: true },
-      { name: "Lead Status", icon: Flag, visible: true },
-      { name: "Kanban Status", icon: Settings2, visible: true },
-    ];
+    const items: Array<{ name: 'Lead Sources' | 'Lead Status' | 'Kanban Status'; icon: any; visible: boolean }> = [];
+    if (canViewLeadSource) {
+      items.push({ name: "Lead Sources", icon: Link2, visible: true });
+    }
+    if (canViewLeadStatus) {
+      items.push({ name: "Lead Status", icon: Flag, visible: true });
+    }
+    if (canViewKanbanStatus) {
+      items.push({ name: "Kanban Status", icon: Settings2, visible: true });
+    }
     return items;
-  }, []);
+  }, [canViewLeadSource, canViewLeadStatus, canViewKanbanStatus]);
 
   // Handle access restriction - FIXED: Check if current tab is valid
   useEffect(() => {
-    if (!loadingPermissions && permissions) {
+    if (!loadingPermissions && menuItems.length > 0) {
       const currentItem = menuItems.find(i => i.name === activeTab);
-      if (!currentItem && menuItems.length > 0) {
-        handleTabChange(menuItems[0].name as any);
+      if (!currentItem) {
+        handleTabChange(menuItems[0].name);
       }
     }
-  }, [loadingPermissions, permissions, menuItems, activeTab]);
+  }, [loadingPermissions, menuItems, activeTab]);
 
   // Show loading state
   if (loadingPermissions) {

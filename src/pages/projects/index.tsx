@@ -1,6 +1,5 @@
-'use client';
-
 import { useEffect, useState, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import DataTable, { Column } from '@/components/DataTable';
 import ProjectDialog, { Project } from '@/components/ProjectDialog';
 import ProjectViewDialog from '@/components/ProjectViewDialog';
@@ -267,6 +266,13 @@ export function ProjectsContent() {
     setEditingProject(null);
   };
 
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
+  const canCreate = isAdmin || Boolean(rawPerms?.project?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.project?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.project?.delete);
+
   return (
     <>
       <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -290,13 +296,13 @@ export function ProjectsContent() {
             setPage(1);
           }}
           onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDeleteClick}
+          onEdit={canUpdate ? handleEdit : undefined}
+          onDelete={canDelete ? handleDeleteClick : undefined}
           actions
-          addButton={{
+          addButton={canCreate ? {
             label: 'Add Project',
             onClick: handleAdd,
-          }}
+          } : undefined}
         />
       </div>
 

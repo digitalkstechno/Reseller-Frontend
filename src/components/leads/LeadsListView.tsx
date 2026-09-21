@@ -289,10 +289,7 @@ export default function LeadsListView({
     {
       key: 'paymentAmount',
       label: 'AMOUNT',
-      render: (v, row) => {
-        if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
-          return <span className="text-gray-400 font-medium">-</span>;
-        }
+      render: (v) => {
         return v && Number(v) > 0 ? (
           <span className="font-semibold text-gray-900">{formatIndianCurrency(v)}</span>
         ) : (
@@ -495,28 +492,30 @@ export default function LeadsListView({
         onSearch={onSearchChange}
         actions={!isPM}
         onView={handleView}
-        onEdit={!isPM && (isAdmin || permissions?.update !== false) ? handleEdit : undefined}
-        onDelete={!isPM && (isAdmin || permissions?.delete !== false) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
+        onEdit={!isPM && (isAdmin || Boolean(permissions?.update)) ? handleEdit : undefined}
+        onDelete={!isPM && (isAdmin || Boolean(permissions?.delete)) ? (row) => { setDeleteTarget(row); setShowDelete(true); } : undefined}
         canEdit={(row) => {
           if (isPM) return false;
+          if (!isAdmin && !permissions?.update) return false;
           const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
           if (isWon) return false;
           return true;
         }}
         canDelete={(row) => {
-          if (isPM) return false;
-          const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
-          if (isWon) return false;
           if (isAdmin) {
             return true;
           }
+          if (isPM) return false;
+          if (!permissions?.delete) return false;
+          const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
+          if (isWon) return false;
           const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
           if (isReseller) {
             return !isDigitalks;
           }
           return true;
         }}
-        extraActions={!isPM && (isAdmin || permissions?.update !== false) ? [
+        extraActions={!isPM && (isAdmin || Boolean(permissions?.update)) ? [
           {
             label: (row) => row.paymentStatus === 'Paid' ? 'View Payment' : 'Add Payment',
             icon: (row) => row.paymentStatus === 'Paid'
@@ -525,9 +524,8 @@ export default function LeadsListView({
             show: (row) => {
               const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
               const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
-              const hasAmount = (Number(row.paymentAmount) > 0) || (Number(row.paidAmount) > 0);
               if (isAdmin) {
-                return isDigitalks && (hasAmount || isWon);
+                return true;
               }
               return !isDigitalks && isWon;
             },

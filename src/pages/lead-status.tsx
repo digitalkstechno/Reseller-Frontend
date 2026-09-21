@@ -1,6 +1,5 @@
-'use client';
-
 import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Dialog from '@/components/Dialog';
@@ -211,22 +210,28 @@ export function LeadStatusContent() {
     return ['new lead', 'won', 'lost'].includes(name?.toLowerCase());
   };
 
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
+  const canCreate = isAdmin || Boolean(rawPerms?.leadStatus?.create || rawPerms?.setup?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.leadStatus?.update || rawPerms?.setup?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.leadStatus?.delete || rawPerms?.setup?.delete);
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Lead Status</h1>
-        <p className="text-sm text-gray-500">Manage lead statuses. "New Lead", "Won", and "Lost" are system reserved statuses.</p>
+        <h1 className="text-3xl font-bold text-gray-900">Lead Statuses</h1>
       </div>
       <DataTable
         data={allData}
         columns={columns}
+        loading={isLoading}
         searchable
         pagination
         currentPage={currentPage}
         totalPages={Math.ceil(totalRecords / pageSize)}
         totalRecords={totalRecords}
         pageSize={pageSize}
-        loading={isLoading}
         onSearch={(v) => {
           setSearch(v);
           setCurrentPage(1);
@@ -236,7 +241,7 @@ export function LeadStatusContent() {
           setPageSize(s);
           setCurrentPage(1);
         }}
-        onEdit={async (row) => {
+        onEdit={canUpdate ? async (row) => {
           try {
             const res = await axios.get(`${baseUrl.leadStatuses}/${row._id}`, { headers });
             const data = res.data.data;
@@ -251,18 +256,18 @@ export function LeadStatusContent() {
             console.error('Failed to fetch by ID', err);
             toast.error(err?.response?.data?.message || 'Failed to fetch data');
           }
-        }}
-        onDelete={handleDeleteClick}
-        canEdit={(row) => !isReserved(row.name)}
-        canDelete={(row) => !isReserved(row.name)}
-        addButton={{
+        } : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
+        canEdit={(row) => canUpdate && !isReserved(row.name)}
+        canDelete={(row) => canDelete && !isReserved(row.name)}
+        addButton={canCreate ? {
           label: 'Add Status',
           onClick: () => {
             formik.resetForm();
             formik.setFieldValue('order', allData.length + 1);
             setIsDialogOpen(true);
           },
-        }}
+        } : undefined}
       />
 
       {/* DELETE CONFIRMATION DIALOG */}

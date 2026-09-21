@@ -1,6 +1,5 @@
-'use client';
-
 import { useEffect, useState, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import Head from 'next/head';
 import DataTable, { Column } from '@/components/DataTable';
 import ProjectManagerDialog, { ProjectManager } from '@/components/ProjectManagerDialog';
@@ -182,6 +181,13 @@ export function ProjectManagersContent() {
     },
   ];
 
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
+  const canCreate = isAdmin || Boolean(rawPerms?.projectManager?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.projectManager?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.projectManager?.delete);
+
   return (
     <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 sm:p-4">
       <DataTable
@@ -203,13 +209,13 @@ export function ProjectManagersContent() {
           setSearch(value);
           setPage(1);
         }}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onEdit={canUpdate ? handleEdit : undefined}
+        onDelete={canDelete ? handleDelete : undefined}
         actions
-        addButton={{
+        addButton={canCreate ? {
           label: 'Add Product Manager',
           onClick: handleCreate,
-        }}
+        } : undefined}
       />
 
       {/* Dialog */}

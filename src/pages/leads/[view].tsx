@@ -275,16 +275,16 @@ export default function LeadsPage() {
 
   // ── Permission flags ──────────────────────────────────────────────────────
   const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole)));
-  const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
-  const canCreate = isPM ? false : (isAdmin || leadPermissions?.create !== false);
-  const canRead = isPM ? true : (isAdmin || (leadPermissions?.readAll || leadPermissions?.readOwn) !== false);
-  const canReadAll = isPM ? true : (isAdmin || leadPermissions?.readAll !== false);
-  const canReadOwn = isAdmin || leadPermissions?.readOwn !== false;
-  const canUpdate = isPM ? false : (isAdmin || leadPermissions?.update !== false);
-  const canDelete = isPM ? false : (isAdmin || leadPermissions?.delete !== false);
-  const canAssign = isPM ? false : (isAdmin || leadPermissions?.assign !== false);
-  const canTransfer = isPM ? false : (isAdmin || leadPermissions?.transfer !== false);
-  const canConvert = isPM ? false : (isAdmin || leadPermissions?.convert !== false);
+  const isPM = userRole === 'project_manager' || userRole === 'projectmanager';
+  const canCreate = isAdmin || Boolean(rawPerms?.lead?.create);
+  const canRead = isAdmin || Boolean(rawPerms?.lead?.readAll || rawPerms?.lead?.readOwn) || isPM;
+  const canReadAll = isAdmin || Boolean(rawPerms?.lead?.readAll) || isPM;
+  const canReadOwn = isAdmin || Boolean(rawPerms?.lead?.readOwn);
+  const canUpdate = isAdmin || Boolean(rawPerms?.lead?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.lead?.delete);
+  const canAssign = isAdmin || Boolean(rawPerms?.lead?.update);
+  const canTransfer = isAdmin || Boolean(rawPerms?.lead?.update);
+  const canConvert = isAdmin || Boolean(rawPerms?.lead?.update);
 
   const handleApplyFilters = () => {
     setStatusFilter(tempStatusFilter);

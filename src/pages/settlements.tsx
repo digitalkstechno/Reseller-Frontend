@@ -139,7 +139,10 @@ export default function SettlementsPage() {
         }
       });
 
-      const payload = res.data?.data || [];
+      const payload = (res.data?.data || []).filter((item: any) => 
+        item.email !== 'admin@gmail.com' && 
+        (typeof item.role === 'object' ? item.role?.roleName?.toLowerCase() !== 'admin' : true)
+      );
       setSettlementsData(payload);
 
       const pag = res.data?.pagination;

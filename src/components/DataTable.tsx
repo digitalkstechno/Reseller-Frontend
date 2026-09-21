@@ -450,18 +450,14 @@ export default function DataTable<T extends Record<string, any>>({
                           {/* EDIT */}
                           {onEdit && (() => {
                             const isEditAllowed = !canEdit || canEdit(row);
+                            if (!isEditAllowed) return null;
                             return (
                               <button
-                                onClick={() => isEditAllowed && onEdit(row)}
-                                disabled={!isEditAllowed}
-                                title={isEditAllowed ? "Edit Lead" : "Edit Disabled"}
-                                className={`group h-8 w-8 flex items-center justify-center rounded-lg transition-all duration-200 ${
-                                  isEditAllowed
-                                    ? 'bg-gray-100 text-green-600 hover:bg-green-600 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 active:scale-95 cursor-pointer'
-                                    : 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100 opacity-60'
-                                }`}
+                                onClick={() => onEdit(row)}
+                                title="Edit"
+                                className="group h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-green-600 hover:bg-green-600 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 active:scale-95 cursor-pointer transition-all duration-200"
                               >
-                                <FiEdit className={`h-4 w-4 ${isEditAllowed ? 'group-hover:scale-110 transition-transform' : ''}`} />
+                                <FiEdit className="h-4 w-4 group-hover:scale-110 transition-transform" />
                               </button>
                             );
                           })()}
@@ -469,18 +465,14 @@ export default function DataTable<T extends Record<string, any>>({
                           {/* DELETE */}
                           {onDelete && (() => {
                             const isDeleteAllowed = !canDelete || canDelete(row);
+                            if (!isDeleteAllowed) return null;
                             return (
                               <button
-                                onClick={() => isDeleteAllowed && onDelete(row)}
-                                disabled={!isDeleteAllowed}
-                                title={isDeleteAllowed ? "Delete Lead" : "Delete Disabled"}
-                                className={`group h-8 w-8 flex items-center justify-center rounded-lg transition-all duration-200 ${
-                                  isDeleteAllowed
-                                    ? 'bg-gray-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-2 active:scale-95 cursor-pointer'
-                                    : 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100 opacity-60'
-                                }`}
+                                onClick={() => onDelete(row)}
+                                title="Delete"
+                                className="group h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-2 active:scale-95 cursor-pointer transition-all duration-200"
                               >
-                                <FiTrash2 className={`h-4 w-4 ${isDeleteAllowed ? 'group-hover:scale-110 transition-transform' : ''}`} />
+                                <FiTrash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
                               </button>
                             );
                           })()}

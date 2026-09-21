@@ -23,6 +23,7 @@ import {
   FileText,
   FolderKanban,
   UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import axios from "axios";
 import { baseUrl, clearAuthToken, getAuthToken } from "@/config";
@@ -51,40 +52,62 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const isProjectManager = roleName === 'project_manager' || roleName === 'projectmanager';
   const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com';
 
+  const hasModuleAccess = (moduleKey: string) => {
+    if (isAdmin) return true;
+    const p = rawPerms?.[moduleKey];
+    if (!p) return false;
+    return Boolean(p.readAll || p.readOwn || p.create || p.update || p.delete);
+  };
+
   const menuItems: MenuItem[] = [];
 
-  if (isProjectManager) {
-    // Project Managers see Dashboard and Leads
-    menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
-    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
-  } else {
-    menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
-    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
+  // Dashboard is always available
+  menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
 
-    if (isAdmin) {
-      menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
-      menuItems.push({ icon: UserCheck, label: "Product Management", path: "/project-managers" });
-      menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
-      menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
-      menuItems.push({ 
-        icon: FileText, 
-        label: "Reports", 
-        children: [
-          { icon: FileText, label: "Leads Report", path: "/reports/leads" },
-          { icon: IndianRupee, label: "Settlements Report", path: "/reports/settlements" },
-          { icon: Handshake, label: "Resellers Report", path: "/reports/resellers" },
-        ]
-      });
-    }
-    menuItems.push({ icon: CheckSquare, label: "Ledger", path: "/ledger" });
+  // Leads
+  if (isAdmin || hasModuleAccess('lead') || isProjectManager || roleName === 'reseller') {
+    menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
+  }
 
-    // Setup is visible to both Admin and Reseller
-    menuItems.push({
-      icon: Settings,
-      label: "Setup",
-      path: "/setup",
+  // Roles & Permissions (Immediately below Leads)
+  if (isAdmin || hasModuleAccess('role')) {
+    menuItems.push({ icon: ShieldCheck, label: "Roles & Permissions", path: "/roles" });
+  }
+
+  // Resellers
+  if (isAdmin || hasModuleAccess('reseller')) {
+    menuItems.push({ icon: Handshake, label: "Resellers", path: "/resellers" });
+  }
+
+  // Product Management (Project Managers)
+  if (isAdmin || hasModuleAccess('projectManager')) {
+    menuItems.push({ icon: UserCheck, label: "Product Management", path: "/project-managers" });
+  }
+
+  // Projects
+  if (isAdmin || hasModuleAccess('project')) {
+    menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
+  }
+
+  // Settlements
+  if (isAdmin || hasModuleAccess('settlement')) {
+    menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
+  }
+
+  // Reports (Admin only)
+  if (isAdmin) {
+    menuItems.push({ 
+      icon: FileText, 
+      label: "Reports", 
+      children: [
+        { icon: FileText, label: "Leads Report", path: "/reports/leads" },
+        { icon: IndianRupee, label: "Settlements Report", path: "/reports/settlements" },
+        { icon: Handshake, label: "Resellers Report", path: "/reports/resellers" },
+      ]
     });
   }
+
+
 
   // Automatically expand parent menus when on a child page
   useEffect(() => {
@@ -112,10 +135,6 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
     if (path === '/projects') {
       return currentPath === '/projects' || currentPath.startsWith('/projects');
-    }
-
-    if (path === '/ledger') {
-      return currentPath === '/ledger' || currentPath.startsWith('/ledger');
     }
 
     return currentPath === path || currentAsPath.startsWith(path);

@@ -88,20 +88,21 @@ export default function LeadAddDialog({
         const [statusRes, sourceRes, projectRes, reqRes, resellerRes] = await Promise.all([
           cachedDropdowns.statuses?.length ? Promise.resolve({ data: cachedDropdowns.statuses }) : axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
           cachedDropdowns.sources?.length ? Promise.resolve({ data: cachedDropdowns.sources }) : axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
-          cachedDropdowns.projects?.length ? Promise.resolve({ data: cachedDropdowns.projects }) : axios.get(`${baseUrl.getAllProjects}?all=true&status=active`, { headers }).catch(() => ({ data: [] })),
+          cachedDropdowns.projects?.length ? Promise.resolve({ data: cachedDropdowns.projects }) : axios.get(`${baseUrl.getAllProjects}?all=true`, { headers }).catch(() => ({ data: [] })),
           cachedDropdowns.requiredFields?.length ? Promise.resolve({ data: { data: { requiredLeads: cachedDropdowns.requiredFields } } }) : axios.get(baseUrl.settingsRequiredFields, { headers }).catch(() => ({ data: [] })),
           isAdmin ? (cachedDropdowns.resellers?.length ? Promise.resolve({ data: cachedDropdowns.resellers }) : axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] }))) : Promise.resolve({ data: [] }),
         ]);
 
-        const fetchedStatuses = statusRes.data?.data || statusRes.data || [];
-        const fetchedSources = sourceRes.data?.data || sourceRes.data || [];
-        const fetchedProjects = projectRes.data?.data || projectRes.data?.projects || [];
-        const fetchedResellers = resellerRes.data?.data || resellerRes.data || [];
+        const fetchedStatuses = Array.isArray(statusRes.data?.data) ? statusRes.data.data : (Array.isArray(statusRes.data) ? statusRes.data : []);
+        const fetchedSources = Array.isArray(sourceRes.data?.data) ? sourceRes.data.data : (Array.isArray(sourceRes.data) ? sourceRes.data : []);
+        const rawProjects = projectRes.data?.data?.projects || projectRes.data?.data || projectRes.data?.projects || projectRes.data || [];
+        const fetchedProjects = Array.isArray(rawProjects) ? rawProjects : [];
+        const fetchedResellers = Array.isArray(resellerRes.data?.data) ? resellerRes.data.data : (Array.isArray(resellerRes.data) ? resellerRes.data : []);
 
-        setStatuses(fetchedStatuses);
-        setSources(fetchedSources);
-        setProjects(fetchedProjects);
-        setResellers(fetchedResellers);
+        if (fetchedStatuses.length) setStatuses(fetchedStatuses);
+        if (fetchedSources.length) setSources(fetchedSources);
+        if (fetchedProjects.length) setProjects(fetchedProjects);
+        if (fetchedResellers.length) setResellers(fetchedResellers);
 
         let reqs = reqRes.data?.data?.requiredLeads || [];
         reqs = reqs.filter((r: string) => r !== 'customerEmail' && r !== 'leadSource');
@@ -111,10 +112,10 @@ export default function LeadAddDialog({
 
         // Update module cache
         cachedDropdowns = {
-          statuses: fetchedStatuses,
-          sources: fetchedSources,
-          projects: fetchedProjects,
-          resellers: fetchedResellers,
+          statuses: fetchedStatuses.length ? fetchedStatuses : cachedDropdowns.statuses,
+          sources: fetchedSources.length ? fetchedSources : cachedDropdowns.sources,
+          projects: fetchedProjects.length ? fetchedProjects : cachedDropdowns.projects,
+          resellers: fetchedResellers.length ? fetchedResellers : cachedDropdowns.resellers,
           requiredFields: reqs,
         };
 
@@ -143,7 +144,12 @@ export default function LeadAddDialog({
             .transform((value, originalValue) => (originalValue === '' ? undefined : value))
             .typeError('Payment Amount must be a number')
             .min(0, 'Payment Amount cannot be negative')
-            .test('req-amount', 'Project Amount is required', function (val) {
+            .test('req-amount', 'Deal Amount is required to mark lead as Won', function (val) {
+              const selectedStatus = (this.parent.leadStatus || '').toString();
+              const isWonStatus = statuses.some(s => s._id === selectedStatus && s.name?.toLowerCase() === 'won');
+              if (this.parent.managedBy === 'Digitalks' && isWonStatus) {
+                return val !== undefined && val !== null && !isNaN(val) && Number(val) > 0;
+              }
               if (this.parent.managedBy === 'Digitalks') return true;
               if (!requiredFields.includes('paymentAmount')) return true;
               return val !== undefined && val !== null && !isNaN(val);
@@ -167,7 +173,6 @@ export default function LeadAddDialog({
           remarks: 'Remarks',
           description: 'Description',
         };
-
         reqs.forEach((f: string) => {
           if (f !== 'leadSource' && f !== 'paymentAmount' && schemaShape[f]) {
             schemaShape[f] = schemaShape[f].required(`${labels[f] || f} is required`);
@@ -180,10 +185,8 @@ export default function LeadAddDialog({
         setLoading(false);
       }
     };
-
     fetchDropdowns();
   }, [isOpen]);
-
   const formik = useFormik({
     initialValues: {
       customerName: '',

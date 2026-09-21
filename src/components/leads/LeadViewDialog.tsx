@@ -89,6 +89,12 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
 
   const handleSave = async () => {
     if (!lead) return;
+    const selectedStatusObj = statuses.find(s => s._id === editStatus);
+    const isTargetWon = selectedStatusObj && selectedStatusObj.name.toLowerCase() === 'won';
+    if (isTargetWon && isDigitalks && Number(lead.paymentAmount || 0) <= 0) {
+      toast.error('Please click "Edit Full Lead" and enter Deal Amount before marking as Won.');
+      return;
+    }
     setSaving(true);
     try {
       await axios.put(
@@ -100,7 +106,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
       );
       toast.success('Lead status updated');
       onRefresh();
-      onClose()
+      onClose();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to update lead');
     } finally {
@@ -230,8 +236,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               Close
             </button>
             {onEdit && lead && !isWon && !isPM && (
-              (isAdmin && isDigitalks) ||
-              (isReseller && !isDigitalks)
+              isAdmin || (isReseller && !isDigitalks)
             ) && (
               <button
                 onClick={() => onEdit(lead)}
@@ -242,8 +247,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               </button>
             )}
             {!isWon && !isPM && (
-              (isAdmin && isDigitalks) ||
-              (isReseller && !isDigitalks)
+              isAdmin || (isReseller && !isDigitalks)
             ) && (
               <button
                 onClick={handleSave}
@@ -378,15 +382,11 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                   <span className="text-xs text-amber-600 font-medium">
                     Managed by Digitalks — only Admin can change status
                   </span>
-                ) : isAdmin && !isDigitalks ? (
-                  <span className="text-xs text-amber-600 font-medium">
-                    Managed by Reseller — only Reseller can change status
-                  </span>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 {statuses.map((s) => {
-                  const isStatusDisabled = isWon || (isReseller && isDigitalks) || (isAdmin && !isDigitalks);
+                  const isStatusDisabled = isWon || (isReseller && isDigitalks);
                   return (
                     <button
                       key={s._id}

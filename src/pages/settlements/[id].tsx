@@ -267,6 +267,8 @@ export default function SettlementDetailsPage() {
       { header: 'Project', key: 'projectName', width: 20 },
       { header: 'Managed By', key: 'managedBy', width: 20 },
       { header: 'Lead Amount (₹)', key: 'paymentAmount', width: 18 },
+      { header: 'Paid Amount (₹)', key: 'paidAmount', width: 18 },
+      { header: 'Balance Amount (₹)', key: 'balanceAmount', width: 18 },
       { header: 'Commission Rate (%)', key: 'commissionRate', width: 18 },
       { header: 'Reseller Earnings (₹)', key: 'resellerProfit', width: 22 },
       { header: 'Settlement Amount (₹)', key: 'settlementAmount', width: 22 },
@@ -277,12 +279,19 @@ export default function SettlementDetailsPage() {
       { header: 'Reference / UTR', key: 'settlementRef', width: 20 }
     ];
 
-    const exportRows = leads.map((l) => ({
-      ...l,
-      formattedPaymentDate: formatLeadDate(l.paymentDate),
-      settlementStatus: l.isSettled ? 'Settled' : 'Awaiting Settlement',
-      formattedSettlementDate: formatLeadDate(l.settlementDate),
-    }));
+    const exportRows = leads.map((l) => {
+      const total = Number(l.paymentAmount) || 0;
+      const paid = Number(l.paidAmount || (l.paymentStatus === 'Paid' ? total : 0));
+      const balance = Math.max(0, total - paid);
+      return {
+        ...l,
+        paidAmount: paid,
+        balanceAmount: balance,
+        formattedPaymentDate: formatLeadDate(l.paymentDate),
+        settlementStatus: l.isSettled ? 'Settled' : 'Awaiting Settlement',
+        formattedSettlementDate: formatLeadDate(l.settlementDate),
+      };
+    });
 
     const fileName = `${reseller?.fullName || 'Reseller'}_${activeTab === 'settled' ? 'Settled_Leads' : 'Unsettled_Leads'}.xlsx`;
     await exportToExcel(fileName, 'Leads', columns, exportRows);
@@ -393,18 +402,47 @@ export default function SettlementDetailsPage() {
         const paid = Number(value || (row.paymentStatus === 'Paid' ? total : 0));
         return (
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 text-sm">
+            <span className="font-semibold text-emerald-700 text-sm">
               ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            {paid > 0 && paid < total ? (
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
-                Partial (Bal: ₹{(total - paid).toLocaleString('en-IN')})
-              </span>
-            ) : paid >= total && total > 0 ? (
+            {paid >= total && total > 0 ? (
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit mt-0.5">
                 Full Paid
               </span>
-            ) : null}
+            ) : paid > 0 && paid < total ? (
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
+                Partial
+              </span>
+            ) : (
+              <span className="text-[10px] font-medium text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200 w-fit mt-0.5">
+                Unpaid
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'balanceAmount',
+      label: 'BALANCE (REMAINING)',
+      render: (_, row) => {
+        const total = Number(row.paymentAmount) || 0;
+        const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? total : 0));
+        const balance = Math.max(0, total - paid);
+        return (
+          <div className="flex flex-col">
+            <span className={`font-bold text-sm ${balance > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
+              ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            {balance > 0 ? (
+              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
+                Pending Bal
+              </span>
+            ) : (
+              <span className="text-[10px] font-medium text-gray-400 mt-0.5">
+                Nil
+              </span>
+            )}
           </div>
         );
       }
@@ -415,6 +453,9 @@ export default function SettlementDetailsPage() {
       render: (_, row) => {
         const isDigitalks = row.managedBy === 'Digitalks';
         const amt = Number(row.settlementAmount || (isDigitalks ? row.commissionAmount : row.baseProjectAmount) || 0);
+        if (amt <= 0) {
+          return <span className="text-gray-400 font-medium text-sm">-</span>;
+        }
         return (
           <div className="flex items-center gap-1.5">
             <span className={`font-black text-sm tracking-tight ${isDigitalks ? 'text-emerald-700' : 'text-rose-700'}`}>

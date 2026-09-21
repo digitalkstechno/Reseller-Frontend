@@ -33,7 +33,9 @@ const formatAmountDecimals = (val: number | string | undefined | null) => {
 };
 
 export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: PaymentModalProps) {
-  const totalAmount = Number(lead?.projectAmount) || Number(lead?.paymentAmount) || 0;
+  const initialTotal = Number(lead?.projectAmount) || Number(lead?.paymentAmount) || 0;
+  const [dealAmount, setDealAmount] = useState<string>('');
+  const totalAmount = Number(dealAmount) > 0 ? Number(dealAmount) : initialTotal;
 
   // Local payments list
   const [localPayments, setLocalPayments] = useState<any[]>([]);
@@ -58,10 +60,13 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
 
   // Preview proof image
   const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{ amount?: string; date?: string; mode?: string }>({});
+  const [errors, setErrors] = useState<{ amount?: string; date?: string; mode?: string; dealAmount?: string }>({});
 
   useEffect(() => {
     if (isOpen) {
+      const baseTotal = Number(lead?.projectAmount) || Number(lead?.paymentAmount) || 0;
+      setDealAmount(baseTotal > 0 ? String(baseTotal) : '');
+
       let paymentsList: any[] = [];
       if (Array.isArray(lead?.payments) && lead.payments.length > 0) {
         paymentsList = lead.payments;
@@ -80,9 +85,9 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
 
       const currentPaid = paymentsList.length > 0
         ? paymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-        : (Number(lead?.paidAmount) || (lead?.paymentStatus === 'Paid' ? totalAmount : 0));
+        : (Number(lead?.paidAmount) || (lead?.paymentStatus === 'Paid' ? baseTotal : 0));
 
-      const rem = Math.max(0, totalAmount - currentPaid);
+      const rem = Math.max(0, baseTotal - currentPaid);
       setAmount(rem > 0 ? String(rem) : '');
       setPaymentDate(new Date().toISOString().split('T')[0]);
       setPaymentMode('Cash');
@@ -90,9 +95,9 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
       setPaymentNote('');
       setErrors({});
       setPreviewProofUrl(null);
-      setActiveTab(currentPaid >= totalAmount && totalAmount > 0 ? 'history' : 'add');
+      setActiveTab(currentPaid >= baseTotal && baseTotal > 0 ? 'history' : 'add');
     }
-  }, [isOpen, lead, totalAmount]);
+  }, [isOpen, lead]);
 
   if (!isOpen) return null;
 
@@ -109,7 +114,11 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
   };
 
   const handleSubmit = async () => {
-    const newErrors: { amount?: string; date?: string; mode?: string } = {};
+    const newErrors: { amount?: string; date?: string; mode?: string; dealAmount?: string } = {};
+
+    if (initialTotal <= 0 && (!dealAmount || isNaN(Number(dealAmount)) || Number(dealAmount) <= 0)) {
+      newErrors.dealAmount = 'Please enter total deal amount';
+    }
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       newErrors.amount = 'Please enter a valid payment amount';
@@ -136,6 +145,9 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
       const finalStatus = newTotalPaid >= totalAmount && totalAmount > 0 ? 'Paid' : 'Partially Paid';
 
       const formData = new FormData();
+      if (Number(dealAmount) > 0) {
+        formData.append('paymentAmount', String(Number(dealAmount)));
+      }
       formData.append('addPaymentAmount', String(incomingVal));
       formData.append('paymentDate', paymentDate);
       formData.append('paymentMode', paymentMode);
@@ -288,6 +300,42 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
           {/* ── TAB 1: ADD PAYMENT ───────────────────────────── */}
           {activeTab === 'add' && (
             <div className="space-y-3.5">
+              {/* If lead has no Deal Amount yet (Digitalks lead), let user enter Deal Amount */}
+              {initialTotal <= 0 && (
+                <div>
+                  <div className="mb-1.5">
+                    <label className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5 text-[#3B82F6]" />
+                      Total Deal Amount <span className="text-red-500">*</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">₹</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={dealAmount}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                      onKeyDown={(e) => {
+                        if (e.key === '-' || e.key === 'e' || e.key === '+' || e.key === 'E') {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDealAmount(val);
+                        if (errors.dealAmount) setErrors((prev) => ({ ...prev, dealAmount: undefined }));
+                      }}
+                      placeholder="Enter total deal amount (e.g. 50000)"
+                      className={`w-full border ${
+                        errors.dealAmount ? 'border-red-500' : 'border-gray-200'
+                      } rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 bg-white text-gray-900 placeholder:text-gray-400 font-normal transition-all`}
+                    />
+                  </div>
+                  {errors.dealAmount && <p className="mt-1 text-xs text-red-500 font-medium">{errors.dealAmount}</p>}
+                </div>
+              )}
+
               {/* Payment Amount to Add */}
               <div>
                 <div className="mb-1.5">
