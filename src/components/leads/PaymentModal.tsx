@@ -11,7 +11,6 @@ import {
   Wallet,
   Clock,
   ChevronRight,
-  Info,
   ArrowRight,
   FileText,
   DollarSign
@@ -204,7 +203,6 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900 leading-tight">Payments & Installments</h2>
-              <p className="text-xs text-gray-400 mt-0.5 font-normal">Add payment details and record the transaction.</p>
             </div>
           </div>
           <button
@@ -292,23 +290,11 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
             <div className="space-y-3.5">
               {/* Payment Amount to Add */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="mb-1.5">
                   <label className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
                     <span className="w-4 h-4 rounded-full bg-blue-500 text-white inline-flex items-center justify-center text-[10px] font-bold">₹</span>
                     Payment Amount to Add <span className="text-red-500">*</span>
                   </label>
-                  {pendingAmount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAmount(String(pendingAmount));
-                        if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
-                      }}
-                      className="text-[11px] font-semibold text-[#3B82F6] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
-                    >
-                      Remaining: {formatAmountDecimals(pendingAmount)}
-                    </button>
-                  )}
                 </div>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">₹</span>
@@ -533,15 +519,11 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
           )}
         </div>
 
-        {/* Footer with note & close button */}
-        <div className="px-6 py-3 border-t border-gray-100 bg-[#f8fafc] flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-            <Info className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>Your payment details are secure and will be saved to the transaction history.</span>
-          </div>
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-gray-100 bg-[#f8fafc] flex items-center justify-end flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors cursor-pointer ml-3 flex-shrink-0"
+            className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
           >
             Close
           </button>

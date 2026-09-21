@@ -160,6 +160,7 @@ export default function LeadsListView({
   const [leads, setLeads] = useState<TableLead[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TableLead | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<TableLead | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
@@ -478,19 +479,22 @@ export default function LeadsListView({
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
     try {
       await axios.delete(`${baseUrl.deleteLead}/${deleteTarget.id}`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
       toast.success('Lead deleted successfully');
       setLeads((prev) => prev.filter((l) => l.id !== deleteTarget.id));
-      onRefresh?.();
+      setShowDelete(false);
+      setDeleteTarget(null);
+      // Delay refresh so backend completes and no race condition
+      setTimeout(() => { onRefresh?.(); }, 300);
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Failed to delete lead');
     } finally {
-      setShowDelete(false);
-      setDeleteTarget(null);
+      setDeleting(false);
     }
   };
 
@@ -590,9 +594,10 @@ export default function LeadsListView({
             </button>
             <button
               onClick={handleDelete}
-              className="rounded-lg bg-red-600 cursor-pointer px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              disabled={deleting}
+              className="rounded-lg bg-red-600 cursor-pointer px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Delete
+              {deleting ? 'Deleting...' : 'Delete'}
             </button>
           </>
         }

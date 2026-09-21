@@ -74,7 +74,7 @@ export default function LeadsReport() {
       const token = getAuthToken();
       if (!token) return;
 
-      const params: any = { limit, page, report: 'true', onlyWon: 'true' };
+      const params: any = { limit, page, report: 'true' };
       if (fromDate) params.from = fromDate;
       if (toDate) params.to = toDate;
       if (paymentStatus) params.paymentStatus = paymentStatus;
@@ -150,12 +150,24 @@ export default function LeadsReport() {
       render: (value) => <span className="font-medium text-gray-700">{value?.fullName || '-'}</span>,
     },
     {
+      key: 'leadStatus',
+      label: 'STATUS',
+      render: (value) => {
+        const statusName = typeof value === 'string' ? value : value?.name;
+        return (
+          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+            {statusName || 'N/A'}
+          </span>
+        );
+      },
+    },
+    {
       key: 'paymentAmount',
       label: 'AMOUNT',
       render: (value) => (
         <div className="flex items-center gap-1 font-semibold text-emerald-700">
           <IndianRupee className="h-3 w-3" />
-          <span>{value.toLocaleString('en-IN')}</span>
+          <span>{value ? Number(value).toLocaleString('en-IN') : '0'}</span>
         </div>
       ),
     },
@@ -174,14 +186,14 @@ export default function LeadsReport() {
       render: (value) => (
         <div className="flex items-center gap-1 font-semibold text-blue-700">
           <IndianRupee className="h-3 w-3" />
-          <span>{value.toLocaleString('en-IN')}</span>
+          <span>{value ? Number(value).toLocaleString('en-IN') : '0'}</span>
         </div>
       ),
     },
     {
       key: 'createdAt',
       label: 'DATE',
-      render: (value) => new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      render: (value) => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
     },
   ];
 

@@ -78,8 +78,8 @@ export default function LeadAddDialog({
             .email('Invalid email address')
             .test('req', 'Email is required', (val) => !requiredFields.includes('customerEmail') || !!val),
           customerContact: Yup.string()
-            .matches(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian phone number')
-            .test('req', 'Contact is required', (val) => !requiredFields.includes('customerContact') || !!val),
+            .required('Contact is required')
+            .matches(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian phone number'),
           companyName: Yup.string().test(
             'req',
             'Company name is required',
