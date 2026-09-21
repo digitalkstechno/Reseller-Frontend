@@ -376,56 +376,58 @@ export default function SettlementDetailsPage() {
     {
       key: 'paymentAmount',
       label: 'LEAD REVENUE',
-      render: (value, row) => {
+      render: (value) => {
         const total = Number(value) || 0;
-        const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? total : 0));
+        return (
+          <span className="font-bold text-gray-900 text-sm">
+            ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'paidAmount',
+      label: 'PAID AMOUNT',
+      render: (value, row) => {
+        const total = Number(row.paymentAmount) || 0;
+        const paid = Number(value || (row.paymentStatus === 'Paid' ? total : 0));
         return (
           <div className="flex flex-col">
-            <span className="font-bold text-gray-900 text-sm">
-              ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="font-semibold text-gray-900 text-sm">
+              ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             {paid > 0 && paid < total ? (
-              <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
-                Paid: ₹{paid.toLocaleString('en-IN')} (Partial)
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
+                Partial (Bal: ₹{(total - paid).toLocaleString('en-IN')})
               </span>
-            ) : (
-              <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5 mt-0.5">
-                <CheckCircle2 className="w-3 h-3" /> Paid Full
+            ) : paid >= total && total > 0 ? (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit mt-0.5">
+                Full Paid
               </span>
-            )}
+            ) : null}
           </div>
         );
       }
     },
     {
       key: 'settlementAmount',
-      label: 'SETTLEMENT DIRECTION & AMOUNT',
+      label: 'SETTLEMENT AMOUNT',
       render: (_, row) => {
         const isDigitalks = row.managedBy === 'Digitalks';
         const amt = Number(row.settlementAmount || (isDigitalks ? row.commissionAmount : row.baseProjectAmount) || 0);
         return (
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex items-center gap-1.5">
             <span className={`font-black text-sm tracking-tight ${isDigitalks ? 'text-emerald-700' : 'text-rose-700'}`}>
               {isDigitalks ? '−' : '+'} ₹{amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border ${
+              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
                 isDigitalks
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
-              {isDigitalks ? (
-                <>
-                  <ArrowDownLeft className="w-3 h-3 text-emerald-600" />
-                  Company owes Reseller
-                </>
-              ) : (
-                <>
-                  <ArrowUpRight className="w-3 h-3 text-rose-600" />
-                  Reseller owes Company
-                </>
-              )}
+              {isDigitalks ? 'Payable' : 'Receivable'}
             </span>
           </div>
         );
@@ -757,41 +759,7 @@ export default function SettlementDetailsPage() {
             </button>
           </div>
 
-          {/* Managed By Filter Segmented Control */}
-          <div className="inline-flex items-center p-1 bg-gray-200/60 rounded-lg gap-1">
-            <button
-              onClick={() => setManagedByFilter('all')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                managedByFilter === 'all'
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              All Leads
-            </button>
-            <button
-              onClick={() => setManagedByFilter('Digitalks')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                managedByFilter === 'Digitalks'
-                  ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-gray-600 hover:text-emerald-700'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Digitalks (Payable)
-            </button>
-            <button
-              onClick={() => setManagedByFilter('Manage by Me')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                managedByFilter === 'Manage by Me'
-                  ? 'bg-white text-blue-700 shadow-xs'
-                  : 'text-gray-600 hover:text-blue-700'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Manage by Me (Receivable)
-            </button>
-          </div>
+          {/* Filter Bar */}
         </div>
 
         {/* DataTable */}

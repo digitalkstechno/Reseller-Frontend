@@ -63,6 +63,23 @@ export default function LeadAddDialog({
   const [dynamicSchema, setDynamicSchema] = useState<any>(Yup.object());
   const token = getAuthToken;
 
+  // Keep state in sync with incoming props
+  useEffect(() => {
+    if (initialStatuses?.length) setStatuses(initialStatuses);
+  }, [initialStatuses]);
+
+  useEffect(() => {
+    if (initialProjects?.length) setProjects(initialProjects);
+  }, [initialProjects]);
+
+  useEffect(() => {
+    if (initialResellers?.length) setResellers(initialResellers);
+  }, [initialResellers]);
+
+  useEffect(() => {
+    if (initialSources?.length) setSources(initialSources);
+  }, [initialSources]);
+
   useEffect(() => {
     if (!isOpen) return;
     const fetchDropdowns = async () => {
@@ -245,13 +262,40 @@ export default function LeadAddDialog({
 
   useEffect(() => {
     if (!isOpen) return;
-    const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
 
     if (mode === 'edit' && initialData) {
-      const projId =
-        typeof (initialData as any).project === 'object'
-          ? (initialData as any).project?._id || ''
-          : (initialData as any).project || '';
+      // 1. Resolve Project ID (handle String, Object, or Name from table)
+      let resolvedProjectId = '';
+      if (typeof (initialData as any).project === 'object' && (initialData as any).project !== null) {
+        resolvedProjectId = (initialData as any).project?._id || '';
+      } else if (typeof (initialData as any).project === 'string') {
+        const rawProj = (initialData as any).project.trim();
+        // Check if rawProj is an ID in projects list
+        const matchById = projects.find(p => p._id === rawProj);
+        if (matchById) {
+          resolvedProjectId = matchById._id;
+        } else {
+          // It might be project Name from TableLead
+          const matchByName = projects.find(p => p.name?.toLowerCase() === rawProj.toLowerCase());
+          resolvedProjectId = matchByName ? matchByName._id : rawProj;
+        }
+      }
+
+      // 2. Resolve Lead Status ID (handle String, Object, or Name from table)
+      const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+      let resolvedStatusId = defaultStatusId;
+      if (typeof initialData.leadStatus === 'object' && initialData.leadStatus !== null) {
+        resolvedStatusId = initialData.leadStatus?._id || defaultStatusId;
+      } else if (typeof initialData.leadStatus === 'string' && (initialData.leadStatus as string)) {
+        const rawStatus = (initialData.leadStatus as string).trim();
+        const matchById = statuses.find(s => s._id === rawStatus);
+        if (matchById) {
+          resolvedStatusId = matchById._id;
+        } else {
+          const matchByName = statuses.find(s => s.name?.toLowerCase() === rawStatus.toLowerCase());
+          resolvedStatusId = matchByName ? matchByName._id : rawStatus;
+        }
+      }
 
       formik.setValues({
         customerName: (initialData as any).customerName || initialData.fullName || '',
@@ -261,17 +305,14 @@ export default function LeadAddDialog({
         companyName: initialData.companyName || '',
         address: (initialData as any).address || '',
         managedBy: (initialData as any).managedBy || (isAdmin ? 'Digitalks' : 'Manage by Me'),
-        project: projId,
+        project: resolvedProjectId,
         paymentAmount:
           (initialData as any).paymentAmount != null
             ? String((initialData as any).paymentAmount)
             : (initialData as any).projectAmount != null
             ? String((initialData as any).projectAmount)
             : '',
-        leadStatus:
-          typeof initialData.leadStatus === 'object'
-            ? initialData.leadStatus?._id || ''
-            : initialData.leadStatus || defaultStatusId,
+        leadStatus: resolvedStatusId,
         leadSource:
           typeof (initialData as any).leadSource === 'object'
             ? (initialData as any).leadSource?.name || (initialData as any).leadSource?._id || ''
@@ -285,6 +326,7 @@ export default function LeadAddDialog({
         isActive: initialData.isActive ?? true,
       });
     } else if (mode === 'add') {
+      const defaultStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
       formik.resetForm({
         values: {
           customerName: '',
@@ -305,7 +347,7 @@ export default function LeadAddDialog({
       });
     }
     formik.setStatus(null);
-  }, [isOpen, mode, initialData]);
+  }, [isOpen, mode, initialData, statuses, projects]);
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
