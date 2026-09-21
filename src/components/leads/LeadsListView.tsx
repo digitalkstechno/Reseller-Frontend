@@ -164,11 +164,7 @@ export default function LeadsListView({
   const [showPayment, setShowPayment] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<TableLead | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
-
-  // Use loading from prop or local state
   const loading = loadingProp !== undefined ? loadingProp : localLoading;
-
-  // Map external leads to table format when they change
   useEffect(() => {
     if (externalLeads && externalLeads.length > 0) {
       setLeads(externalLeads.map(mapLead));
@@ -176,8 +172,6 @@ export default function LeadsListView({
       setLeads([]);
     }
   }, [externalLeads]);
-
-  // Extract user role from Redux & token
   const { role: authRole, user: authUser } = useSelector((state: any) => state.auth || {});
   const userRole = (authRole || authUser?.role?.roleName || authUser?.role || (() => {
     const t = typeof window !== 'undefined' ? getAuthToken() : null;

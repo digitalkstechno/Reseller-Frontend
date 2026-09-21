@@ -89,25 +89,33 @@ export default function Header({ toggleSidebar }: HeaderProps) {
   const isLoginPage = pathName === "/login";
 
   const getLabel = () => {
-    if (pathName === "/ledger") return "Ledger"
-    if (pathName === "/") return "Dashboard"
-    if (pathName === "/leads") return "Leads"
-    if (pathName === "/leads/list") return "Leads List"
-    if (pathName === "/leads/kanban") return "Leads Kanban"
-    if (pathName === "/setup") return "Setup"
-    if (pathName === "/tasks") return "Tasks"
-    if (pathName === "/resellers") return "Reseller List"
-    if (pathName === "/project-managers") return "Project Managers"
-    if (pathName === "/projects") return "Projects"
-    if (pathName === "/settlements") return "Settlements"
-    if (pathName === "/reports/leads") return "Leads Report"
-    if (pathName === "/reports/settlements") return "Settlements Report"
-    if (pathName === "/reports/resellers") return "Resellers Report"
-    if (pathName?.startsWith("/settlements/")) return "Settlement Details"
+    if (!pathName || pathName === "/") return "Dashboard";
+    if (pathName.startsWith("/leads")) return "Leads";
+    if (pathName.startsWith("/reports/leads")) return "Leads Report";
+    if (pathName.startsWith("/reports/settlements")) return "Settlements Report";
+    if (pathName.startsWith("/reports/resellers")) return "Resellers Report";
+    if (pathName.startsWith("/settlements")) return "Settlements";
+    if (pathName.startsWith("/resellers")) return "Reseller List";
+    if (pathName.startsWith("/project-managers")) return "Project Managers";
+    if (pathName.startsWith("/projects")) return "Projects";
+    if (pathName.startsWith("/ledger")) return "Ledger";
+    if (pathName.startsWith("/setup")) return "Setup";
+    if (pathName.startsWith("/tasks")) return "Tasks";
+    if (pathName.startsWith("/lead-status")) return "Lead Status";
+    if (pathName.startsWith("/lead-sources")) return "Lead Sources";
+    if (pathName.startsWith("/kanban")) return "Leads";
 
+    // Dynamic formatting as clean fallback: "/some-page" -> "Some Page"
+    const cleaned = pathName.split("?")[0].replace(/^\//, "").split("/")[0];
+    if (cleaned) {
+      return cleaned
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
 
-    return ""
-  }
+    return "Dashboard";
+  };
     const token = getAuthToken();
     if (!token) return;
 
@@ -541,7 +549,7 @@ export default function Header({ toggleSidebar }: HeaderProps) {
           <Menu className="h-6 w-6 text-gray-600" />
         </button>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900 truncate">
-          {getLabel() || "Default Title"}
+          {getLabel() || "Dashboard"}
         </h1>
       </div>
       <div className="flex items-center gap-1 md:gap-3">

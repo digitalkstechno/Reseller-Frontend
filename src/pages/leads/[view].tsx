@@ -199,20 +199,13 @@ export default function LeadsPage() {
   // ── Sync URL → state ─────────────────────────────────────────────────────
   // ── Sync URL → state ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (userRole === 'admin') {
-      setViewMode('list');
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('leadsView', 'list');
-      }
-      return;
-    }
     if (viewParam === 'kanban' || viewParam === 'list') {
       setViewMode(viewParam as ViewMode);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('leadsView', viewParam);
       }
     }
-  }, [viewParam, userRole]);
+  }, [viewParam]);
 
   const switchView = (mode: ViewMode) => {
     if (typeof window !== 'undefined') {
@@ -551,22 +544,20 @@ export default function LeadsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             {/* Mobile View Toggle */}
-            {userRole !== 'admin' && (
-              <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-lg w-fit border border-gray-200">
-                <button
-                  onClick={() => switchView('list')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
-                >
-                  <ListCollapse className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => switchView('kanban')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
-                >
-                  <Kanban className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-lg w-fit border border-gray-200">
+              <button
+                onClick={() => switchView('list')}
+                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
+              >
+                <ListCollapse className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => switchView('kanban')}
+                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
+              >
+                <Kanban className="h-4 w-4" />
+              </button>
+            </div>
 
             {/* Kanban Sub-View Tabs (Board / Lost / Won) placed cleanly in the top toolbar */}
             {viewMode === 'kanban' && (
@@ -641,24 +632,22 @@ export default function LeadsPage() {
             {headerActions}
 
             {/* Desktop View toggle */}
-            {userRole !== 'admin' && (
-              <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
-                <button
-                  onClick={() => switchView('list')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
-                  title="List View"
-                >
-                  <ListCollapse className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => switchView('kanban')}
-                  className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
-                  title="Kanban View"
-                >
-                  <Kanban className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
+              <button
+                onClick={() => switchView('list')}
+                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
+                title="List View"
+              >
+                <ListCollapse className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => switchView('kanban')}
+                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
+                title="Kanban View"
+              >
+                <Kanban className="h-4 w-4" />
+              </button>
+            </div>
 
             {/* Add Lead button */}
             {canCreate && (
