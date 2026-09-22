@@ -120,28 +120,22 @@ export function ResellersContent() {
       const pagination = res.data?.pagination || {};
 
       const formatted: Reseller[] = payload
-        .map((item) => {
-          const roleObj = typeof item.role === 'object' ? item.role : null;
-          const roleStr = typeof item.role === 'string' ? item.role : '';
-          const roleName = roleObj?.roleName || roleStr || '';
-          const isAdmin = item.email === 'admin@gmail.com' || roleName.toLowerCase() === 'admin' || roleName.toLowerCase() === 'superadmin';
-
-          return {
-            id: item._id,
-            image: item.profileImage || '',
-            fullName: item.fullName || '',
-            phone: item.phone || '',
-            email: item.email || '',
-            status: item.status || 'active',
-            role: typeof item.role === 'object' ? item.role?._id || '' : item.role || '',
-            roleName: isAdmin ? 'Admin' : 'Reseller',
-            address: item.address || '',
-            city: item.city || '',
-            state: item.state || '',
-            pincode: item.pincode || '',
-            assignedProjects: item.assignedProjects || [],
-          };
-        });
+        .filter((item) => item.email !== 'admin@gmail.com' && (typeof item.role === 'object' ? item.role?.roleName?.toLowerCase() !== 'admin' : true))
+        .map((item) => ({
+          id: item._id,
+          image: item.profileImage || '',
+          fullName: item.fullName || '',
+          phone: item.phone || '',
+          email: item.email || '',
+          status: item.status || 'active',
+          role: typeof item.role === 'object' ? item.role?._id || '' : item.role || '',
+          roleName: typeof item.role === 'object' ? item.role?.roleName || '' : '',
+          address: item.address || '',
+          city: item.city || '',
+          state: item.state || '',
+          pincode: item.pincode || '',
+          assignedProjects: item.assignedProjects || [],
+        }));
 
       setResellersData(formatted);
       setTotalPages(pagination.totalPages || 1);
