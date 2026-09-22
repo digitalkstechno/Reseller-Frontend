@@ -229,7 +229,7 @@ export default function LeadsListView({
     },
     {
       key: 'project',
-      label: 'PROJECT',
+      label: 'PRODUCT',
       render: (v) => (
         <span className="text-sm font-medium text-gray-700">
           {v && v !== '-' ? v : '-'}

@@ -1,13 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import DataTable, { Column } from '@/components/DataTable';
 import ProjectDialog, { Project } from '@/components/ProjectDialog';
 import ProjectViewDialog from '@/components/ProjectViewDialog';
+import ProjectCard from '@/components/ProjectCard';
 import DeleteDialog from '@/components/DeleteDialog';
 import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
-import { ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { 
+  ExternalLink, 
+  Image as ImageIcon, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight,
+  Layers
+} from 'lucide-react';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number = 500): T {
@@ -33,10 +41,20 @@ export function ProjectsContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(12);
   const [search, setSearch] = useState('');
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
+  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
+  const isAdmin = currentRoleName === 'admin' || Boolean(user?.email && /admin/i.test(user.email));
+  const isProjectManager = currentRoleName === 'project_manager' || currentRoleName === 'projectmanager';
+  const isReseller = currentRoleName === 'reseller' || (!isAdmin && !isProjectManager);
+
+  const canCreate = isAdmin || Boolean(rawPerms?.project?.create);
+  const canUpdate = isAdmin || Boolean(rawPerms?.project?.update);
+  const canDelete = isAdmin || Boolean(rawPerms?.project?.delete);
 
   const debouncedSearch = useDebounce(search, 500);
   const token = typeof window !== 'undefined' ? getAuthToken() : null;
@@ -119,7 +137,7 @@ export function ProjectsContent() {
     },
     {
       key: 'name',
-      label: 'PROJECT NAME',
+      label: 'PRODUCT NAME',
       render: (value, row) => {
         let pmNames: string[] = [];
         if (Array.isArray(row.projectManagers) && row.projectManagers.length > 0) {
@@ -154,7 +172,7 @@ export function ProjectsContent() {
     },
     {
       key: 'projectAmount',
-      label: 'PROJECT AMOUNT',
+      label: 'PRODUCT AMOUNT',
       render: (value) => {
         const num = Number(value) || 0;
         return (
@@ -190,20 +208,47 @@ export function ProjectsContent() {
     },
     {
       key: 'demoLink',
-      label: 'DEMO LINK',
+      label: 'LINKS',
+      render: (value, row) => (
+        <div className="flex flex-col gap-1">
+          {value && (
+            <a
+              href={value}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 underline hover:text-blue-800 font-medium"
+            >
+              <span>Live Demo</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+          {row.singlePageLink && (
+            <a
+              href={row.singlePageLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-purple-600 underline hover:text-purple-800 font-medium"
+            >
+              <span>Single Page</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+          {!value && !row.singlePageLink && <span className="text-gray-400 text-xs">-</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'labelCustomization',
+      label: 'CUSTOMIZATION',
       render: (value) =>
         value ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-sky-950 underline hover:text-blue-700 font-medium"
-          >
-            <span>Live Demo</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            Enabled
+          </span>
         ) : (
-          <span className="text-gray-400 text-xs">-</span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500">
+            No
+          </span>
         ),
     },
     {
@@ -263,12 +308,12 @@ export function ProjectsContent() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       fetchProjects();
-      toast.success('Project deleted successfully');
+      toast.success('Product deleted successfully');
       setShowDeleteDialog(false);
       setProjectToDelete(null);
     } catch (err: any) {
       console.error('Delete failed:', err);
-      toast.error(err?.response?.data?.message || 'Failed to delete project');
+      toast.error(err?.response?.data?.message || 'Failed to delete product');
     }
   };
 
@@ -278,13 +323,147 @@ export function ProjectsContent() {
     setEditingProject(null);
   };
 
-  const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
-  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
-  const isAdmin = currentRoleName === 'admin' || user?.email === 'admin@gmail.com';
-  const canCreate = isAdmin || Boolean(rawPerms?.project?.create);
-  const canUpdate = isAdmin || Boolean(rawPerms?.project?.update);
-  const canDelete = isAdmin || Boolean(rawPerms?.project?.delete);
+  // ── RESELLER VIEW: CARDS ONLY ──────────────────────────────────────────────
+  if (isReseller) {
+    return (
+      <>
+        <div className="flex flex-col h-full gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          {/* Top Bar for Reseller */}
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-3 sm:p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              <input
+                type="search"
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-10 pr-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
 
+            <div className="text-xs font-semibold text-gray-500 ml-auto">
+              {totalRecords} {totalRecords === 1 ? 'Product Available' : 'Products Available'}
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="flex flex-col gap-6 flex-1">
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-3xl border border-gray-200 p-4 shadow-sm animate-pulse space-y-4"
+                  >
+                    <div className="h-44 bg-gray-200 rounded-2xl w-full" />
+                    <div className="h-5 bg-gray-200 rounded-full w-28" />
+                    <div className="h-6 bg-gray-200 rounded-md w-3/4" />
+                    <div className="space-y-2">
+                      <div className="h-3.5 bg-gray-200 rounded w-full" />
+                      <div className="h-3.5 bg-gray-200 rounded w-5/6" />
+                    </div>
+                    <div className="space-y-2 pt-2">
+                      <div className="h-3.5 bg-gray-200 rounded w-1/2" />
+                      <div className="h-3.5 bg-gray-200 rounded w-2/3" />
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded-xl w-full pt-2" />
+                  </div>
+                ))}
+              </div>
+            ) : projectsData.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {projectsData.map((project) => (
+                  <ProjectCard
+                    key={project._id || project.name}
+                    project={project}
+                    onView={handleView}
+                    canManage={false}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-dashed border-gray-200 text-center">
+                <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                  <Layers className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">No Products Available</h3>
+                <p className="text-sm text-gray-500 max-w-sm">
+                  {search ? 'No products matched your search criteria.' : 'There are currently no active products enabled for your account.'}
+                </p>
+              </div>
+            )}
+
+            {/* Pagination Controls for Reseller Grid */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between bg-white px-4 py-3 rounded-2xl border border-gray-200/90 shadow-2xs mt-auto">
+                <div className="text-xs text-gray-500 font-medium">
+                  Page <span className="font-bold text-gray-800">{page}</span> of{' '}
+                  <span className="font-bold text-gray-800">{totalPages}</span> ({totalRecords} items)
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => (
+                        <React.Fragment key={p}>
+                          {idx > 0 && arr[idx - 1] !== p - 1 && (
+                            <span className="px-1 text-gray-400 text-xs">...</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setPage(p)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              page === p
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    title="Next Page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <ProjectViewDialog
+          isOpen={!!viewingProject}
+          onClose={() => setViewingProject(null)}
+          project={viewingProject}
+        />
+      </>
+    );
+  }
+
+  // ── ADMIN / PM VIEW: ORIGINAL TABLE DATATABLE VIEW ─────────────────────────
   return (
     <>
       <div className="flex flex-col h-full gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -312,7 +491,7 @@ export function ProjectsContent() {
           onDelete={canDelete ? handleDeleteClick : undefined}
           actions
           addButton={canCreate ? {
-            label: 'Add Project',
+            label: 'Add Product',
             onClick: handleAdd,
           } : undefined}
         />
@@ -324,7 +503,7 @@ export function ProjectsContent() {
           setShowDeleteDialog(false);
           setProjectToDelete(null);
         }}
-        title="Delete Project"
+        title="Delete Product"
         size="md"
         footer={
           <>
@@ -348,7 +527,7 @@ export function ProjectsContent() {
       >
         <div className="py-4">
           <p className="text-gray-700">
-            Are you sure you want to delete project "{projectToDelete?.name}"?
+            Are you sure you want to delete product "{projectToDelete?.name}"?
           </p>
         </div>
       </DeleteDialog>

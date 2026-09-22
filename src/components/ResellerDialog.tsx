@@ -529,7 +529,7 @@ export default function ResellerDialog({
               </div>
             </div>
 
-            {/* ASSIGNED PROJECTS */}
+            {/* ASSIGNED PRODUCTS */}
             <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-2xs">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -539,13 +539,13 @@ export default function ResellerDialog({
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                        Assigned Projects & Rates
+                        Assigned Products & Rates
                       </h4>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
                         {activeProjectsCount} / {assignedProjects.length} Active
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-400">Select accessible projects and specify custom commission %</p>
+                    <p className="text-[11px] text-gray-400">Select accessible products and specify custom commission %</p>
                   </div>
                 </div>
 
@@ -620,7 +620,7 @@ export default function ResellerDialog({
                                     value={item.commissionRate ?? ''}
                                     onChange={(e) => handleProjectCommissionChange(item.project, e.target.value)}
                                     className="w-13 h-7 text-xs font-bold text-center pr-4 text-blue-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
-                                    title="Project commission % (editable)"
+                                    title="Product commission % (editable)"
                                   />
                                   <span className="absolute right-1 text-[10px] font-bold text-gray-400 pointer-events-none">%</span>
                                 </div>

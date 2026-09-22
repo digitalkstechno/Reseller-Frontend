@@ -270,7 +270,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               <InfoCard label="Email" value={(lead as any).customerEmail || lead.email} />
               <InfoCard label="Managed By" value={(lead as any).managedBy || 'Manage by Me'} />
               <InfoCard
-                label="Project"
+                label="Product"
                 value={
                   typeof (lead as any).project === 'object' && (lead as any).project !== null
                     ? (lead as any).project.name || '-'

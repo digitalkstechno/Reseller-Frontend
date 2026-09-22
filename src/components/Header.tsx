@@ -96,8 +96,8 @@ export default function Header({ toggleSidebar }: HeaderProps) {
     if (pathName.startsWith("/reports/resellers")) return "Resellers Report";
     if (pathName.startsWith("/settlements")) return "Settlements";
     if (pathName.startsWith("/resellers")) return "Reseller List";
-    if (pathName.startsWith("/project-managers")) return "Project Managers";
-    if (pathName.startsWith("/projects")) return "Projects";
+    if (pathName.startsWith("/project-managers")) return "Product Managers";
+    if (pathName.startsWith("/projects")) return "Products";
     if (pathName.startsWith("/ledger")) return "Ledger";
     if (pathName.startsWith("/setup")) return "Setup";
     if (pathName.startsWith("/tasks")) return "Tasks";

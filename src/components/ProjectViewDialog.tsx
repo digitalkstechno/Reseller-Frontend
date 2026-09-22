@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Dialog from './Dialog';
 import { Project } from './ProjectDialog';
-import { FiExternalLink, FiChevronLeft, FiChevronRight, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiExternalLink, FiChevronLeft, FiChevronRight, FiCheckCircle, FiXCircle, FiCopy, FiCheck } from 'react-icons/fi';
 import { Badge } from './Badge';
+import { toast } from 'react-toastify';
 
 interface ProjectViewDialogProps {
   isOpen: boolean;
@@ -18,8 +19,31 @@ export default function ProjectViewDialog({
   project,
 }: ProjectViewDialogProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isCopied, setIsCopied] = useState(false);
 
   if (!project) return null;
+
+  const isCustomization = project.labelCustomization === true || (project.labelCustomization as any) === 'true' || (project.labelCustomization as any) === 1;
+
+  const handleCopyAll = () => {
+    const details: string[] = [
+      `📌 Project Name: ${project.name}`,
+    ];
+
+    if (project.demoLink) details.push(`🔗 Live Demo Link: ${project.demoLink}`);
+    if (project.singlePageLink) details.push(`📄 Single Page Link: ${project.singlePageLink}`);
+    if (project.demoId) details.push(`👤 Demo ID / User: ${project.demoId}`);
+    if (project.demoPassword) details.push(`🔑 Demo Password: ${project.demoPassword}`);
+    if (isCustomization) {
+      details.push(`✨ Customization: Available`);
+    }
+
+    const textToCopy = details.join('\n');
+    navigator.clipboard.writeText(textToCopy);
+    setIsCopied(true);
+    toast.success('Project details & demo credentials copied to clipboard!');
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const images = project.images || [];
   let pmNames: string[] = [];
@@ -50,7 +74,7 @@ export default function ProjectViewDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Project Details"
+      title="Product Details"
       size="xl"
       footer={
         <button
@@ -66,7 +90,7 @@ export default function ProjectViewDialog({
         {/* Header summary card */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-xl font-bold text-gray-900">{project.name}</h2>
               <Badge variant={project.status === 'active' ? 'success' : 'default'}>
                 {project.status === 'active' ? 'Active' : 'Inactive'}
@@ -74,6 +98,11 @@ export default function ProjectViewDialog({
               {project.commissionRate !== undefined && project.commissionRate !== null && Number(project.commissionRate) > 0 && (
                 <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   {project.commissionRate}% Commission
+                </span>
+              )}
+              {isCustomization && (
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                  Customization Available
                 </span>
               )}
             </div>
@@ -102,13 +131,38 @@ export default function ProjectViewDialog({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleCopyAll}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
+                isCopied
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-2xs'
+              }`}
+              title="Copy all links and credentials"
+            >
+              {isCopied ? <FiCheck className="w-4 h-4 text-white" /> : <FiCopy className="w-4 h-4 text-gray-600" />}
+              <span>{isCopied ? 'Copied Details' : 'Copy All Details'}</span>
+            </button>
+
+            {project.singlePageLink && (
+              <a
+                href={project.singlePageLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
+              >
+                <span>Single Page</span>
+                <FiExternalLink className="w-4 h-4" />
+              </a>
+            )}
             {project.demoLink && (
               <a
                 href={project.demoLink}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all cursor-pointer"
               >
                 <span>Live Demo</span>
                 <FiExternalLink className="w-4 h-4" />
@@ -147,7 +201,7 @@ export default function ProjectViewDialog({
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Project Screenshots & Previews ({images.length})
+              Product Screenshots & Previews ({images.length})
             </h3>
 
             {/* Main Preview Container */}

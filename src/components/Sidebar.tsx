@@ -84,9 +84,9 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     menuItems.push({ icon: UserCheck, label: "Product Management", path: "/project-managers" });
   }
 
-  // Projects
+  // Products
   if (isAdmin || hasModuleAccess('project')) {
-    menuItems.push({ icon: FolderKanban, label: "Projects", path: "/projects" });
+    menuItems.push({ icon: FolderKanban, label: "Products", path: "/projects" });
   }
 
   // Settlements

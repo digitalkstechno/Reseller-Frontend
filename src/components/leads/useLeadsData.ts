@@ -25,11 +25,14 @@ type Filters = {
   project?: string;
 };
 
+export type LeadStageTab = 'all' | 'new_lead' | 'won' | 'lost';
+
 export function useLeadsData(
   activeTab: 'all' | 'my' = 'all',
   filters: Filters = {},
   viewMode: 'list' | 'kanban' = 'list',
-  kanbanSubView: 'board' | 'lost' | 'won' = 'board'
+  kanbanSubView: 'board' | 'lost' | 'won' = 'won',
+  leadStageTab: LeadStageTab = 'won'
 ) {
   const { permissions: rawPerms } = useSelector((state: any) => state.auth);
   const [leads, setLeads] = useState<ApiLead[]>([]);
@@ -105,12 +108,12 @@ export function useLeadsData(
 
   // Keep latest values in a ref so callbacks always read fresh values
   const stateRef = useRef({
-    activeTab, filters, viewMode, kanbanSubView,
+    activeTab, filters, viewMode, kanbanSubView, leadStageTab,
     listPage, lostPage, wonPage, limit,
   });
   useEffect(() => {
     stateRef.current = {
-      activeTab, filters, viewMode, kanbanSubView,
+      activeTab, filters, viewMode, kanbanSubView, leadStageTab,
       listPage, lostPage, wonPage, limit,
     };
   });
@@ -351,18 +354,25 @@ export function useLeadsData(
   // refetchAll — always reads latest values from ref, no stale closures
   // ─────────────────────────────────────────────────────────────────────────
   const refetchAll = useCallback(async () => {
-    const { activeTab: tab, filters: f, viewMode: vm, kanbanSubView: ksv,
+    const { activeTab: tab, filters: f, viewMode: vm, kanbanSubView: ksv, leadStageTab: lst,
       listPage: lp, lostPage: lsp, wonPage: wp } = stateRef.current;
 
     if (vm === 'list') {
-      await Promise.all([fetchLeadsList(tab, f, lp), fetchCounts(tab, f)]);
+      const calls: Promise<void>[] = [fetchCounts(tab, f)];
+      if (lst === 'won') {
+        calls.push(fetchWonLeads(tab, f, wp));
+      } else if (lst === 'lost') {
+        calls.push(fetchLostLeads(tab, f, lsp));
+      } else {
+        calls.push(fetchLeadsList(tab, f, lp));
+      }
+      await Promise.all(calls);
     } else {
       const calls: Promise<void>[] = [
-        fetchKanbanLeads(tab, f),
         fetchCounts(tab, f),
       ];
-      if (ksv === 'lost') calls.push(fetchLostLeads(tab, f, lsp));
-      if (ksv === 'won') calls.push(fetchWonLeads(tab, f, wp));
+      if (ksv === 'lost' || lst === 'lost') calls.push(fetchLostLeads(tab, f, lsp));
+      if (ksv === 'won' || lst === 'won') calls.push(fetchWonLeads(tab, f, wp));
       await Promise.all(calls);
     }
   }, [fetchLeadsList, fetchKanbanLeads, fetchLostLeads, fetchWonLeads, fetchCounts]);
@@ -380,14 +390,21 @@ export function useLeadsData(
     const init = async () => {
       setLoading(true);
       if (viewMode === 'list') {
-        await Promise.all([fetchLeadsList(activeTab, filters, 1), fetchCounts(activeTab, filters)]);
+        const calls: Promise<void>[] = [fetchCounts(activeTab, filters)];
+        if (leadStageTab === 'won') {
+          calls.push(fetchWonLeads(activeTab, filters, 1));
+        } else if (leadStageTab === 'lost') {
+          calls.push(fetchLostLeads(activeTab, filters, 1));
+        } else {
+          calls.push(fetchLeadsList(activeTab, filters, 1));
+        }
+        await Promise.all(calls);
       } else {
         const calls: Promise<void>[] = [
-          // Global Kanban fetch removed - component now fetches status-wise
           fetchCounts(activeTab, filters),
         ];
-        if (kanbanSubView === 'lost') calls.push(fetchLostLeads(activeTab, filters, 1));
-        if (kanbanSubView === 'won') calls.push(fetchWonLeads(activeTab, filters, 1));
+        if (kanbanSubView === 'lost' || leadStageTab === 'lost') calls.push(fetchLostLeads(activeTab, filters, 1));
+        if (kanbanSubView === 'won' || leadStageTab === 'won') calls.push(fetchWonLeads(activeTab, filters, 1));
         await Promise.all(calls);
       }
       if (!cancelled) setLoading(false);
@@ -396,10 +413,10 @@ export function useLeadsData(
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 3. Re-fetch when viewMode / activeTab / filters change
-  const prevKey = useRef(JSON.stringify({ viewMode, activeTab, filters }));
+  // 3. Re-fetch when viewMode / activeTab / filters / leadStageTab change
+  const prevKey = useRef(JSON.stringify({ viewMode, activeTab, filters, leadStageTab }));
   useEffect(() => {
-    const key = JSON.stringify({ viewMode, activeTab, filters });
+    const key = JSON.stringify({ viewMode, activeTab, filters, leadStageTab });
     if (key === prevKey.current) return;
     prevKey.current = key;
 
@@ -408,15 +425,20 @@ export function useLeadsData(
     setWonPage(1);
 
     if (viewMode === 'list') {
-      fetchLeadsList(activeTab, filters, 1);
+      if (leadStageTab === 'won') {
+        fetchWonLeads(activeTab, filters, 1);
+      } else if (leadStageTab === 'lost') {
+        fetchLostLeads(activeTab, filters, 1);
+      } else {
+        fetchLeadsList(activeTab, filters, 1);
+      }
       fetchCounts(activeTab, filters);
     } else {
-      // fetchKanbanLeads(activeTab, filters); // Status-wise fetching handled by component
       fetchCounts(activeTab, filters);
-      if (kanbanSubView === 'lost') fetchLostLeads(activeTab, filters, 1);
-      if (kanbanSubView === 'won') fetchWonLeads(activeTab, filters, 1);
+      if (kanbanSubView === 'lost' || leadStageTab === 'lost') fetchLostLeads(activeTab, filters, 1);
+      if (kanbanSubView === 'won' || leadStageTab === 'won') fetchWonLeads(activeTab, filters, 1);
     }
-  }, [viewMode, activeTab, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, activeTab, filters, leadStageTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 4. Kanban sub-view changed
   const prevSubView = useRef(kanbanSubView);
@@ -424,7 +446,6 @@ export function useLeadsData(
     if (prevSubView.current === kanbanSubView) return;
     prevSubView.current = kanbanSubView;
     if (viewMode !== 'kanban') return;
-    // if (kanbanSubView === 'board') fetchKanbanLeads(activeTab, filters); // Handled by component
     if (kanbanSubView === 'lost') fetchLostLeads(activeTab, filters, lostPage);
     if (kanbanSubView === 'won') fetchWonLeads(activeTab, filters, wonPage);
   }, [kanbanSubView]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -436,24 +457,36 @@ export function useLeadsData(
     if (prevListPage.current === listPage && prevLimit.current === limit) return;
     prevListPage.current = listPage;
     prevLimit.current = limit;
-    if (viewMode === 'list') fetchLeadsList(activeTab, filters, listPage);
-  }, [listPage, limit]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (viewMode === 'list') {
+      if (leadStageTab === 'won') {
+        fetchWonLeads(activeTab, filters, listPage);
+      } else if (leadStageTab === 'lost') {
+        fetchLostLeads(activeTab, filters, listPage);
+      } else {
+        fetchLeadsList(activeTab, filters, listPage);
+      }
+    }
+  }, [listPage, limit, leadStageTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6. Lost page change
   const prevLostPage = useRef(lostPage);
   useEffect(() => {
     if (prevLostPage.current === lostPage) return;
     prevLostPage.current = lostPage;
-    if (viewMode === 'kanban' && kanbanSubView === 'lost') fetchLostLeads(activeTab, filters, lostPage);
-  }, [lostPage]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (leadStageTab === 'lost' || (viewMode === 'kanban' && kanbanSubView === 'lost')) {
+      fetchLostLeads(activeTab, filters, lostPage);
+    }
+  }, [lostPage, leadStageTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 7. Won page change
   const prevWonPage = useRef(wonPage);
   useEffect(() => {
     if (prevWonPage.current === wonPage) return;
     prevWonPage.current = wonPage;
-    if (viewMode === 'kanban' && kanbanSubView === 'won') fetchWonLeads(activeTab, filters, wonPage);
-  }, [wonPage]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (leadStageTab === 'won' || (viewMode === 'kanban' && kanbanSubView === 'won')) {
+      fetchWonLeads(activeTab, filters, wonPage);
+    }
+  }, [wonPage, leadStageTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────────────────
 

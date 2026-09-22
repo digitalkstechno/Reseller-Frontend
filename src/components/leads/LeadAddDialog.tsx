@@ -513,7 +513,7 @@ export default function LeadAddDialog({
                   />
 
                   <FormSelect
-                    label="Select Project"
+                    label="Select Product"
                     name="project"
                     value={formik.values.project}
                     onChange={handleProjectSelect}
@@ -521,14 +521,14 @@ export default function LeadAddDialog({
                       value: p._id,
                       label: p.name,
                     }))}
-                    placeholder="Select Project"
+                    placeholder="Select Product"
                     error={getFieldError('project')}
                     required={true}
                   />
 
                   {showPaymentAmount && (
                     <FormInput
-                      label="Project Amount (₹)"
+                      label="Product Amount (₹)"
                       name="paymentAmount"
                       value={formik.values.paymentAmount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {

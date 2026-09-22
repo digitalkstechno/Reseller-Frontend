@@ -33,10 +33,10 @@ export default function RoleForm({
   const featureLabels: Record<Feature, string> = {
     lead: 'Leads',
     reseller: 'Resellers',
-    project: 'Projects',
-    projectManager: 'Project Managers',
-    role: 'Role Management',
-    leadStatus: 'Lead Statuses',
+    project: 'Products',
+    projectManager: 'Product Managers',
+    role: 'Roles',
+    leadStatus: 'Lead Status',
     leadSource: 'Lead Sources',
   };
 

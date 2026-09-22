@@ -21,6 +21,8 @@ export interface Project {
   demoLink?: string;
   demoId?: string;
   demoPassword?: string;
+  singlePageLink?: string;
+  labelCustomization?: boolean;
   images?: string[];
   features?: string;
   description?: string;
@@ -39,8 +41,8 @@ interface ProjectDialogProps {
 
 const validationSchema = Yup.object({
   name: Yup.string()
-    .required('Project name is required')
-    .min(2, 'Project name must be at least 2 characters'),
+    .required('Product name is required')
+    .min(2, 'Product name must be at least 2 characters'),
   projectManagers: Yup.array().of(Yup.string()).optional(),
   commissionRate: Yup.number()
     .transform((value, originalValue) => (originalValue === '' ? undefined : value))
@@ -50,12 +52,14 @@ const validationSchema = Yup.object({
     .optional(),
   projectAmount: Yup.number()
     .transform((value, originalValue) => (originalValue === '' ? undefined : value))
-    .min(0, 'Project amount cannot be negative')
+    .min(0, 'Product amount cannot be negative')
     .nullable()
     .optional(),
   demoLink: Yup.string().url('Must be a valid URL (e.g. https://example.com)').nullable().optional(),
   demoId: Yup.string().optional(),
   demoPassword: Yup.string().optional(),
+  singlePageLink: Yup.string().url('Must be a valid URL (e.g. https://example.com)').nullable().optional(),
+  labelCustomization: Yup.boolean().optional(),
   features: Yup.string().optional(),
   status: Yup.string().required('Status is required'),
 });
@@ -104,6 +108,8 @@ export default function ProjectDialog({
       demoLink: initialData?.demoLink || '',
       demoId: initialData?.demoId || '',
       demoPassword: initialData?.demoPassword || '',
+      singlePageLink: initialData?.singlePageLink || '',
+      labelCustomization: initialData?.labelCustomization === true || (initialData?.labelCustomization as any) === 'true' || (initialData?.labelCustomization as any) === 1,
       features: initialData?.features || initialData?.description || '',
       status: (initialData?.status || 'active') as 'active' | 'inactive',
     },
@@ -180,6 +186,8 @@ export default function ProjectDialog({
         demoLink: initialData.demoLink || '',
         demoId: initialData.demoId || '',
         demoPassword: initialData.demoPassword || '',
+        singlePageLink: initialData.singlePageLink || '',
+        labelCustomization: initialData.labelCustomization === true || (initialData.labelCustomization as any) === 'true' || (initialData.labelCustomization as any) === 1,
         features: initialDesc,
         status: initialData.status || 'active',
       });
@@ -209,6 +217,8 @@ export default function ProjectDialog({
           demoLink: '',
           demoId: '',
           demoPassword: '',
+          singlePageLink: '',
+          labelCustomization: false,
           features: '',
           status: 'active',
         },
@@ -309,6 +319,8 @@ export default function ProjectDialog({
       payload.append('demoLink', values.demoLink ? values.demoLink.trim() : '');
       payload.append('demoId', values.demoId ? values.demoId.trim() : '');
       payload.append('demoPassword', values.demoPassword ? values.demoPassword.trim() : '');
+      payload.append('singlePageLink', values.singlePageLink ? values.singlePageLink.trim() : '');
+      payload.append('labelCustomization', String(values.labelCustomization));
       payload.append('features', finalFeatures);
       payload.append('description', finalFeatures);
       payload.append('status', values.status);
@@ -336,10 +348,10 @@ export default function ProjectDialog({
         : await axios.post(baseUrl.addProject, payload, { headers });
 
       parentOnSubmit?.(response.data);
-      toast.success(isUpdate ? 'Project updated successfully' : 'Project created successfully');
+      toast.success(isUpdate ? 'Product updated successfully' : 'Product created successfully');
       onClose();
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to save project';
+      const msg = err.response?.data?.message || 'Failed to save product';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -356,7 +368,7 @@ export default function ProjectDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={isUpdate ? 'Edit Project' : 'Add New Project'}
+      title={isUpdate ? 'Edit Product' : 'Add New Product'}
       size="xl"
       footer={
         <>
@@ -374,7 +386,7 @@ export default function ProjectDialog({
             className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             disabled={loading}
           >
-            {loading ? 'Saving...' : isUpdate ? 'Update Project' : '+ Add Project'}
+            {loading ? 'Saving...' : isUpdate ? 'Update Product' : '+ Add Product'}
           </button>
         </>
       }
@@ -392,12 +404,12 @@ export default function ProjectDialog({
             <div className="border border-gray-100 rounded-xl bg-white p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-50 text-blue-600 font-semibold text-sm uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                PROJECT INFORMATION
+                PRODUCT INFORMATION
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormInput
-                  label="Project Name"
+                  label="Product Name"
                   name="name"
                   type="text"
                   value={formik.values.name}
@@ -428,7 +440,7 @@ export default function ProjectDialog({
                 />
 
                 <FormInput
-                  label="Default Project Amount (₹)"
+                  label="Default Product Amount (₹)"
                   name="projectAmount"
                   type="text"
                   value={formik.values.projectAmount}
@@ -532,7 +544,7 @@ export default function ProjectDialog({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-1">
                   <FormInput
                     label="Live Demo Link"
@@ -559,6 +571,34 @@ export default function ProjectDialog({
                   />
                 </div>
 
+                <div className="md:col-span-1">
+                  <FormInput
+                    label="Single Page Link"
+                    name="singlePageLink"
+                    type="url"
+                    value={formik.values.singlePageLink}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={formik.touched.singlePageLink && formik.errors.singlePageLink ? formik.errors.singlePageLink : undefined}
+                    placeholder="https://singlepage.example.com"
+                    icon={
+                      formik.values.singlePageLink ? (
+                        <a
+                          href={formik.values.singlePageLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Open Single Page Link"
+                        >
+                          <FiExternalLink className="w-4 h-4" />
+                        </a>
+                      ) : undefined
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-1">
                   <FormInput
                     label="Demo ID / User"
@@ -674,7 +714,7 @@ export default function ProjectDialog({
               <div className="flex items-center justify-between pb-2 border-b border-gray-50">
                 <div className="flex items-center gap-2 text-blue-600 font-semibold text-sm uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                  PROJECT IMAGES (MAX 4)
+                  PRODUCT IMAGES (MAX 4)
                 </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
                   {imageSlots.filter(Boolean).length}/4
@@ -685,20 +725,29 @@ export default function ProjectDialog({
                 {[0, 1, 2, 3].map((idx) => {
                   const slot = imageSlots[idx];
                   const imgSrc = slot?.type === 'existing' ? slot.url : slot?.preview;
+                  const isLogoSlot = idx === 0;
 
                   return (
                     <div
                       key={idx}
-                      className="relative group border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl h-28 bg-gray-50 flex flex-col items-center justify-center overflow-hidden transition-all"
+                      className={`relative group border-2 border-dashed ${
+                        isLogoSlot ? 'border-blue-300 bg-blue-50/30' : 'border-gray-200 bg-gray-50'
+                      } hover:border-blue-500 rounded-xl h-28 flex flex-col items-center justify-center overflow-hidden transition-all`}
                     >
+                      {isLogoSlot && (
+                        <div className="absolute top-1.5 left-1.5 z-10 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs">
+                          Main Logo
+                        </div>
+                      )}
+
                       {imgSrc ? (
                         <>
                           <img
                             src={imgSrc}
-                            alt={`Slot ${idx + 1}`}
-                            className="w-full h-full object-cover"
+                            alt={isLogoSlot ? 'Product Logo' : `Slot ${idx + 1}`}
+                            className="w-full h-full object-contain p-1.5"
                           />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity z-20">
                             <button
                               type="button"
                               onClick={() => fileInputRefs[idx].current?.click()}
@@ -724,7 +773,9 @@ export default function ProjectDialog({
                           className="flex flex-col items-center justify-center text-gray-400 hover:text-blue-600 transition-colors w-full h-full p-2 cursor-pointer"
                         >
                           <FiPlus className="w-6 h-6 mb-1 text-gray-400" />
-                          <span className="text-xs font-medium">Image {idx + 1}</span>
+                          <span className="text-xs font-semibold">
+                            {isLogoSlot ? 'Upload Logo' : `Image ${idx + 1}`}
+                          </span>
                         </button>
                       )}
 
@@ -741,7 +792,7 @@ export default function ProjectDialog({
               </div>
 
               <p className="text-[11px] text-gray-500 text-center leading-tight">
-                Upload up to 4 project screenshots or banners (JPG, PNG, WEBP).
+                Slot 1 is for <strong className="text-blue-600">Product Logo</strong>. Slots 2-4 are for screenshots/banners.
               </p>
             </div>
 
@@ -753,7 +804,7 @@ export default function ProjectDialog({
               </div>
 
               <div className="space-y-2">
-                <span className="block text-sm font-medium text-gray-700">Project Status</span>
+                <span className="block text-sm font-medium text-gray-700">Product Status</span>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <button
                     type="button"
@@ -784,6 +835,28 @@ export default function ProjectDialog({
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Label Customization Checkbox */}
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <span className="block text-sm font-medium text-gray-700">Customization</span>
+                <label className="flex items-start gap-3 p-3 bg-gray-50 hover:bg-blue-50/40 rounded-lg border border-gray-200/80 cursor-pointer transition-colors select-none">
+                  <input
+                    type="checkbox"
+                    name="labelCustomization"
+                    checked={formik.values.labelCustomization}
+                    onChange={(e) => formik.setFieldValue('labelCustomization', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                  />
+                  <div>
+                    <span className="block text-sm font-semibold text-gray-900">
+                      Label Customization
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      Enable custom white-labeling / brand customization for this product
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
           </div>

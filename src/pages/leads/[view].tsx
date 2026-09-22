@@ -30,6 +30,7 @@ import DatePicker from '@/components/ui/DatePicker';
 
 export type ViewMode = 'list' | 'kanban';
 export type KanbanSubView = 'board' | 'lost' | 'won';
+export type LeadStageTab = 'all' | 'new_lead' | 'won' | 'lost';
 
 // ── Utils ──────────────────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay = 500): T {
@@ -49,8 +50,11 @@ export default function LeadsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
 
+  // ── Top Lead Stage Tab (All | New Lead | Won [Default] | Lost) ───────────
+  const [leadStageTab, setLeadStageTab] = useState<LeadStageTab>('won');
+
   // ── Kanban sub-view — lifted here so hook knows which data to fetch ───────
-  const [kanbanSubView, setKanbanSubView] = useState<KanbanSubView>('board');
+  const [kanbanSubView, setKanbanSubView] = useState<KanbanSubView>('won');
 
   // ── Search & Filters ─────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -168,10 +172,28 @@ export default function LeadsPage() {
     .catch(err => console.error('Failed to fetch projects for filter:', err));
   }, [token, rawPerms, userRole]);
 
+  // ── Resolve "New Lead" status object for filtering ────────────────────────
+  const [cachedStatuses, setCachedStatuses] = useState<any[]>([]);
+
+  const newLeadStatus = useMemo(() => {
+    if (!cachedStatuses || cachedStatuses.length === 0) return null;
+    return (
+      cachedStatuses.find((s: any) => /^new(\s*lead)?$/i.test(s.name)) ||
+      cachedStatuses.find((s: any) => s.name?.toLowerCase().includes('new')) ||
+      cachedStatuses[0]
+    );
+  }, [cachedStatuses]);
+
+  const activeStatusParam = useMemo(() => {
+    if (statusFilter.length > 0) return statusFilter.join(',');
+    if (leadStageTab === 'new_lead' && newLeadStatus) return newLeadStatus._id;
+    return '';
+  }, [statusFilter, leadStageTab, newLeadStatus]);
+
   const filters = useMemo(
     () => ({
       search: debouncedSearch,
-      status: statusFilter.length > 0 ? statusFilter.join(',') : '',
+      status: activeStatusParam,
       staff: staffFilter.length > 0 ? staffFilter.join(',') : '',
       reseller: resellerFilter.length > 0 ? resellerFilter.join(',') : '',
       project: projectFilter.length > 0 ? projectFilter.join(',') : '',
@@ -179,10 +201,10 @@ export default function LeadsPage() {
       from: fromDate,
       to: toDate,
     }),
-    [debouncedSearch, statusFilter, staffFilter, resellerFilter, projectFilter, paymentStatusFilter, fromDate, toDate]
+    [debouncedSearch, activeStatusParam, staffFilter, resellerFilter, projectFilter, paymentStatusFilter, fromDate, toDate]
   );
 
-  // ── Data — pass kanbanSubView so hook fetches only what's needed ──────────
+  // ── Data — pass kanbanSubView & leadStageTab so hook fetches only what's needed ──────────
   const {
     leads,
     leadsList,
@@ -201,7 +223,14 @@ export default function LeadsPage() {
     listPagination,
     lostPagination,
     wonPagination,
-  } = useLeadsData(activeTab, filters, viewMode, kanbanSubView);
+  } = useLeadsData(activeTab, filters, viewMode, kanbanSubView, leadStageTab);
+
+  // Sync loaded statuses into cachedStatuses so newLeadStatus resolves
+  useEffect(() => {
+    if (statuses && statuses.length > 0) {
+      setCachedStatuses(statuses);
+    }
+  }, [statuses]);
 
   const handleRefresh = useCallback(() => {
     refetchAll();
@@ -446,7 +475,7 @@ export default function LeadsPage() {
 
               <div>
                 <FormMultiSelect
-                  label="Project"
+                  label="Product"
                   value={tempProjectFilter}
                   onChange={setTempProjectFilter}
                   options={projectsList.map((p) => ({ value: p._id, label: p.name }))}
@@ -552,103 +581,116 @@ export default function LeadsPage() {
   }
 
 
+  const currentLeads = leadStageTab === 'won' ? wonLeads : leadStageTab === 'lost' ? lostLeads : leadsList;
+  const currentPagination = leadStageTab === 'won' ? wonPagination : leadStageTab === 'lost' ? lostPagination : listPagination;
+
+  const handleStageTabChange = (tab: LeadStageTab) => {
+    setLeadStageTab(tab);
+    if (tab === 'won') {
+      setKanbanSubView('won');
+    } else if (tab === 'lost') {
+      setKanbanSubView('lost');
+    } else {
+      setKanbanSubView('board');
+    }
+  };
+
+  const getTabCount = (tabId: LeadStageTab) => {
+    if (tabId === 'all') {
+      if (counts?.totalLeads !== undefined && counts?.totalLeads !== null) return counts.totalLeads;
+      if (Array.isArray(counts?.statusWiseCounts)) {
+        return (counts.statusWiseCounts as any[]).reduce((sum, s) => sum + (s.count || 0), 0);
+      }
+      return listPagination?.totalItems ?? 0;
+    }
+    if (tabId === 'won') {
+      if (Array.isArray(counts?.statusWiseCounts)) {
+        const found = (counts.statusWiseCounts as any[]).find((s: any) => s.statusName?.match(/^won$/i));
+        if (found) return found.count;
+      }
+      return counts?.totalWon ?? (wonPagination?.totalItems || wonLeads?.length || 0);
+    }
+    if (tabId === 'lost') {
+      if (Array.isArray(counts?.statusWiseCounts)) {
+        const found = (counts.statusWiseCounts as any[]).find((s: any) => s.statusName?.match(/^lost$/i));
+        if (found) return found.count;
+      }
+      return counts?.totalLost ?? (lostPagination?.totalItems || lostLeads?.length || 0);
+    }
+    if (tabId === 'new_lead') {
+      if (Array.isArray(counts?.statusWiseCounts)) {
+        const found = (counts.statusWiseCounts as any[]).find((s: any) =>
+          s.statusName?.match(/^new(\s*lead)?$/i) || s.statusName?.toLowerCase().includes('new')
+        );
+        if (found) return found.count;
+      }
+      if (newLeadStatus && counts?.statusCounts) {
+        return counts.statusCounts[newLeadStatus._id] ?? 0;
+      }
+      return 0;
+    }
+    return 0;
+  };
+
+  const stageTabs: { id: LeadStageTab; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'new_lead', label: 'New Lead' },
+    { id: 'won', label: 'Won' },
+    { id: 'lost', label: 'Lost' },
+  ];
+
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative bg-gray-50/50">
 
-      {/* ── Page Header & Unified Toolbar ───────────────────────────────── */}
-      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200 px-3 py-2.5 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Mobile View Toggle */}
-            <div className="md:hidden relative flex items-center bg-gray-100 p-1 rounded-lg w-fit border border-gray-200">
-              <button
-                onClick={() => switchView('list')}
-                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
-              >
-                <ListCollapse className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => switchView('kanban')}
-                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm' : 'text-gray-700'}`}
-              >
-                <Kanban className="h-4 w-4" />
-              </button>
-            </div>
+      {/* ── Top Navigation Tabs & Unified Toolbar ───────────────── */}
+      <div className="bg-white border-b border-gray-200 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 pt-2 pb-2">
+          
+          {/* ── Stage Tabs with Subtle Background & Compact Gap ── */}
+          <div className="inline-flex items-center gap-1 sm:gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-fit max-w-full overflow-x-auto custom-scrollbar">
+            {stageTabs.map((tab) => {
+              const isActive = leadStageTab === tab.id;
+              const countVal = getTabCount(tab.id);
 
-            {/* Kanban Sub-View Tabs (Board / Lost / Won) placed cleanly in the top toolbar */}
-            {viewMode === 'kanban' && (
-              <div className="flex items-center bg-gray-100/90 p-1 rounded-xl border border-gray-200/80 shadow-2xs gap-1">
-                {(['board', 'lost', 'won'] as KanbanSubView[]).map((v) => {
-                  let boardCount = 0;
-                  let lostCount = 0;
-                  let wonCount = 0;
-
-                  if (Array.isArray(counts?.statusWiseCounts)) {
-                    (counts.statusWiseCounts as any[]).forEach((s: any) => {
-                      if (s.statusName?.match(/^won$/i)) {
-                        wonCount += s.count;
-                      } else if (s.statusName?.match(/^lost$/i)) {
-                        lostCount += s.count;
-                      } else {
-                        boardCount += s.count;
-                      }
-                    });
-                  } else {
-                    lostCount = lostPagination?.totalItems ?? lostLeads?.length ?? 0;
-                    wonCount = wonPagination?.totalItems ?? wonLeads?.length ?? 0;
-                  }
-
-                  let label = '';
-                  let countVal = 0;
-                  if (v === 'board') {
-                    label = 'Board View';
-                    countVal = boardCount;
-                  } else if (v === 'lost') {
-                    label = 'Lost Leads';
-                    countVal = lostCount;
-                  } else {
-                    label = 'Won Leads';
-                    countVal = wonCount;
-                  }
-
-                  const isActive = kanbanSubView === v;
-
-                  return (
-                    <button
-                      key={v}
-                      onClick={() => setKanbanSubView(v)}
-                      className={`cursor-pointer px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 flex items-center gap-1.5 ${
-                        isActive
-                          ? v === 'lost'
-                            ? 'bg-red-600 text-white shadow-sm'
-                            : v === 'won'
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'bg-[#3B82F6] text-white shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
-                      }`}
-                    >
-                      <span>{label}</span>
-                      <span
-                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                          isActive
-                            ? 'bg-white/25 text-white'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {countVal}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleStageTabChange(tab.id)}
+                  className={`relative py-1.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? tab.id === 'lost'
+                        ? 'bg-white text-red-600 shadow-xs border border-red-200/80'
+                        : tab.id === 'won'
+                        ? 'bg-white text-emerald-600 shadow-xs border border-emerald-200/80'
+                        : 'bg-white text-[#3B82F6] shadow-xs border border-blue-200/80'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                      isActive
+                        ? tab.id === 'lost'
+                          ? 'bg-red-50 text-red-700'
+                          : tab.id === 'won'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-blue-50 text-blue-700'
+                        : 'bg-gray-200/80 text-gray-600'
+                    }`}
+                  >
+                    {countVal}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:gap-3 md:ml-auto">
+          {/* ── Action Toolbar (Search, Filter, View Mode, Add Lead) ── */}
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 ml-auto py-1">
             {headerActions}
 
             {/* Desktop View toggle */}
-            <div className="hidden md:flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
+            <div className="flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
               <button
                 onClick={() => switchView('list')}
                 className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
@@ -669,10 +711,10 @@ export default function LeadsPage() {
             {canCreate && (
               <button
                 onClick={handleOpenAdd}
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-5 h-10 text-sm font-semibold text-white shadow-md hover:bg-blue-600 active:scale-95 transition-all"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-4 sm:px-5 h-10 text-sm font-semibold text-white shadow-md hover:bg-blue-600 active:scale-95 transition-all"
               >
                 <Plus className="h-4 w-4" />
-                Add Lead
+                <span>Add Lead</span>
               </button>
             )}
           </div>
@@ -690,7 +732,7 @@ export default function LeadsPage() {
             onRefresh={handleRefresh}
             scope={activeTab}
             filters={filters}
-            externalLeads={leadsList}
+            externalLeads={currentLeads}
             loading={loading}
             permissions={{
               create: canCreate,
@@ -702,7 +744,7 @@ export default function LeadsPage() {
               transfer: canTransfer,
               convert: canConvert,
             }}
-            pagination={listPagination}
+            pagination={currentPagination}
             onSearchChange={setSearch}
             headerActions={undefined}
           />
@@ -725,7 +767,12 @@ export default function LeadsPage() {
             lostPagination={lostPagination}
             wonPagination={wonPagination}
             // Notify parent when sub-view changes so hook fetches correct data
-            onSubViewChange={setKanbanSubView}
+            onSubViewChange={(v) => {
+              setKanbanSubView(v);
+              if (v === 'won') setLeadStageTab('won');
+              else if (v === 'lost') setLeadStageTab('lost');
+              else if (leadStageTab !== 'new_lead' && leadStageTab !== 'all') setLeadStageTab('all');
+            }}
             permissions={{
               create: canCreate,
               readAll: canReadAll,
