@@ -48,9 +48,35 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
 
-  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  // Extract role and email from Redux state or directly from JWT token payload
+  const tokenPayload = (() => {
+    if (typeof window === 'undefined') return null;
+    const t = getAuthToken();
+    if (!t) return null;
+    try {
+      const parts = t.split('.');
+      if (parts.length === 3) {
+        return JSON.parse(window.atob(parts[1]));
+      }
+    } catch {}
+    return null;
+  })();
+
+  const tokenRole = tokenPayload?.role?.roleName || tokenPayload?.role || '';
+  const tokenEmail = tokenPayload?.email || '';
+
+  const roleName = (
+    userRole ||
+    user?.role?.roleName ||
+    (typeof user?.role === 'string' ? user.role : '') ||
+    tokenRole ||
+    ''
+  ).toString().toLowerCase().trim();
+
+  const userEmail = (user?.email || tokenEmail || '').toString().toLowerCase().trim();
+  const isAdmin = roleName === 'admin' || userEmail === 'admin@gmail.com' || userEmail.includes('admin');
   const isProjectManager = roleName === 'project_manager' || roleName === 'projectmanager';
-  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com';
+  const isReseller = roleName === 'reseller' || (!isAdmin && !isProjectManager);
 
   const hasModuleAccess = (moduleKey: string) => {
     if (isAdmin) return true;
@@ -65,7 +91,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   menuItems.push({ icon: LayoutDashboard, label: "Dashboard", path: "/" });
 
   // Leads
-  if (isAdmin || hasModuleAccess('lead') || isProjectManager || roleName === 'reseller') {
+  if (isAdmin || hasModuleAccess('lead') || isProjectManager || isReseller) {
     menuItems.push({ icon: UserPlus, label: "Leads", path: "/leads/list" });
   }
 
@@ -84,13 +110,13 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     menuItems.push({ icon: UserCheck, label: "Product Management", path: "/project-managers" });
   }
 
-  // Products
-  if (isAdmin || hasModuleAccess('project')) {
+  // Products (Visible to Admins, Resellers, and anyone with project access)
+  if (isAdmin || isReseller || isProjectManager || hasModuleAccess('project')) {
     menuItems.push({ icon: FolderKanban, label: "Products", path: "/projects" });
   }
 
   // Settlements
-  if (isAdmin || hasModuleAccess('settlement') || roleName === 'reseller') {
+  if (isAdmin || hasModuleAccess('settlement') || isReseller) {
     menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
   }
 

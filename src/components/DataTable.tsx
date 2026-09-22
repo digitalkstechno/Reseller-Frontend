@@ -22,7 +22,7 @@ export interface Column<T> {
   key: keyof T | string;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: any, row: T, index?: number) => React.ReactNode;
   className?: string;
 }
 
@@ -76,6 +76,12 @@ interface DataTableProps<T> {
   selectedRows?: T[];
   onSelectionChange?: (selectedRows: T[]) => void;
   isRowSelectable?: (row: T) => boolean;
+  draggableRows?: boolean;
+  onRowDragStart?: (e: React.DragEvent, index: number) => void;
+  onRowDragOver?: (e: React.DragEvent, index: number) => void;
+  onRowDrop?: (e: React.DragEvent, index: number) => void;
+  draggedRowIndex?: number | null;
+  dragOverRowIndex?: number | null;
 }
 
 export default function DataTable<T extends Record<string, any>>({
@@ -115,6 +121,12 @@ export default function DataTable<T extends Record<string, any>>({
   selectedRows = [],
   onSelectionChange,
   isRowSelectable = () => true,
+  draggableRows = false,
+  onRowDragStart,
+  onRowDragOver,
+  onRowDrop,
+  draggedRowIndex = null,
+  dragOverRowIndex = null,
 }: DataTableProps<T>) {
   const [internalPage, setInternalPage] = useState(currentPage);
   const [internalPageSize, setInternalPageSize] = useState(pageSize);
@@ -153,9 +165,9 @@ export default function DataTable<T extends Record<string, any>>({
     setExpandedRows(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const renderCell = (column: Column<T>, row: T) => {
+  const renderCell = (column: Column<T>, row: T, rowIndex?: number) => {
     const value = row[column.key as string];
-    return column.render ? column.render(value, row) : value ?? '-';
+    return column.render ? column.render(value, row, rowIndex) : value ?? '-';
   };
 
   const handleSearch = (value: string) => {
@@ -399,11 +411,18 @@ export default function DataTable<T extends Record<string, any>>({
               currentData.map((row, index) => (
                 <React.Fragment key={index}>
                   <tr
+                    draggable={draggableRows}
+                    onDragStart={(e) => draggableRows && onRowDragStart && onRowDragStart(e, index)}
+                    onDragOver={(e) => draggableRows && onRowDragOver && onRowDragOver(e, index)}
+                    onDrop={(e) => draggableRows && onRowDrop && onRowDrop(e, index)}
                     onClick={() => onRowClick && onRowClick(row)}
                     onMouseEnter={() => setHoveredRow(index)}
                     onMouseLeave={() => setHoveredRow(null)}
                     className={`
                       transition-all duration-200
+                      ${draggableRows ? 'cursor-grab active:cursor-grabbing' : ''}
+                      ${draggedRowIndex === index ? 'opacity-30 bg-blue-100/50 scale-[0.99]' : ''}
+                      ${dragOverRowIndex === index && draggedRowIndex !== index ? 'border-t-2 border-blue-500 bg-blue-50/80 shadow-md' : ''}
                       ${striped && index % 2 === 1 ? 'bg-blue-50/50' : 'bg-white'}
                       ${hoveredRow === index ? 'bg-blue-50/30' : ''}
                       ${!expandedRows[index] ? 'border-b border-gray-50 last:border-0' : 'border-b-0'}
@@ -435,7 +454,7 @@ export default function DataTable<T extends Record<string, any>>({
                         key={String(column.key)}
                         className={`px-4 py-3.5 text-sm text-gray-700 whitespace-nowrap ${column.className || ''}`}
                       >
-                        {renderCell(column, row)}
+                        {renderCell(column, row, index)}
                       </td>
                     ))}
 

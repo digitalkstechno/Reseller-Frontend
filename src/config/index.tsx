@@ -64,6 +64,7 @@ export const baseUrl = {
   getAllProjects: `${API}project`,
   getProjectById: `${API}project`,
   updateProject: `${API}project`,
+  reorderProjects: `${API}project/reorder`,
   deleteProject: `${API}project`,
   addProjectManager: `${API}project-manager/create`,
   getAllProjectManagers: `${API}project-manager`,

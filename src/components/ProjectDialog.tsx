@@ -28,6 +28,8 @@ export interface Project {
   description?: string;
   projectAmount?: number | string;
   status: 'active' | 'inactive';
+  themeColor?: string;
+  sortOrder?: number;
   createdBy?: any;
   createdAt?: string;
 }
@@ -112,6 +114,7 @@ export default function ProjectDialog({
       labelCustomization: initialData?.labelCustomization === true || (initialData?.labelCustomization as any) === 'true' || (initialData?.labelCustomization as any) === 1,
       features: initialData?.features || initialData?.description || '',
       status: (initialData?.status || 'active') as 'active' | 'inactive',
+      themeColor: initialData?.themeColor || '#2563EB',
     },
     validationSchema,
     validateOnChange: true,
@@ -190,6 +193,7 @@ export default function ProjectDialog({
         labelCustomization: initialData.labelCustomization === true || (initialData.labelCustomization as any) === 'true' || (initialData.labelCustomization as any) === 1,
         features: initialDesc,
         status: initialData.status || 'active',
+        themeColor: initialData.themeColor || '#2563EB',
       });
 
       const initialImages = (initialData.images || []).slice(0, 4);
@@ -221,6 +225,7 @@ export default function ProjectDialog({
           labelCustomization: false,
           features: '',
           status: 'active',
+          themeColor: '#2563EB',
         },
       });
       setImageSlots([null, null, null, null]);
@@ -324,6 +329,7 @@ export default function ProjectDialog({
       payload.append('features', finalFeatures);
       payload.append('description', finalFeatures);
       payload.append('status', values.status);
+      payload.append('themeColor', values.themeColor || '#2563EB');
 
       // Existing images to retain
       const existingToRetain = imageSlots
@@ -857,6 +863,74 @@ export default function ProjectDialog({
                     </span>
                   </div>
                 </label>
+              </div>
+
+              {/* Product Card Theme Color */}
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="block text-sm font-medium text-gray-700">Card Theme Color</span>
+                  <div className="flex items-center gap-1.5">
+                    <span 
+                      className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs"
+                      style={{ backgroundColor: formik.values.themeColor || '#2563EB' }}
+                    />
+                    <span className="text-xs font-mono text-gray-500 uppercase">
+                      {formik.values.themeColor || '#2563EB'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Preset Color Swatches */}
+                <div className="flex items-center flex-wrap gap-2 pt-1">
+                  {[
+                    { name: 'Royal Blue', hex: '#2563EB' },
+                    { name: 'Indigo', hex: '#4F46E5' },
+                    { name: 'Purple', hex: '#7C3AED' },
+                    { name: 'Emerald', hex: '#059669' },
+                    { name: 'Teal', hex: '#0D9488' },
+                    { name: 'Rose', hex: '#E11D48' },
+                    { name: 'Amber', hex: '#D97706' },
+                    { name: 'Cyan', hex: '#0891B2' },
+                    { name: 'Dark Slate', hex: '#1E293B' },
+                  ].map((color) => {
+                    const isSelected = (formik.values.themeColor || '#2563EB').toLowerCase() === color.hex.toLowerCase();
+                    return (
+                      <button
+                        key={color.hex}
+                        type="button"
+                        onClick={() => formik.setFieldValue('themeColor', color.hex)}
+                        title={color.name}
+                        className={`w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center ${
+                          isSelected
+                            ? 'ring-2 ring-offset-2 ring-blue-600 scale-110 shadow-sm'
+                            : 'hover:scale-105 opacity-85 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                      >
+                        {isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-white shadow-xs" />
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* Custom Hex Color Picker */}
+                  <label 
+                    className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 hover:border-gray-500 cursor-pointer flex items-center justify-center transition-colors relative overflow-hidden"
+                    title="Custom Color"
+                  >
+                    <span className="text-[10px] font-bold text-gray-400">+</span>
+                    <input
+                      type="color"
+                      value={formik.values.themeColor || '#2563EB'}
+                      onChange={(e) => formik.setFieldValue('themeColor', e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Reseller product cards and buttons will accent with this theme color.
+                </p>
               </div>
             </div>
           </div>

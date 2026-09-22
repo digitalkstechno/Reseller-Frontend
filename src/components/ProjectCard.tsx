@@ -132,11 +132,18 @@ export default function ProjectCard({
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const themeColor = project.themeColor || '#2563EB';
+
   return (
     <div 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative flex flex-col bg-white rounded-3xl border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_35px_-10px_rgba(59,130,246,0.18)] hover:border-blue-400/80 transition-all duration-300 overflow-hidden hover:-translate-y-1.5"
+      className="group relative flex flex-col rounded-3xl border shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-2xl transition-all duration-300 overflow-hidden hover:-translate-y-1.5"
+      style={{
+        background: `linear-gradient(180deg, #FFFFFF 0%, ${themeColor}05 40%, ${themeColor}0C 100%)`,
+        borderColor: isHovered ? `${themeColor}80` : `${themeColor}22`,
+        boxShadow: isHovered ? `0 20px 35px -10px ${themeColor}25` : undefined,
+      }}
     >
       
       {/* ── Top-Left Premium Diagonal Cross Ribbon for Commission ── */}
@@ -150,7 +157,13 @@ export default function ProjectCard({
       )}
 
       {/* ── Top Image Container (Contains Logo / Screenshots cleanly) ── */}
-      <div className="relative w-full h-44 sm:h-48 bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 border-b border-slate-100 flex items-center justify-center p-3.5 select-none overflow-hidden">
+      <div 
+        className="relative w-full h-44 sm:h-48 border-b flex items-center justify-center p-3.5 select-none overflow-hidden"
+        style={{
+          borderColor: `${themeColor}15`,
+          background: `linear-gradient(180deg, ${themeColor}0D 0%, #FFFFFF 60%, ${themeColor}08 100%)`
+        }}
+      >
         {images.length > 0 ? (
           <>
             <img
@@ -201,40 +214,28 @@ export default function ProjectCard({
             )}
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-blue-400 p-4">
-            <Layers className="w-10 h-10 mb-1.5 stroke-1 text-blue-500/70" />
-            <span className="text-xs font-semibold text-blue-600/70">{project.name}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center p-4" style={{ color: themeColor }}>
+            <Layers className="w-10 h-10 mb-1.5 stroke-1 opacity-70" />
+            <span className="text-xs font-semibold opacity-90">{project.name}</span>
           </div>
         )}
 
-        {/* Floating Top-Right Actions */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
-          <button
-            type="button"
-            onClick={handleCopyAll}
-            className={`p-2 rounded-full shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer ${
-              isCopied
-                ? 'bg-emerald-600 text-white'
-                : 'bg-white/95 hover:bg-white text-gray-700 hover:text-blue-600 border border-gray-100'
-            }`}
-            title="Copy Demo Links & Credentials"
-          >
-            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-          </button>
-
-          {primaryLink ? (
+        {/* Floating Top-Right Actions (Link only, top copy removed) */}
+        {primaryLink && (
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
             <a
               href={primaryLink}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="p-2 rounded-full bg-white/95 hover:bg-white text-blue-600 border border-gray-100 shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+              className="p-2 rounded-full bg-white/95 hover:bg-white border border-gray-100 shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+              style={{ color: themeColor }}
               title="Open Product Link"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
-          ) : null}
-        </div>
+          </div>
+        )}
 
         {/* Status / Active Badge if inactive */}
         {project.status === 'inactive' && (
@@ -249,8 +250,15 @@ export default function ProjectCard({
         
         {/* Category & Customization Badges Row */}
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-blue-50/90 text-blue-600 border border-blue-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span 
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
+            style={{ 
+              backgroundColor: `${themeColor}12`, 
+              color: themeColor,
+              borderColor: `${themeColor}25`
+            }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: themeColor }}></span>
             Software & CRM
           </span>
 
@@ -264,7 +272,9 @@ export default function ProjectCard({
         </div>
 
         {/* Product Title */}
-        <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight line-clamp-1 mb-1.5 group-hover:text-blue-600 transition-colors">
+        <h3 
+          className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight line-clamp-1 mb-1.5 transition-colors"
+        >
           {project.name}
         </h3>
 
@@ -278,7 +288,7 @@ export default function ProjectCard({
           {featurePoints.length > 0 ? (
             featurePoints.map((point, i) => (
               <div key={i} className="flex items-start gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: themeColor }} />
                 <span className="text-xs font-medium text-slate-700 line-clamp-1">
                   {point}
                 </span>
@@ -287,15 +297,15 @@ export default function ProjectCard({
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: themeColor }} />
                 <span className="text-xs font-medium text-slate-700">Custom Dashboard & Reports</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: themeColor }} />
                 <span className="text-xs font-medium text-slate-700">Real-time Lead Management</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: themeColor }} />
                 <span className="text-xs font-medium text-slate-700">Secure Cloud Data Backup</span>
               </div>
             </>
@@ -304,7 +314,13 @@ export default function ProjectCard({
 
         {/* Quick Demo Credentials Info bar */}
         {(project.demoId || project.demoPassword) && (
-          <div className="mb-3.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-[11px] text-slate-700">
+          <div 
+            className="mb-3.5 px-3 py-1.5 rounded-xl border flex items-center justify-between text-[11px] text-slate-700"
+            style={{
+              backgroundColor: `${themeColor}08`,
+              borderColor: `${themeColor}20`
+            }}
+          >
             <div className="flex items-center gap-1.5 truncate">
               <Key className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
               <span className="truncate font-mono text-[11px]">
@@ -316,7 +332,8 @@ export default function ProjectCard({
             <button
               type="button"
               onClick={handleCopyAll}
-              className="text-blue-600 hover:text-blue-800 font-bold ml-2 text-[10px] uppercase tracking-wider flex-shrink-0 cursor-pointer"
+              className="font-bold ml-2 text-[10px] uppercase tracking-wider flex-shrink-0 cursor-pointer hover:underline"
+              style={{ color: themeColor }}
             >
               {isCopied ? 'Copied!' : 'Copy'}
             </button>
@@ -324,16 +341,23 @@ export default function ProjectCard({
         )}
 
         {/* ── Action Buttons ─────────────────────────────────────────────── */}
-        <div className="pt-2.5 mt-auto border-t border-slate-100 flex items-center gap-2">
+        <div 
+          className="pt-2.5 mt-auto border-t flex items-center gap-2"
+          style={{ borderColor: `${themeColor}15` }}
+        >
           
-          {/* Main Explore Product Button: Opens Link directly in new tab */}
+          {/* Main Explore Product Button: Opens Link directly in new tab with themeColor */}
           {primaryLink ? (
             <a
               href={primaryLink}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center group/btn"
+              className="flex-1 py-2.5 px-3.5 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center group/btn"
+              style={{
+                backgroundColor: themeColor,
+                boxShadow: `0 4px 14px 0 ${themeColor}40`
+              }}
             >
               <span>Explore Product</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
@@ -351,8 +375,13 @@ export default function ProjectCard({
             className={`p-2.5 rounded-xl border transition-all cursor-pointer flex-shrink-0 shadow-2xs ${
               isCopied
                 ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-600 hover:bg-blue-50/50'
+                : 'border-slate-200/90 hover:border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
+            style={{
+              borderColor: isCopied ? undefined : `${themeColor}30`,
+              backgroundColor: isCopied ? undefined : `${themeColor}06`,
+              color: isCopied ? undefined : themeColor,
+            }}
             title="Copy Demo Links & Credentials"
           >
             {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}

@@ -14,7 +14,9 @@ import {
   Search, 
   ChevronLeft, 
   ChevronRight,
-  Layers
+  Layers,
+  GripVertical,
+  Palette
 } from 'lucide-react';
 
 // Debounce hook
@@ -47,10 +49,44 @@ export function ProjectsContent() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   const { role: userRole, permissions: rawPerms, user } = useSelector((state: any) => state.auth);
-  const currentRoleName = (userRole || user?.role?.roleName || '').toLowerCase();
-  const isAdmin = currentRoleName === 'admin' || Boolean(user?.email && /admin/i.test(user.email));
-  const isProjectManager = currentRoleName === 'project_manager' || currentRoleName === 'projectmanager';
-  const isReseller = currentRoleName === 'reseller' || (!isAdmin && !isProjectManager);
+
+  // Extract role and email from Redux state or directly from JWT token payload
+  const tokenPayload = (() => {
+    if (typeof window === 'undefined') return null;
+    const t = getAuthToken();
+    if (!t) return null;
+    try {
+      const parts = t.split('.');
+      if (parts.length === 3) {
+        return JSON.parse(window.atob(parts[1]));
+      }
+    } catch {}
+    return null;
+  })();
+
+  const tokenRole = tokenPayload?.role?.roleName || tokenPayload?.role || '';
+  const tokenEmail = tokenPayload?.email || '';
+
+  const currentRoleName = (
+    userRole ||
+    user?.role?.roleName ||
+    (typeof user?.role === 'string' ? user.role : '') ||
+    tokenRole ||
+    ''
+  ).toString().toLowerCase().trim();
+
+  const userEmail = (user?.email || tokenEmail || '').toString().toLowerCase().trim();
+
+  const isAdmin = 
+    currentRoleName === 'admin' || 
+    userEmail === 'admin@gmail.com' || 
+    userEmail.includes('admin');
+
+  const isProjectManager = 
+    currentRoleName === 'project_manager' || 
+    currentRoleName === 'projectmanager';
+
+  const isReseller = !isAdmin && !isProjectManager && (currentRoleName === 'reseller' || currentRoleName === '');
 
   const canCreate = isAdmin || Boolean(rawPerms?.project?.create);
   const canUpdate = isAdmin || Boolean(rawPerms?.project?.update);
@@ -104,7 +140,73 @@ export function ProjectsContent() {
     fetchProjects();
   }, [fetchProjects]);
 
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+    setDragOverIdx(index);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIdx: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === dropIdx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    const updated = [...projectsData];
+    const [moved] = updated.splice(draggedIdx, 1);
+    updated.splice(dropIdx, 0, moved);
+
+    setProjectsData(updated);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+
+    // Save reordered positions to backend
+    try {
+      setIsReordering(true);
+      const items = updated.map((p, idx) => ({
+        id: p._id,
+        sortOrder: (page - 1) * limit + idx,
+      }));
+
+      await axios.put(
+        baseUrl.reorderProjects,
+        { items },
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+      );
+      toast.success('Product positions updated!');
+    } catch (err) {
+      console.error('Failed to save product order:', err);
+      toast.error('Failed to update product order');
+      fetchProjects();
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   const columns: Column<Project>[] = [
+    {
+      key: 'dragHandle',
+      label: '#',
+      render: (_, row, idx) => (
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <GripVertical className="w-4 h-4 cursor-grab text-gray-300 hover:text-gray-600" />
+          <span className="text-xs font-mono font-semibold text-gray-500">
+            {(page - 1) * limit + (idx !== undefined ? idx + 1 : 1)}
+          </span>
+        </div>
+      ),
+    },
     {
       key: 'images',
       label: 'IMAGE',
@@ -250,6 +352,25 @@ export function ProjectsContent() {
             No
           </span>
         ),
+    },
+    {
+      key: 'themeColor',
+      label: 'COLOR',
+      render: (value) => {
+        const color = value || '#2563EB';
+        return (
+          <div className="flex items-center gap-1.5">
+            <span 
+              className="w-4 h-4 rounded-full border border-gray-200 shadow-2xs flex-shrink-0"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+            <span className="text-[11px] font-mono text-gray-500 uppercase">
+              {color}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'status',
@@ -486,6 +607,12 @@ export function ProjectsContent() {
             setSearch(value);
             setPage(1);
           }}
+          draggableRows={isAdmin || isProjectManager}
+          onRowDragStart={handleDragStart}
+          onRowDragOver={handleDragOver}
+          onRowDrop={handleDrop}
+          draggedRowIndex={draggedIdx}
+          dragOverRowIndex={dragOverIdx}
           onView={handleView}
           onEdit={canUpdate ? handleEdit : undefined}
           onDelete={canDelete ? handleDeleteClick : undefined}
