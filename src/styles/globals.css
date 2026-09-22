@@ -235,3 +235,20 @@ g.recharts-cartesian-axis,
 g.recharts-cartesian-axis:focus {
   outline: none !important;
 }
+
+/* ── Performance: GPU-layer hints ─────────────────────────────────────────── */
+/* Dialogs & Drawers get their own compositing layer - avoids repaint on open */
+[class*="translate-x-full"],
+[class*="translate-x-0"],
+[class*="scale-95"],
+[class*="scale-100"] {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Smooth sidebar transition without forcing full-page repaint */
+.sidebar-transition {
+  contain: layout style;
+}

@@ -62,18 +62,19 @@ export default function Dialog({
       className={`fixed inset-0 z-[100] flex justify-end ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'
         }`}
     >
-      {/* Backdrop */}
+      {/* Backdrop - no blur for GPU performance */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
           }`}
         onClick={onClose}
       />
 
-      {/* Sliding Dialog */}
+      {/* Sliding Dialog - GPU-accelerated via translate3d */}
       <div
+        style={{ willChange: 'transform' }}
         className={`
           relative h-full w-full ${sizeClasses[size]} bg-white shadow-2xl flex flex-col
-          transform transition-transform duration-300
+          transition-transform duration-200 ease-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
         onClick={(e) => e.stopPropagation()}
@@ -144,16 +145,17 @@ export function CenterDialog({
       className={`fixed inset-0 z-[100] flex items-center justify-center ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'
         }`}
     >
-      {/* Backdrop */}
+      {/* Backdrop - no blur for GPU performance */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
           }`}
         onClick={onClose}
       />
 
-      {/* Center Modal */}
+      {/* Center Modal - GPU-accelerated */}
       <div
-        className={`relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300
+        style={{ willChange: 'transform, opacity' }}
+        className={`relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 transition-all duration-200 ease-out
           ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
         `}
         onClick={(e) => e.stopPropagation()}

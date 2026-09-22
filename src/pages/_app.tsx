@@ -56,7 +56,7 @@ function AuthGuard({ children, isLoginPage }: { children: React.ReactNode; isLog
     }
   }, [token, isLoginPage, router]);
 
-  // Sync fresh permissions & role from server on mount/route change
+  // Sync fresh permissions & role from server on initial mount / token load
   useEffect(() => {
     if (!token || isLoginPage) return;
     const syncProfile = async () => {
@@ -87,7 +87,7 @@ function AuthGuard({ children, isLoginPage }: { children: React.ReactNode; isLog
       }
     };
     syncProfile();
-  }, [token, isLoginPage, router.pathname]);
+  }, [token, isLoginPage]);
 
   // Show clean spinner while routing if unauthenticated
   if (!token && !isLoginPage) {
@@ -124,7 +124,7 @@ export default function App({ Component, pageProps }: AppProps) {
                   !isLoginPage ? (isSidebarOpen ? 'md:ml-64' : 'md:ml-20') : ''
                 }`}
               >
-                <main className="animate-in fade-in duration-300 flex flex-col h-screen">
+                <main className="flex flex-col h-screen">
                   {/* Only show header for non-login pages */}
                   {!isLoginPage ? (
                     <Header toggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
