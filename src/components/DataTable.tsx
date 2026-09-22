@@ -362,8 +362,8 @@ export default function DataTable<T extends Record<string, any>>({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-3 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center gap-3">
+                <td colSpan={columns.length + (actions ? 1 : 0)}>
+                  <div className="flex flex-col items-center justify-center gap-3 py-16 w-full">
                     <div className="relative">
                       <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
                         <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -374,14 +374,14 @@ export default function DataTable<T extends Record<string, any>>({
                         <FiSearch className="w-2.5 h-2.5 text-gray-500" />
                       </div>
                     </div>
-                    <div>
+                    <div className="text-center">
                       <p className="text-sm font-semibold text-gray-700">No records found</p>
                       <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search or filters</p>
                     </div>
                     {addButton && (
                       <button
                         onClick={addButton.onClick}
-                        className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
                       >
                         <span className="text-base leading-none">+</span> Add your first record
                       </button>

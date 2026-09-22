@@ -277,31 +277,53 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                     : (lead as any).project || '-'
                 }
               />
-              <InfoCard label="Total Amount" value={(lead as any).paymentAmount || (lead as any).projectAmount ? formatIndianCurrency((lead as any).paymentAmount || (lead as any).projectAmount) : undefined} />
-              <InfoCard
-                label="Paid Amount"
-                value={
-                  formatIndianCurrency(
-                    (lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0
-                      ? (lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
-                      : (Number((lead as any).paidAmount) || 0)
-                  )
-                }
-              />
-              <InfoCard
-                label="Pending Amount"
-                value={
-                  formatIndianCurrency(
-                    Math.max(
-                      0,
-                      (Number((lead as any).paymentAmount) || Number((lead as any).projectAmount) || 0) -
-                        ((lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0
-                          ? (lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
-                          : (Number((lead as any).paidAmount) || 0))
-                    )
-                  )
-                }
-              />
+              {/* Amount Summary Card - Total / Paid / Pending in one block matching screenshot design */}
+              <div className="md:col-span-2 rounded-xl bg-gray-50/90 border border-gray-200/80 px-4 py-3.5">
+                {(() => {
+                  const totalAmt = Number((lead as any).paymentAmount) || Number((lead as any).projectAmount) || 0;
+                  const paidAmt = (lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0
+                    ? (lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
+                    : (Number((lead as any).paidAmount) || 0);
+                  const pendingAmt = Math.max(0, totalAmt - paidAmt);
+                  return (
+                    <div className="space-y-2">
+                      {/* Total Amount — top with document icon */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          </svg>
+                          Total Amount
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">{formatIndianCurrency(totalAmt)}</span>
+                      </div>
+
+                      {/* Paid Amount — middle with rupee icon */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                          <span className="text-gray-400 font-bold text-xs w-4 text-center flex-shrink-0">₹</span>
+                          Paid Amount
+                        </span>
+                        <span className="text-sm font-semibold text-emerald-600">{formatIndianCurrency(paidAmt)}</span>
+                      </div>
+
+                      {/* Dashed divider */}
+                      <div className="border-t border-dashed border-gray-300 w-full my-1" />
+
+                      {/* Pending Amount — last */}
+                      <div className="flex items-center justify-between">
+                        <span className={`flex items-center gap-2 text-xs font-bold ${pendingAmt > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          <span className="font-bold text-xs w-4 text-center flex-shrink-0">₹</span>
+                          {pendingAmt > 0 ? 'Pending Amount' : 'Total Paid'}
+                        </span>
+                        <span className={`text-sm font-bold ${pendingAmt > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {formatIndianCurrency(pendingAmt)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               <InfoCard label="Last Follow-Up" value={typeof lead.lastFollowUp === 'string' ? lead.lastFollowUp : lead.lastFollowUp ? new Date(lead.lastFollowUp as any).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined} />
               <InfoCard label="Active" value={lead.isActive ? 'Yes' : 'No'} />
