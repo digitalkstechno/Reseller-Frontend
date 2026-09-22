@@ -303,8 +303,11 @@ export default function ProjectCard({
             {project.name}
           </h3>
 
-          {/* Product Description */}
-          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3 min-h-[2.2rem]">
+          {/* Product Description with Hover Tooltip */}
+          <p 
+            className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3 min-h-[2.2rem]"
+            title={descText || undefined}
+          >
             {descText || '-'}
           </p>
 

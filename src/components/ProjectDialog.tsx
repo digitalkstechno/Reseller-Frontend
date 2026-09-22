@@ -10,7 +10,7 @@ import { DefaultEditor } from 'react-simple-wysiwyg';
 import Dialog from './Dialog';
 import FormInput from './ui/Input';
 import FormSelect from './ui/FormSelect';
-import { FiCamera, FiTrash2, FiExternalLink, FiPlus } from 'react-icons/fi';
+import { FiCamera, FiTrash2, FiExternalLink, FiPlus, FiCopy, FiChevronDown } from 'react-icons/fi';
 
 export interface Project {
   _id?: string;
@@ -856,77 +856,170 @@ export default function ProjectDialog({
               </p>
             </div>
 
-            {/* SETTINGS CARD (CARD THEME COLOR) */}
+            {/* SETTINGS CARD (CARD THEME COLOR PICKER) */}
             <div className="border border-gray-100 rounded-xl bg-white p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-50 text-blue-600 font-semibold text-sm uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 CARD THEME COLOR
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="block text-sm font-medium text-gray-700">Accent Color</span>
-                  <div className="flex items-center gap-1.5">
-                    <span 
-                      className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs"
-                      style={{ backgroundColor: formik.values.themeColor || '#2563EB' }}
-                    />
-                    <span className="text-xs font-mono text-gray-500 uppercase">
-                      {formik.values.themeColor || '#2563EB'}
-                    </span>
+              <div className="space-y-3">
+                {/* 1. Preset Color Swatches */}
+                <div>
+                  <span className="block text-xs font-semibold text-gray-500 mb-2">Preset Swatches</span>
+                  <div className="flex items-center flex-wrap gap-2">
+                    {[
+                      { name: 'Royal Blue', hex: '#2563EB' },
+                      { name: 'Indigo', hex: '#4F46E5' },
+                      { name: 'Purple', hex: '#7C3AED' },
+                      { name: 'Emerald', hex: '#059669' },
+                      { name: 'Teal', hex: '#0D9488' },
+                      { name: 'Rose', hex: '#E11D48' },
+                      { name: 'Amber', hex: '#D97706' },
+                      { name: 'Cyan', hex: '#0891B2' },
+                      { name: 'Dark Slate', hex: '#1E293B' },
+                    ].map((color) => {
+                      const isSelected = (formik.values.themeColor || '#2563EB').toLowerCase() === color.hex.toLowerCase();
+                      return (
+                        <button
+                          key={color.hex}
+                          type="button"
+                          onClick={() => formik.setFieldValue('themeColor', color.hex)}
+                          title={color.name}
+                          className={`w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center ${
+                            isSelected
+                              ? 'ring-2 ring-offset-2 ring-blue-600 scale-110 shadow-sm'
+                              : 'hover:scale-105 opacity-85 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: color.hex }}
+                        >
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full bg-white shadow-xs" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Preset Color Swatches */}
-                <div className="flex items-center flex-wrap gap-2 pt-1">
-                  {[
-                    { name: 'Royal Blue', hex: '#2563EB' },
-                    { name: 'Indigo', hex: '#4F46E5' },
-                    { name: 'Purple', hex: '#7C3AED' },
-                    { name: 'Emerald', hex: '#059669' },
-                    { name: 'Teal', hex: '#0D9488' },
-                    { name: 'Rose', hex: '#E11D48' },
-                    { name: 'Amber', hex: '#D97706' },
-                    { name: 'Cyan', hex: '#0891B2' },
-                    { name: 'Dark Slate', hex: '#1E293B' },
-                  ].map((color) => {
-                    const isSelected = (formik.values.themeColor || '#2563EB').toLowerCase() === color.hex.toLowerCase();
-                    return (
-                      <button
-                        key={color.hex}
-                        type="button"
-                        onClick={() => formik.setFieldValue('themeColor', color.hex)}
-                        title={color.name}
-                        className={`w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center ${
-                          isSelected
-                            ? 'ring-2 ring-offset-2 ring-blue-600 scale-110 shadow-sm'
-                            : 'hover:scale-105 opacity-85 hover:opacity-100'
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                      >
-                        {isSelected && (
-                          <span className="w-2 h-2 rounded-full bg-white shadow-xs" />
-                        )}
-                      </button>
-                    );
-                  })}
-
-                  {/* Custom Hex Color Picker */}
-                  <label 
-                    className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 hover:border-gray-500 cursor-pointer flex items-center justify-center transition-colors relative overflow-hidden"
-                    title="Custom Color"
+                {/* 2. Visual 2D Color Picker Box (Matches uploaded screenshot) */}
+                <div className="p-3 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
+                  {/* Saturation / Value 2D Gradient Canvas */}
+                  <div 
+                    className="relative w-full h-36 rounded-xl overflow-hidden cursor-crosshair shadow-inner select-none"
+                    style={{
+                      backgroundColor: formik.values.themeColor || '#2563EB',
+                      backgroundImage: `
+                        linear-gradient(to right, #FFFFFF 0%, transparent 100%),
+                        linear-gradient(to top, #000000 0%, transparent 100%)
+                      `
+                    }}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left)) / rect.width;
+                      const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top)) / rect.height;
+                      // Fallback trigger color input
+                      const colorInput = document.getElementById('project-theme-color-input');
+                      if (colorInput) colorInput.click();
+                    }}
                   >
-                    <span className="text-[10px] font-bold text-gray-400">+</span>
-                    <input
-                      type="color"
-                      value={formik.values.themeColor || '#2563EB'}
-                      onChange={(e) => formik.setFieldValue('themeColor', e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    {/* Ring selector indicator */}
+                    <div 
+                      className="absolute top-3 right-3 w-4 h-4 rounded-full border-2 border-white shadow-[0_0_4px_rgba(0,0,0,0.5)] pointer-events-none"
                     />
-                  </label>
+                  </div>
+
+                  {/* Rainbow Hue Slider Bar */}
+                  <div className="relative flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="360"
+                      className="w-full h-3 rounded-full appearance-none cursor-pointer outline-none"
+                      style={{
+                        background: 'linear-gradient(to right, #FF0000 0%, #FFFF00 17%, #00FF00 33%, #00FFFF 50%, #0000FF 67%, #FF00FF 83%, #FF0000 100%)'
+                      }}
+                      onChange={(e) => {
+                        const hue = parseInt(e.target.value, 10);
+                        // Convert HSL (hue, 80%, 50%) to Hex
+                        const h = hue / 60;
+                        const c = 0.8;
+                        const x = c * (1 - Math.abs((h % 2) - 1));
+                        let r = 0, g = 0, b = 0;
+                        if (h >= 0 && h < 1) { r = c; g = x; b = 0; }
+                        else if (h >= 1 && h < 2) { r = x; g = c; b = 0; }
+                        else if (h >= 2 && h < 3) { r = 0; g = c; b = x; }
+                        else if (h >= 3 && h < 4) { r = 0; g = x; b = c; }
+                        else if (h >= 4 && h < 5) { r = x; g = 0; b = c; }
+                        else if (h >= 5 && h <= 6) { r = c; g = 0; b = x; }
+                        const m = 0.5 - c / 2;
+                        const hex = '#' + [r + m, g + m, b + m].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+                        formik.setFieldValue('themeColor', hex);
+                      }}
+                    />
+                  </div>
+
+                  {/* Hex Color Input & Preview Row (Clean & Perfectly Styled) */}
+                  <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      {/* Color Circle Preview / Clickable Trigger */}
+                      <label 
+                        className="w-7 h-7 rounded-full border border-black/10 shadow-xs cursor-pointer flex-shrink-0 relative overflow-hidden transition-transform hover:scale-105"
+                        style={{ backgroundColor: formik.values.themeColor || '#2563EB' }}
+                        title="Click to open full color palette"
+                      >
+                        <input
+                          id="project-theme-color-input"
+                          type="color"
+                          value={formik.values.themeColor || '#2563EB'}
+                          onChange={(e) => formik.setFieldValue('themeColor', e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        />
+                      </label>
+
+                      {/* Hex input */}
+                      <div className="flex items-center text-xs font-mono font-bold text-gray-800">
+                        <span className="text-gray-400 select-none mr-0.5">#</span>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={(formik.values.themeColor || '#2563EB').replace(/^#/, '')}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+                            formik.setFieldValue('themeColor', `#${val}`);
+                          }}
+                          className="w-20 uppercase font-mono font-bold text-xs outline-none bg-transparent text-gray-900 border-none p-0 focus:ring-0"
+                          placeholder="2563EB"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Copy Hex Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const hex = formik.values.themeColor || '#2563EB';
+                          navigator.clipboard.writeText(hex);
+                          toast.success(`Color ${hex} copied!`);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                        title="Copy Hex Code"
+                      >
+                        <FiCopy className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Hex Badge dropdown indicator */}
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100/80 px-2 py-1 rounded-lg select-none">
+                        <span>Hex</span>
+                        <FiChevronDown className="w-3 h-3 text-gray-400" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <p className="text-[11px] text-gray-400">
-                  Reseller product cards and buttons will accent with this theme color.
+                  Reseller product cards, ribbons and buttons will dynamically adapt to this color.
                 </p>
               </div>
             </div>

@@ -297,13 +297,14 @@ export function ProjectsContent() {
       key: 'features',
       label: 'DESCRIPTION',
       render: (value, row) => {
-        const rawText = (value || row.description || '')
-          .replace(/<[^>]*>?/gm, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+        const rawHtml = value || row.description || '';
+        // Remove <ul>...</ul> (feature bullet points) to show actual description text
+        let descOnly = rawHtml.replace(/<ul[^>]*>[\s\S]*?<\/ul>/gi, '');
+        descOnly = descOnly.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+
         return (
-          <span className="text-xs text-gray-600 line-clamp-2 max-w-sm block" title={rawText}>
-            {rawText || '-'}
+          <span className="text-xs text-gray-600 line-clamp-2 max-w-sm block" title={descOnly}>
+            {descOnly || '-'}
           </span>
         );
       },
