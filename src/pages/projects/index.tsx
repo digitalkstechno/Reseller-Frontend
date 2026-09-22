@@ -153,6 +153,18 @@ export function ProjectsContent() {
       },
     },
     {
+      key: 'projectAmount',
+      label: 'PROJECT AMOUNT',
+      render: (value) => {
+        const num = Number(value) || 0;
+        return (
+          <span className="font-bold text-emerald-600 text-sm">
+            {num > 0 ? `₹${num.toLocaleString('en-IN')}` : '₹0'}
+          </span>
+        );
+      },
+    },
+    {
       key: 'commissionRate',
       label: 'COMMISSION RATE',
       render: (value) => (

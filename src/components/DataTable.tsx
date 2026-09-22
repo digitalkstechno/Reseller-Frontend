@@ -454,7 +454,10 @@ export default function DataTable<T extends Record<string, any>>({
                           {/* VIEW */}
                           {onView && (
                             <button
-                              onClick={() => onView(row)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onView(row);
+                              }}
                               title="View Details"
                               className="group h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition-all duration-200 hover:bg-[#3B82F6] hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-2 active:scale-95 cursor-pointer"
                             >
@@ -468,7 +471,10 @@ export default function DataTable<T extends Record<string, any>>({
                             if (!isEditAllowed) return null;
                             return (
                               <button
-                                onClick={() => onEdit(row)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEdit(row);
+                                }}
                                 title="Edit"
                                 className="group h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-green-600 hover:bg-green-600 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-2 active:scale-95 cursor-pointer transition-all duration-200"
                               >
@@ -483,7 +489,10 @@ export default function DataTable<T extends Record<string, any>>({
                             if (!isDeleteAllowed) return null;
                             return (
                               <button
-                                onClick={() => onDelete(row)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDelete(row);
+                                }}
                                 title="Delete"
                                 className="group h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-2 active:scale-95 cursor-pointer transition-all duration-200"
                               >
@@ -511,7 +520,10 @@ export default function DataTable<T extends Record<string, any>>({
                             return (
                               <button
                                 key={idx}
-                                onClick={() => isActionAllowed && act.onClick(row)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  isActionAllowed && act.onClick(row);
+                                }}
                                 disabled={!isActionAllowed}
                                 title={isActionAllowed ? (evaluatedLabel as string) : 'Disabled'}
                                 className={`group h-8 w-8 flex items-center justify-center rounded-lg transition-all duration-200 ${

@@ -1085,38 +1085,56 @@ export default function SettlementDetailsPage() {
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider text-[10px]">
                         <th className="py-2.5 px-3">#</th>
-                        <th className="py-2.5 px-3">Date (Kab Diya)</th>
+                        <th className="py-2.5 px-3">Date & Time</th>
                         <th className="py-2.5 px-3">Payment Mode</th>
                         <th className="py-2.5 px-3">Note / Reference</th>
-                        <th className="py-2.5 px-3 text-right">Amount (Kitna Diya)</th>
+                        <th className="py-2.5 px-3 text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {effectivePaymentsList.map((p, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                          <td className="py-2.5 px-3 font-semibold text-gray-500">{idx + 1}</td>
-                          <td className="py-2.5 px-3 font-medium text-gray-800">
-                            {p.paymentDate
-                              ? new Date(p.paymentDate).toLocaleDateString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })
-                              : '-'}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                              {p.paymentMode || 'Online / Cash'}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-gray-500 font-normal">
-                            {p.note || '-'}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
-                            ₹{(Number(p.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      ))}
+                      {effectivePaymentsList.map((p, idx) => {
+                        const dateObj = p.paymentDate || p.createdAt ? new Date(p.paymentDate || p.createdAt!) : null;
+                        const isValidDate = dateObj && !isNaN(dateObj.getTime());
+
+                        return (
+                          <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                            <td className="py-2.5 px-3 font-semibold text-gray-500">{idx + 1}</td>
+                            <td className="py-2.5 px-3 font-medium text-gray-800">
+                              {isValidDate ? (
+                                <div className="flex flex-col">
+                                  <span>
+                                    {dateObj.toLocaleDateString('en-IN', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 font-normal">
+                                    {dateObj.toLocaleTimeString('en-IN', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true,
+                                    })}
+                                  </span>
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                {p.paymentMode || 'Online / Cash'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-500 font-normal">
+                              {p.note || '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                              ₹{(Number(p.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
                       <tr className="bg-gray-50/80 border-t-2 border-gray-200 font-bold text-gray-800 text-xs">

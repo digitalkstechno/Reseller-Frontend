@@ -363,19 +363,43 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                       <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
                         <tr>
                           <th className="py-2.5 px-3">#</th>
-                          <th className="py-2.5 px-3">Date</th>
-                          <th className="py-2.5 px-3">Mode</th>
+                          <th className="py-2.5 px-3">Date & Time</th>
+                          <th className="py-2.5 px-3">Payment Mode</th>
                           <th className="py-2.5 px-3">Note</th>
                           <th className="py-2.5 px-3 text-right">Amount</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {((lead as any).payments).map((p: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                            <td className="py-2.5 px-3 text-gray-400 font-medium">{idx + 1}</td>
-                            <td className="py-2.5 px-3 font-medium text-gray-800">
-                              {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
+                        {((lead as any).payments).map((p: any, idx: number) => {
+                          const dateVal = p.paymentDate || p.createdAt;
+                          const dateObj = dateVal ? new Date(dateVal) : null;
+                          const isValid = dateObj && !isNaN(dateObj.getTime());
+
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                              <td className="py-2.5 px-3 text-gray-400 font-medium">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-medium text-gray-800">
+                                {isValid ? (
+                                  <div className="flex flex-col">
+                                    <span>
+                                      {dateObj.toLocaleDateString('en-IN', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })}
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 font-normal">
+                                      {dateObj.toLocaleTimeString('en-IN', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true,
+                                      })}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  '-'
+                                )}
+                              </td>
                             <td className="py-2.5 px-3">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                                 {p.paymentMode || 'Cash'}
@@ -386,7 +410,8 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                               {formatIndianCurrency(p.amount)}
                             </td>
                           </tr>
-                        ))}
+                        );
+                      })}
                       </tbody>
                       <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                         <tr>

@@ -382,13 +382,6 @@ export default function SettlementsPage() {
               Pay
             </button>
           )}
-          <button
-            onClick={() => handleOpenHistory(row)}
-            className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors cursor-pointer border border-gray-200"
-            title="Payout History"
-          >
-            <History className="w-3.5 h-3.5" />
-          </button>
         </div>
       )
     }

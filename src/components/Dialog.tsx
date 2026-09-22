@@ -55,30 +55,28 @@ export default function Dialog({
     };
   }, [isOpen]);
 
-  const closingRef = useRef(false);
-
   const handleBackdropClose = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (closingRef.current) return;
-    closingRef.current = true;
     onClose();
-    // Reset lock after animation completes
-    setTimeout(() => { closingRef.current = false; }, 300);
   };
 
-  if (!mounted) return null;
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex justify-end ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'
-        }`}
+      className="fixed inset-0 z-[100] flex justify-end pointer-events-auto"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       {/* Backdrop - no blur for GPU performance */}
       <div
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-        onMouseDown={handleBackdropClose}
+        className="absolute inset-0 bg-black/40 transition-opacity duration-200"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onClick={handleBackdropClose}
       />
 
       {/* Sliding Dialog - GPU-accelerated via translate3d */}
@@ -86,8 +84,7 @@ export default function Dialog({
         style={{ willChange: 'transform' }}
         className={`
           relative h-full w-full ${sizeClasses[size]} bg-white shadow-2xl flex flex-col
-          transition-transform duration-200 ease-out
-          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+          animate-in slide-in-from-right duration-200 ease-out
         `}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}

@@ -411,7 +411,6 @@ export default function LeadsListView({
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleView = (row: TableLead) => {
-    // 1. Immediately open view modal with instant local data (0ms delay)
     if (row._raw) {
       onView?.(row._raw);
     } else {
@@ -436,21 +435,9 @@ export default function LeadsListView({
       } as any as ApiLead;
       onView?.(apiLead);
     }
-
-    // 2. Refresh full lead data in background to ensure all attachments/fields are up to date
-    axios.get(`${baseUrl.findLeadById}/${row.id}`, {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    }).then(res => {
-      if (res.data?.data) {
-        onView?.(res.data.data);
-      }
-    }).catch(() => {
-      // background fetch error, continue with local data
-    });
   };
 
   const handleEdit = (row: TableLead) => {
-    // 1. Immediately open edit modal (0ms delay)
     if (row._raw) {
       onEdit?.(row._raw);
     } else {
@@ -480,17 +467,6 @@ export default function LeadsListView({
       } as any as ApiLead;
       onEdit?.(apiLead);
     }
-
-    // 2. Sync full lead details from backend in background
-    axios.get(`${baseUrl.findLeadById}/${row.id}`, {
-      headers: { Authorization: `Bearer ${getAuthToken()}` },
-    }).then(res => {
-      if (res.data?.data) {
-        onEdit?.(res.data.data);
-      }
-    }).catch(() => {
-      // already opened with local data
-    });
   };
 
   const handleDelete = async () => {

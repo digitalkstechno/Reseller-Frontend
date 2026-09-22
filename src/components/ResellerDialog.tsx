@@ -575,14 +575,14 @@ export default function ResellerDialog({
                             : 'bg-gray-50/50 border-gray-200 opacity-60'
                         }`}
                       >
-                        <label 
+                        <div 
                           onClick={() => handleToggleProject(item.project)}
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 select-none"
                         >
                           <input
                             type="checkbox"
-                            checked={item.isSelected}
-                            onChange={() => {}}
+                            checked={Boolean(item.isSelected)}
+                            readOnly
                             className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer pointer-events-none"
                           />
                           <div className="truncate">
@@ -605,7 +605,7 @@ export default function ResellerDialog({
                               {item.isSelected ? 'Enabled for lead creation' : 'Disabled for this reseller'}
                             </span>
                           </div>
-                        </label>
+                        </div>
 
                         <div className="flex items-center gap-3">
                           {item.isSelected ? (
