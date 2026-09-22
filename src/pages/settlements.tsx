@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -61,6 +62,9 @@ interface SummaryStats {
 export default function SettlementsPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const { role: userRole, user, permissions: rawPerms } = useSelector((state: any) => state.auth || {});
+  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com' || Boolean(rawPerms?.settlement?.create);
 
   // Summary KPI Data
   const [summary, setSummary] = useState<SummaryStats>({
@@ -364,7 +368,7 @@ export default function SettlementsPage() {
             Leads
             <ArrowRight className="w-3 h-3" />
           </button>
-          {row.pendingCommission > 0 && (
+          {isAdmin && row.pendingCommission > 0 && (
             <button
               onClick={() => {
                 setSelectedReseller(row);

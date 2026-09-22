@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -82,6 +83,10 @@ export default function SettlementDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
   const resellerId = id as string;
+
+  const { role: userRole, user, permissions: rawPerms } = useSelector((state: any) => state.auth || {});
+  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
+  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com' || Boolean(rawPerms?.settlement?.create);
 
   const [isMounted, setIsMounted] = useState(false);
   const [reseller, setReseller] = useState<ResellerInfo | null>(null);
@@ -305,8 +310,8 @@ export default function SettlementDetailsPage() {
   // Table Columns Definition
   const columns: Column<LeadSettlementItem>[] = [];
 
-  // Checkbox column for Unsettled tab only
-  if (activeTab === 'unsettled') {
+  // Checkbox column for Unsettled tab only (Admin / Payout manager)
+  if (activeTab === 'unsettled' && isAdmin) {
     columns.push({
       key: 'id',
       label: 'SELECT',
@@ -627,7 +632,7 @@ export default function SettlementDetailsPage() {
       </div>
 
       {/* Multi-Select Action Banner */}
-      {selectedLeads.length > 0 && (
+      {isAdmin && selectedLeads.length > 0 && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-gray-900 px-4 py-2.5 rounded-lg shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-blue-600 text-white shadow-2xs">

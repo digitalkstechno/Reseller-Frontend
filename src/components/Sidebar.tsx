@@ -90,7 +90,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   }
 
   // Settlements
-  if (isAdmin || hasModuleAccess('settlement')) {
+  if (isAdmin || hasModuleAccess('settlement') || roleName === 'reseller') {
     menuItems.push({ icon: IndianRupee, label: "Settlements", path: "/settlements" });
   }
 

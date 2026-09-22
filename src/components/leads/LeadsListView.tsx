@@ -289,11 +289,33 @@ export default function LeadsListView({
     {
       key: 'paymentAmount',
       label: 'AMOUNT',
-      render: (v) => {
-        return v && Number(v) > 0 ? (
-          <span className="font-semibold text-gray-900">{formatIndianCurrency(v)}</span>
-        ) : (
-          <span className="text-gray-400 font-medium">-</span>
+      render: (_, row) => {
+        const total = Number(row.paymentAmount) || 0;
+        const paid = Array.isArray(row.payments) && row.payments.length > 0
+          ? row.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+          : (Number(row.paidAmount) || (row.paymentStatus === 'Paid' ? total : 0));
+        const pending = Math.max(0, total - paid);
+
+        if (!total && !paid) {
+          return <span className="text-gray-400 font-medium">-</span>;
+        }
+
+        return (
+          <div className="flex flex-col text-xs leading-tight py-0.5 space-y-0.5 min-w-[115px]">
+            <span className="font-bold text-gray-900 text-sm">
+              {formatIndianCurrency(total)}
+            </span>
+            {pending > 0 && (
+              <span className="text-[11px] font-semibold text-amber-600">
+                Pending: {formatIndianCurrency(pending)}
+              </span>
+            )}
+            {paid > 0 && (
+              <span className="text-[11px] font-semibold text-emerald-600">
+                Paid: {formatIndianCurrency(paid)}
+              </span>
+            )}
+          </div>
         );
       },
     },
