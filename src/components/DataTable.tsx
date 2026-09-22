@@ -362,19 +362,28 @@ export default function DataTable<T extends Record<string, any>>({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-3 py-16 text-center">
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-3 py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
-                    <div className="rounded-full bg-gray-50 p-4">
-                      <FiSearch className="h-8 w-8 text-gray-400" />
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
+                        </svg>
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
+                        <FiSearch className="w-2.5 h-2.5 text-gray-500" />
+                      </div>
                     </div>
-                    <p className="text-sm font-medium text-gray-600">No records found</p>
-                    <p className="text-xs text-gray-400">Try adjusting your search or filters</p>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">No records found</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search or filters</p>
+                    </div>
                     {addButton && (
                       <button
                         onClick={addButton.onClick}
-                        className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                        className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
                       >
-                        + Add your first record
+                        <span className="text-base leading-none">+</span> Add your first record
                       </button>
                     )}
                   </div>

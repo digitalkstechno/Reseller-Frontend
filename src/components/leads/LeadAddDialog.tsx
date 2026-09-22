@@ -205,7 +205,7 @@ export default function LeadAddDialog({
       isActive: true,
     },
     validationSchema: dynamicSchema,
-    validateOnChange: true,
+    validateOnChange: false,
     validateOnBlur: true,
     onSubmit: async (values, { setSubmitting, setStatus }) => {
       setStatus(null);
@@ -256,7 +256,10 @@ export default function LeadAddDialog({
       } catch (error: any) {
         const msg = error?.response?.data?.message || `Failed to ${mode} lead`;
         setStatus(msg);
-        toast.error(msg);
+        // Only show toast for actual server/network errors, not validation errors
+        if (!error?.response || error?.response?.status >= 500) {
+          toast.error(msg);
+        }
       } finally {
         setSubmitting(false);
       }
@@ -382,7 +385,13 @@ export default function LeadAddDialog({
           </button>
           <button
             type="button"
-            onClick={() => formik.handleSubmit()}
+            onClick={async () => {
+              // Touch all fields first so inline errors show under fields
+              await formik.setTouched(
+                Object.keys(formik.values).reduce((acc, key) => ({ ...acc, [key]: true }), {})
+              );
+              formik.handleSubmit();
+            }}
             disabled={formik.isSubmitting}
             className="px-6 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-medium text-sm shadow-sm"
           >

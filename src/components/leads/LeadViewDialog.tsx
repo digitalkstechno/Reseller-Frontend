@@ -307,43 +307,76 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               <InfoCard label="Active" value={lead.isActive ? 'Yes' : 'No'} />
             </div>
 
-            {/* Payment History Records */}
-            {(lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0 && (
+            {/* Payment History Records - always visible for Admin */}
+            {(isAdmin || ((lead as any).payments && Array.isArray((lead as any).payments) && (lead as any).payments.length > 0)) && (
               <div className="rounded-lg bg-gray-50 p-4">
-                <div className="mb-2 text-sm font-bold text-gray-700 flex items-center justify-between">
-                  <span>Payment History ({((lead as any).payments).length} entries)</span>
-                  <span className="text-xs text-emerald-600 font-semibold">
-                    Total Paid: {formatIndianCurrency((lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}
-                  </span>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-800">Payment History</span>
+                    <span className="text-xs font-medium bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                      {((lead as any).payments || []).length} entries
+                    </span>
+                  </div>
+                  {(lead as any).payments && (lead as any).payments.length > 0 && (
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                      Total Paid: {formatIndianCurrency((lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}
+                    </span>
+                  )}
                 </div>
-                <div className="overflow-x-auto border border-gray-200 rounded-md bg-white">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                      <tr>
-                        <th className="py-2 px-3">#</th>
-                        <th className="py-2 px-3">Date</th>
-                        <th className="py-2 px-3">Mode</th>
-                        <th className="py-2 px-3">Note</th>
-                        <th className="py-2 px-3 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {((lead as any).payments).map((p: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="py-2 px-3 text-gray-400 font-medium">{idx + 1}</td>
-                          <td className="py-2 px-3 font-medium text-gray-800">
-                            {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td className="py-2 px-3 text-gray-600">{p.paymentMode || 'Cash'}</td>
-                          <td className="py-2 px-3 text-gray-500">{p.note || '-'}</td>
-                          <td className="py-2 px-3 text-right font-bold text-emerald-600">
-                            {formatIndianCurrency(p.amount)}
+
+                {(!((lead as any).payments) || (lead as any).payments.length === 0) ? (
+                  /* Empty state for admin when no payments yet */
+                  <div className="bg-white border border-gray-200 rounded-lg py-8 flex flex-col items-center justify-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                      </svg>
+                    </div>
+                    <p className="text-xs font-semibold text-gray-600">No payments recorded yet</p>
+                    <p className="text-xs text-gray-400">Payment installments will appear here once added</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
+                        <tr>
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Date</th>
+                          <th className="py-2.5 px-3">Mode</th>
+                          <th className="py-2.5 px-3">Note</th>
+                          <th className="py-2.5 px-3 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {((lead as any).payments).map((p: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                            <td className="py-2.5 px-3 text-gray-400 font-medium">{idx + 1}</td>
+                            <td className="py-2.5 px-3 font-medium text-gray-800">
+                              {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                {p.paymentMode || 'Cash'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-500">{p.note || '-'}</td>
+                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                              {formatIndianCurrency(p.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t-2 border-gray-200 bg-gray-50">
+                        <tr>
+                          <td colSpan={4} className="py-2.5 px-3 text-xs font-semibold text-gray-600">Total Paid</td>
+                          <td className="py-2.5 px-3 text-right text-sm font-bold text-emerald-700">
+                            {formatIndianCurrency((lead as any).payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0))}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
