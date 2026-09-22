@@ -10,7 +10,7 @@ import { DefaultEditor } from 'react-simple-wysiwyg';
 import Dialog from './Dialog';
 import FormInput from './ui/Input';
 import FormSelect from './ui/FormSelect';
-import { FiCamera, FiTrash2, FiExternalLink, FiPlus, FiCopy, FiChevronDown } from 'react-icons/fi';
+import { FiCamera, FiTrash2, FiExternalLink, FiPlus, FiCopy, FiChevronDown, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 
 export interface Project {
   _id?: string;
@@ -79,6 +79,8 @@ export default function ProjectDialog({
   const [pmSearch, setPmSearch] = useState('');
   const [featurePoints, setFeaturePoints] = useState<string[]>([]);
   const [featureInput, setFeatureInput] = useState('');
+  const [editingFeatureIndex, setEditingFeatureIndex] = useState<number | null>(null);
+  const [editingFeatureText, setEditingFeatureText] = useState('');
   const pmDropdownRef = useRef<HTMLDivElement>(null);
 
   // Array of 4 slots: each item is either { type: 'existing', url: string } | { type: 'new', file: File, preview: string } | null
@@ -230,6 +232,8 @@ export default function ProjectDialog({
       });
       setImageSlots([null, null, null, null]);
     }
+    setEditingFeatureIndex(null);
+    setEditingFeatureText('');
     setError(null);
     setIsPMDropdownOpen(false);
     setPmSearch('');
@@ -242,7 +246,30 @@ export default function ProjectDialog({
     setFeatureInput('');
   };
 
+  const handleStartEditFeature = (index: number) => {
+    setEditingFeatureIndex(index);
+    setEditingFeatureText(featurePoints[index] || '');
+  };
+
+  const handleSaveEditFeature = (index: number) => {
+    const trimmed = editingFeatureText.trim();
+    if (trimmed) {
+      setFeaturePoints((prev) => prev.map((f, i) => (i === index ? trimmed : f)));
+    }
+    setEditingFeatureIndex(null);
+    setEditingFeatureText('');
+  };
+
+  const handleCancelEditFeature = () => {
+    setEditingFeatureIndex(null);
+    setEditingFeatureText('');
+  };
+
   const handleRemoveFeature = (index: number) => {
+    if (editingFeatureIndex === index) {
+      setEditingFeatureIndex(null);
+      setEditingFeatureText('');
+    }
     setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -725,24 +752,74 @@ export default function ProjectDialog({
 
                 {/* Bullet list items */}
                 {featurePoints.length > 0 && (
-                  <ul className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                  <ul className="mt-3 space-y-2 max-h-56 overflow-y-auto">
                     {featurePoints.map((feat, idx) => (
                       <li
                         key={idx}
                         className="flex items-center justify-between gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm text-gray-800 shadow-xs hover:border-gray-300 transition-colors"
                       >
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                          <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
-                          <span className="break-words font-medium">{feat}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFeature(idx)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 cursor-pointer"
-                          title="Delete bullet point"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
+                        {editingFeatureIndex === idx ? (
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+                            <input
+                              type="text"
+                              value={editingFeatureText}
+                              onChange={(e) => setEditingFeatureText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSaveEditFeature(idx);
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleCancelEditFeature();
+                                }
+                              }}
+                              autoFocus
+                              className="flex-1 px-2.5 py-1 text-sm border border-blue-500 rounded-md outline-none bg-blue-50/20 text-gray-900 focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditFeature(idx)}
+                              className="text-emerald-600 hover:text-emerald-700 p-1.5 rounded-md hover:bg-emerald-50 cursor-pointer transition-colors"
+                              title="Save changes (Enter)"
+                            >
+                              <FiCheck size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditFeature}
+                              className="text-gray-400 hover:text-gray-600 p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
+                              title="Cancel (Esc)"
+                            >
+                              <FiX size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+                              <span className="break-words font-medium">{feat}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditFeature(idx)}
+                                className="text-gray-400 hover:text-blue-600 transition-colors p-1.5 rounded-md hover:bg-blue-50 cursor-pointer"
+                                title="Edit bullet point"
+                              >
+                                <FiEdit2 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFeature(idx)}
+                                className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-md hover:bg-red-50 cursor-pointer"
+                                title="Delete bullet point"
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -902,11 +979,12 @@ export default function ProjectDialog({
                   </div>
                 </div>
 
-                {/* 2. Visual 2D Color Picker Box (Matches uploaded screenshot) */}
-                <div className="p-3 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
-                  {/* Saturation / Value 2D Gradient Canvas */}
-                  <div 
-                    className="relative w-full h-36 rounded-xl overflow-hidden cursor-crosshair shadow-inner select-none"
+                {/* 2. Visual Color Box & Native Palette Trigger */}
+                <div className="p-3 bg-gray-50/80 border border-gray-200 rounded-2xl space-y-3">
+                  {/* Visual Color Gradient Display / Clickable Native Color Trigger */}
+                  <label 
+                    htmlFor="project-theme-color-input"
+                    className="relative block w-full h-32 rounded-xl overflow-hidden cursor-pointer shadow-inner group border border-gray-200/60"
                     style={{
                       backgroundColor: formik.values.themeColor || '#2563EB',
                       backgroundImage: `
@@ -914,36 +992,34 @@ export default function ProjectDialog({
                         linear-gradient(to top, #000000 0%, transparent 100%)
                       `
                     }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left)) / rect.width;
-                      const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top)) / rect.height;
-                      // Fallback trigger color input
-                      const colorInput = document.getElementById('project-theme-color-input');
-                      if (colorInput) colorInput.click();
-                    }}
                   >
-                    {/* Ring selector indicator */}
-                    <div 
-                      className="absolute top-3 right-3 w-4 h-4 rounded-full border-2 border-white shadow-[0_0_4px_rgba(0,0,0,0.5)] pointer-events-none"
-                    />
-                  </div>
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="bg-white/90 text-gray-800 text-xs font-medium px-3 py-1.5 rounded-lg shadow-sm backdrop-blur-xs flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: formik.values.themeColor || '#2563EB' }} />
+                        Click to Pick Color
+                      </span>
+                    </div>
 
-                  {/* Rainbow Hue Slider Bar */}
+                    <div 
+                      className="absolute bottom-2.5 right-2.5 w-6 h-6 rounded-full border-2 border-white shadow-md pointer-events-none"
+                      style={{ backgroundColor: formik.values.themeColor || '#2563EB' }}
+                    />
+                  </label>
+
+                  {/* Quick Hue Gradient Slider */}
                   <div className="relative flex items-center">
                     <input
                       type="range"
                       min="0"
                       max="360"
-                      className="w-full h-3 rounded-full appearance-none cursor-pointer outline-none"
+                      className="w-full h-3 rounded-full appearance-none cursor-pointer outline-none shadow-xs"
                       style={{
                         background: 'linear-gradient(to right, #FF0000 0%, #FFFF00 17%, #00FF00 33%, #00FFFF 50%, #0000FF 67%, #FF00FF 83%, #FF0000 100%)'
                       }}
                       onChange={(e) => {
                         const hue = parseInt(e.target.value, 10);
-                        // Convert HSL (hue, 80%, 50%) to Hex
-                        const h = hue / 60;
                         const c = 0.8;
+                        const h = hue / 60;
                         const x = c * (1 - Math.abs((h % 2) - 1));
                         let r = 0, g = 0, b = 0;
                         if (h >= 0 && h < 1) { r = c; g = x; b = 0; }
@@ -959,26 +1035,31 @@ export default function ProjectDialog({
                     />
                   </div>
 
-                  {/* Hex Color Input & Preview Row (Clean & Perfectly Styled) */}
-                  <div className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-gray-200/90 shadow-2xs">
+                  {/* Hex Color Input & Live Preview Row */}
+                  <div className="flex items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-gray-200 shadow-2xs">
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       {/* Color Circle Preview / Clickable Trigger */}
                       <label 
-                        className="w-7 h-7 rounded-full border border-black/10 shadow-xs cursor-pointer flex-shrink-0 relative overflow-hidden transition-transform hover:scale-105"
+                        htmlFor="project-theme-color-input"
+                        className="w-8 h-8 rounded-lg border border-black/10 shadow-xs cursor-pointer flex-shrink-0 relative overflow-hidden transition-transform hover:scale-105"
                         style={{ backgroundColor: formik.values.themeColor || '#2563EB' }}
-                        title="Click to open full color palette"
+                        title="Click to open color picker"
                       >
                         <input
                           id="project-theme-color-input"
                           type="color"
-                          value={formik.values.themeColor || '#2563EB'}
+                          value={
+                            /^#[0-9A-Fa-f]{6}$/.test(formik.values.themeColor || '')
+                              ? formik.values.themeColor
+                              : '#2563EB'
+                          }
                           onChange={(e) => formik.setFieldValue('themeColor', e.target.value)}
                           className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                         />
                       </label>
 
                       {/* Hex input */}
-                      <div className="flex items-center text-xs font-mono font-bold text-gray-800">
+                      <div className="flex items-center text-sm font-mono font-bold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200/80">
                         <span className="text-gray-400 select-none mr-0.5">#</span>
                         <input
                           type="text"
@@ -1006,14 +1087,17 @@ export default function ProjectDialog({
                         className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                         title="Copy Hex Code"
                       >
-                        <FiCopy className="w-3.5 h-3.5" />
+                        <FiCopy className="w-4 h-4" />
                       </button>
 
-                      {/* Hex Badge dropdown indicator */}
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100/80 px-2 py-1 rounded-lg select-none">
-                        <span>Hex</span>
+                      {/* Hex Badge Label */}
+                      <label
+                        htmlFor="project-theme-color-input"
+                        className="flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100/80 px-2.5 py-1.5 rounded-lg select-none cursor-pointer hover:bg-gray-200 transition-colors"
+                      >
+                        <span>Palette</span>
                         <FiChevronDown className="w-3 h-3 text-gray-400" />
-                      </div>
+                      </label>
                     </div>
                   </div>
                 </div>
