@@ -48,6 +48,11 @@ const validationSchema = Yup.object({
     .max(100, 'Commission rate cannot exceed 100%')
     .nullable()
     .optional(),
+  projectAmount: Yup.number()
+    .transform((value, originalValue) => (originalValue === '' ? undefined : value))
+    .min(0, 'Project amount cannot be negative')
+    .nullable()
+    .optional(),
   demoLink: Yup.string().url('Must be a valid URL (e.g. https://example.com)').nullable().optional(),
   demoId: Yup.string().optional(),
   demoPassword: Yup.string().optional(),
@@ -95,6 +100,7 @@ export default function ProjectDialog({
         ? [typeof initialData.projectManager === 'object' && initialData.projectManager !== null ? initialData.projectManager._id || initialData.projectManager.id : initialData.projectManager].filter(Boolean)
         : []) as string[],
       commissionRate: initialData?.commissionRate !== undefined && initialData?.commissionRate !== null ? String(initialData.commissionRate) : '',
+      projectAmount: initialData?.projectAmount !== undefined && initialData?.projectAmount !== null ? String(initialData.projectAmount) : '',
       demoLink: initialData?.demoLink || '',
       demoId: initialData?.demoId || '',
       demoPassword: initialData?.demoPassword || '',
@@ -170,6 +176,7 @@ export default function ProjectDialog({
         name: initialData.name || '',
         projectManagers: selectedPMIds,
         commissionRate: initialData.commissionRate !== undefined && initialData.commissionRate !== null ? String(initialData.commissionRate) : '',
+        projectAmount: initialData.projectAmount !== undefined && initialData.projectAmount !== null ? String(initialData.projectAmount) : '',
         demoLink: initialData.demoLink || '',
         demoId: initialData.demoId || '',
         demoPassword: initialData.demoPassword || '',
@@ -198,6 +205,7 @@ export default function ProjectDialog({
           name: '',
           projectManagers: [],
           commissionRate: '',
+          projectAmount: '',
           demoLink: '',
           demoId: '',
           demoPassword: '',
@@ -297,6 +305,7 @@ export default function ProjectDialog({
       payload.append('projectManagers', JSON.stringify(values.projectManagers || []));
       payload.append('projectManager', values.projectManagers?.[0] || '');
       payload.append('commissionRate', String(Number(values.commissionRate) || 0));
+      payload.append('projectAmount', String(Number(values.projectAmount) || 0));
       payload.append('demoLink', values.demoLink ? values.demoLink.trim() : '');
       payload.append('demoId', values.demoId ? values.demoId.trim() : '');
       payload.append('demoPassword', values.demoPassword ? values.demoPassword.trim() : '');
@@ -386,7 +395,7 @@ export default function ProjectDialog({
                 PROJECT INFORMATION
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormInput
                   label="Project Name"
                   name="name"
@@ -416,6 +425,21 @@ export default function ProjectDialog({
                   onBlur={formik.handleBlur}
                   error={formik.touched.commissionRate && formik.errors.commissionRate ? (formik.errors.commissionRate as string) : undefined}
                   placeholder="e.g. 20"
+                />
+
+                <FormInput
+                  label="Default Project Amount (₹)"
+                  name="projectAmount"
+                  type="text"
+                  value={formik.values.projectAmount}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    formik.setFieldValue('projectAmount', val);
+                  }}
+                  onBlur={formik.handleBlur}
+                  error={formik.touched.projectAmount && formik.errors.projectAmount ? (formik.errors.projectAmount as string) : undefined}
+                  placeholder="e.g. 50000"
+                  icon={<span className="text-gray-500 font-bold text-sm">₹</span>}
                 />
               </div>
 

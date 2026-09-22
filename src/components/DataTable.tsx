@@ -362,28 +362,34 @@ export default function DataTable<T extends Record<string, any>>({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)}>
-                  <div className="flex flex-col items-center justify-center gap-3 py-16 w-full">
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="py-20 md:py-28 text-center bg-white">
+                  <div className="flex flex-col items-center justify-center gap-4 max-w-sm mx-auto px-4">
+                    {/* Modern Large Icon with Glassmorphic / Gradient Feel */}
                     <div className="relative">
-                      <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-gradient-to-br from-blue-50/80 via-gray-50 to-slate-100 border border-gray-200/80 shadow-sm flex items-center justify-center">
+                        <svg className="w-10 h-10 md:w-12 md:h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
                         </svg>
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
-                        <FiSearch className="w-2.5 h-2.5 text-gray-500" />
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 md:w-8 md:h-8 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-blue-600">
+                        <FiSearch className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold text-gray-700">No records found</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search or filters</p>
+
+                    <div className="text-center space-y-1">
+                      <p className="text-base md:text-lg font-bold text-gray-800 tracking-tight">No records found</p>
+                      <p className="text-xs md:text-sm text-gray-400 max-w-xs leading-relaxed">
+                        We couldn't find any data matching your current filters or search query.
+                      </p>
                     </div>
+
                     {addButton && (
                       <button
                         onClick={addButton.onClick}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+                        className="mt-1 inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/20 cursor-pointer"
                       >
-                        <span className="text-base leading-none">+</span> Add your first record
+                        <span className="text-base leading-none font-bold">+</span>
+                        <span>{typeof (addButton as any).label === 'string' ? (addButton as any).label : 'Add record'}</span>
                       </button>
                     )}
                   </div>

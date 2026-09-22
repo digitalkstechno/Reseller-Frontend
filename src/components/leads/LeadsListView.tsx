@@ -315,18 +315,16 @@ export default function LeadsListView({
               </span>
             </div>
 
-            {/* Paid Amount — middle with rupee icon */}
-            {paid > 0 && (
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                  <span className="text-gray-400 font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
-                  Paid Amount
-                </span>
-                <span className="font-semibold text-emerald-600 text-xs tracking-tight">
-                  {formatIndianCurrency(paid)}
-                </span>
-              </div>
-            )}
+            {/* Paid Amount — middle with rupee icon (always visible) */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <span className="text-gray-400 font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                Paid Amount
+              </span>
+              <span className={`font-semibold text-xs tracking-tight ${paid > 0 ? 'text-emerald-600' : 'text-gray-600'}`}>
+                {formatIndianCurrency(paid)}
+              </span>
+            </div>
 
             {/* Dashed divider line */}
             <div className="border-t border-dashed border-gray-300 w-full my-0.5" />
@@ -352,11 +350,14 @@ export default function LeadsListView({
         if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
           return <span className="text-gray-400 font-medium">-</span>;
         }
-        const rate = row.commissionRate !== undefined && row.commissionRate !== null && !isNaN(Number(row.commissionRate))
+        const rowObj = row as any;
+        const rate = row.commissionRate !== undefined && row.commissionRate !== null && !isNaN(Number(row.commissionRate)) && Number(row.commissionRate) > 0
           ? Number(row.commissionRate)
-          : (row.paymentAmount && row.commissionAmount && Number(row.paymentAmount) > 0 && Number(row.commissionAmount) > 0
-            ? Math.round((Number(row.commissionAmount) / Number(row.paymentAmount)) * 100)
-            : null);
+          : (rowObj.project && typeof rowObj.project === 'object' && rowObj.project.commissionRate && Number(rowObj.project.commissionRate) > 0
+            ? Number(rowObj.project.commissionRate)
+            : (row.paymentAmount && row.commissionAmount && Number(row.paymentAmount) > 0 && Number(row.commissionAmount) > 0
+              ? Math.round((Number(row.commissionAmount) / Number(row.paymentAmount)) * 100)
+              : null));
 
         if (rate !== null && rate > 0) {
           return (
@@ -365,21 +366,28 @@ export default function LeadsListView({
             </span>
           );
         }
-        return <span className="text-gray-400 font-medium text-xs">0%</span>;
+        return <span className="text-gray-400 font-medium text-xs">-</span>;
       },
     },
     {
       key: 'commissionAmount',
       label: 'COMMISSION',
       render: (v, row) => {
-        if (row.managedBy === 'Manage by Me' || row.managedBy === 'manage by me') {
-          return <span className="text-gray-400 font-medium">-</span>;
+        const rowObj = row as any;
+        const commAmt = v !== undefined && v !== null && !isNaN(Number(v)) && Number(v) > 0
+          ? Number(v)
+          : (rowObj.commission !== undefined && rowObj.commission !== null && !isNaN(Number(rowObj.commission)) && Number(rowObj.commission) > 0
+            ? Number(rowObj.commission)
+            : null);
+
+        if (commAmt !== null && commAmt > 0) {
+          return (
+            <span className="font-bold text-blue-600 text-xs tracking-tight">
+              {formatIndianCurrency(commAmt)}
+            </span>
+          );
         }
-        return v && Number(v) > 0 ? (
-          <span className="font-bold text-blue-600">{formatIndianCurrency(v)}</span>
-        ) : (
-          <span className="text-gray-400 font-medium">-</span>
-        );
+        return <span className="text-gray-400 font-medium">-</span>;
       },
     },
   ];

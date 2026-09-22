@@ -87,12 +87,13 @@ export default function ResellerDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [allProjects, setAllProjects] = useState<{ _id: string; name: string; commissionRate?: number }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ _id: string; name: string; commissionRate?: number; projectAmount?: number }[]>([]);
   const [assignedProjects, setAssignedProjects] = useState<{
     project: string;
     projectName: string;
     isSelected: boolean;
     commissionRate?: string;
+    projectAmount?: string;
   }[]>([]);
 
   const isUpdate = !!initialData?._id;
@@ -129,7 +130,7 @@ export default function ResellerDialog({
     if (error) setError(null);
   }, [formik.values]);
 
-  const resetForm = (projects: { _id: string; name: string; commissionRate?: number }[] = allProjects) => {
+  const resetForm = (projects: { _id: string; name: string; commissionRate?: number; projectAmount?: number }[] = allProjects) => {
     formik.resetForm({
       values: {
         fullName: '',
@@ -150,6 +151,7 @@ export default function ResellerDialog({
       projectName: p.name,
       isSelected: true,
       commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
+      projectAmount: p.projectAmount !== undefined && p.projectAmount !== null ? String(p.projectAmount) : '',
     }));
     setAssignedProjects(initialAssigned);
   };
@@ -167,11 +169,15 @@ export default function ResellerDialog({
           const matchComm = match.commissionRate !== undefined && match.commissionRate !== null && match.commissionRate !== ''
             ? String(match.commissionRate)
             : (p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '');
+          const matchAmt = match.projectAmount !== undefined && match.projectAmount !== null && match.projectAmount !== ''
+            ? String(match.projectAmount)
+            : (p.projectAmount !== undefined && p.projectAmount !== null ? String(p.projectAmount) : '');
           return {
             project: p._id,
             projectName: p.name,
             isSelected: match.isSelected !== false,
             commissionRate: matchComm,
+            projectAmount: matchAmt,
           };
         }
 
@@ -180,6 +186,7 @@ export default function ResellerDialog({
           projectName: p.name,
           isSelected: true,
           commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
+          projectAmount: p.projectAmount !== undefined && p.projectAmount !== null ? String(p.projectAmount) : '',
         };
       });
       setAssignedProjects(mapped);
@@ -189,6 +196,7 @@ export default function ResellerDialog({
         projectName: p.name,
         isSelected: true,
         commissionRate: p.commissionRate !== undefined && p.commissionRate !== null ? String(p.commissionRate) : '',
+        projectAmount: p.projectAmount !== undefined && p.projectAmount !== null ? String(p.projectAmount) : '',
       }));
       setAssignedProjects(initialAssigned);
     }
@@ -260,6 +268,15 @@ export default function ResellerDialog({
     }
   };
 
+  const handleProjectAmountChange = (projectId: string, amountStr: string) => {
+    const val = amountStr.replace(/\D/g, '');
+    setAssignedProjects((prev) =>
+      prev.map((item) =>
+        item.project === projectId ? { ...item, projectAmount: val } : item
+      )
+    );
+  };
+
   const handleToggleAllProjects = () => {
     const allSelected = assignedProjects.every((p) => p.isSelected);
     setAssignedProjects((prev) =>
@@ -317,21 +334,29 @@ export default function ResellerDialog({
       const defaultComm = values.commissionRate ? parseInt(values.commissionRate, 10) : 0;
       payload.append('commissionRate', String(defaultComm));
 
-      // Append Assigned Projects with their individual commission rates
+      // Append Assigned Projects with their individual commission rates and amounts
       const formattedAssigned = assignedProjects.map((p) => {
         const projObj = allProjects.find(proj => proj._id === p.project);
         const fallbackRate = (projObj?.commissionRate !== undefined && projObj?.commissionRate !== null)
           ? projObj.commissionRate
           : defaultComm;
+        const fallbackAmt = (projObj?.projectAmount !== undefined && projObj?.projectAmount !== null)
+          ? projObj.projectAmount
+          : 0;
 
         const itemComm = p.commissionRate !== '' && p.commissionRate !== undefined && p.commissionRate !== null
           ? parseInt(p.commissionRate, 10)
           : fallbackRate;
 
+        const itemAmt = p.projectAmount !== '' && p.projectAmount !== undefined && p.projectAmount !== null
+          ? parseInt(p.projectAmount, 10)
+          : fallbackAmt;
+
         return {
           project: p.project,
           isSelected: p.isSelected,
           commissionRate: Number.isNaN(itemComm) ? 0 : itemComm,
+          projectAmount: Number.isNaN(itemAmt) ? 0 : itemAmt,
         };
       });
       payload.append('assignedProjects', JSON.stringify(formattedAssigned));
@@ -538,11 +563,13 @@ export default function ResellerDialog({
               {assignedProjects.length > 0 ? (
                 <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                   {assignedProjects.map((item) => {
-                    const projectBaseRate = allProjects.find(p => p._id === item.project)?.commissionRate;
+                    const projObj = allProjects.find(p => p._id === item.project);
+                    const projectBaseRate = projObj?.commissionRate;
+                    const projectBaseAmount = projObj?.projectAmount;
                     return (
                       <div
                         key={item.project}
-                        className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-lg border transition-all ${
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 py-2 rounded-lg border transition-all ${
                           item.isSelected
                             ? 'bg-blue-50/20 border-blue-200 hover:border-blue-300 hover:bg-blue-50/40 shadow-2xs'
                             : 'bg-gray-50/50 border-gray-200 opacity-60'
@@ -559,13 +586,18 @@ export default function ResellerDialog({
                             className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer pointer-events-none"
                           />
                           <div className="truncate">
-                            <div className="flex items-center gap-2 truncate">
+                            <div className="flex items-center gap-2 flex-wrap truncate">
                               <span className={`text-xs font-bold truncate ${item.isSelected ? 'text-gray-900' : 'text-gray-500'}`}>
                                 {item.projectName}
                               </span>
                               {projectBaseRate !== undefined && projectBaseRate !== null && (
                                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-500 font-medium border border-gray-200/60">
                                   Default: {projectBaseRate}%
+                                </span>
+                              )}
+                              {projectBaseAmount !== undefined && projectBaseAmount !== null && projectBaseAmount > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200/60">
+                                  Base: ₹{projectBaseAmount.toLocaleString('en-IN')}
                                 </span>
                               )}
                             </div>
@@ -575,20 +607,39 @@ export default function ResellerDialog({
                           </div>
                         </label>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {item.isSelected ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] font-medium text-gray-500">Rate:</span>
-                              <div className="relative flex items-center">
-                                <input
-                                  type="text"
-                                  placeholder={String(projectBaseRate ?? formik.values.commissionRate ?? '0')}
-                                  value={item.commissionRate ?? ''}
-                                  onChange={(e) => handleProjectCommissionChange(item.project, e.target.value)}
-                                  className="w-14 h-7 text-xs font-bold text-center pr-4 text-blue-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
-                                  title="Project commission % (editable)"
-                                />
-                                <span className="absolute right-1.5 text-[10px] font-bold text-gray-400 pointer-events-none">%</span>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              {/* Commission Rate % */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-medium text-gray-500">Rate:</span>
+                                <div className="relative flex items-center">
+                                  <input
+                                    type="text"
+                                    placeholder={String(projectBaseRate ?? formik.values.commissionRate ?? '0')}
+                                    value={item.commissionRate ?? ''}
+                                    onChange={(e) => handleProjectCommissionChange(item.project, e.target.value)}
+                                    className="w-13 h-7 text-xs font-bold text-center pr-4 text-blue-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
+                                    title="Project commission % (editable)"
+                                  />
+                                  <span className="absolute right-1 text-[10px] font-bold text-gray-400 pointer-events-none">%</span>
+                                </div>
+                              </div>
+
+                              {/* Project Base Amount ₹ */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-medium text-gray-500">Amount:</span>
+                                <div className="relative flex items-center">
+                                  <span className="absolute left-1.5 text-[11px] font-bold text-gray-400 pointer-events-none">₹</span>
+                                  <input
+                                    type="text"
+                                    placeholder={String(projectBaseAmount ?? '0')}
+                                    value={item.projectAmount ?? ''}
+                                    onChange={(e) => handleProjectAmountChange(item.project, e.target.value)}
+                                    className="w-20 h-7 text-xs font-bold pl-4 pr-1.5 text-emerald-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-2xs"
+                                    title="Auto-fill base amount for reseller (editable)"
+                                  />
+                                </div>
                               </div>
                             </div>
                           ) : (

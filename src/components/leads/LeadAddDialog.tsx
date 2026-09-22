@@ -88,7 +88,7 @@ export default function LeadAddDialog({
         const [statusRes, sourceRes, projectRes, reqRes, resellerRes] = await Promise.all([
           cachedDropdowns.statuses?.length ? Promise.resolve({ data: cachedDropdowns.statuses }) : axios.get(baseUrl.leadStatuses, { headers }).catch(() => ({ data: [] })),
           cachedDropdowns.sources?.length ? Promise.resolve({ data: cachedDropdowns.sources }) : axios.get(baseUrl.leadSources, { headers }).catch(() => ({ data: [] })),
-          cachedDropdowns.projects?.length ? Promise.resolve({ data: cachedDropdowns.projects }) : axios.get(`${baseUrl.getAllProjects}?all=true`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`${baseUrl.getAllProjects}?all=true`, { headers }).catch(() => ({ data: [] })),
           cachedDropdowns.requiredFields?.length ? Promise.resolve({ data: { data: { requiredLeads: cachedDropdowns.requiredFields } } }) : axios.get(baseUrl.settingsRequiredFields, { headers }).catch(() => ({ data: [] })),
           isAdmin ? (cachedDropdowns.resellers?.length ? Promise.resolve({ data: cachedDropdowns.resellers }) : axios.get(baseUrl.getAllStaff, { headers }).catch(() => ({ data: [] }))) : Promise.resolve({ data: [] }),
         ]);
@@ -213,7 +213,7 @@ export default function LeadAddDialog({
         const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id;
         const finalStatus = values.leadStatus || (mode === 'add' ? (newLeadStatusId || statuses[0]?._id) : undefined);
 
-        const finalAmount = Number(values.paymentAmount) || 0;
+        const finalAmount = (!isAdmin && values.managedBy === 'Digitalks') ? 0 : (Number(values.paymentAmount) || 0);
 
         const payload: any = {
           customerName: values.customerName.trim(),
@@ -356,9 +356,12 @@ export default function LeadAddDialog({
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
-    const selectedProj = projects.find((p) => p._id === projectId);
-    if (selectedProj && selectedProj.projectAmount && (!formik.values.paymentAmount || formik.values.paymentAmount === '0')) {
-      formik.setFieldValue('paymentAmount', String(selectedProj.projectAmount));
+    const selectedProj = projects.find(
+      (p) => String(p._id) === String(projectId) || p.name === projectId
+    );
+    const projAmt = (selectedProj as any)?.projectAmount ?? (selectedProj as any)?.amount ?? (selectedProj as any)?.customProjectAmount;
+    if (projAmt !== undefined && projAmt !== null && projAmt !== '' && Number(projAmt) > 0) {
+      formik.setFieldValue('paymentAmount', String(projAmt));
     }
   };
 
@@ -471,7 +474,7 @@ export default function LeadAddDialog({
 
             {/* Row: Managed By | Select Project | Project Amount */}
             {(() => {
-              const showPaymentAmount = isAdmin || mode === 'edit' || formik.values.managedBy !== 'Digitalks';
+              const showPaymentAmount = isAdmin || formik.values.managedBy !== 'Digitalks';
               return (
                 <div
                   className={`md:col-span-2 grid grid-cols-1 ${
@@ -484,10 +487,21 @@ export default function LeadAddDialog({
                     value={formik.values.managedBy}
                     onChange={(val) => {
                       formik.setFieldValue('managedBy', val);
-                      if (val === 'Digitalks' && !isAdmin && mode === 'add') {
-                        const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
-                        if (newLeadStatusId) {
-                          formik.setFieldValue('leadStatus', newLeadStatusId);
+                      if (val === 'Digitalks' && !isAdmin) {
+                        formik.setFieldValue('paymentAmount', '');
+                        if (mode === 'add') {
+                          const newLeadStatusId = statuses.find((s) => s.name?.toLowerCase() === 'new lead')?._id || statuses[0]?._id || '';
+                          if (newLeadStatusId) {
+                            formik.setFieldValue('leadStatus', newLeadStatusId);
+                          }
+                        }
+                      } else if (val !== 'Digitalks') {
+                        const selectedProj = projects.find(
+                          (p) => String(p._id) === String(formik.values.project) || p.name === formik.values.project
+                        );
+                        const projAmt = (selectedProj as any)?.projectAmount ?? (selectedProj as any)?.amount ?? (selectedProj as any)?.customProjectAmount;
+                        if (projAmt !== undefined && projAmt !== null && projAmt !== '' && Number(projAmt) > 0 && !formik.values.paymentAmount) {
+                          formik.setFieldValue('paymentAmount', String(projAmt));
                         }
                       }
                     }}
