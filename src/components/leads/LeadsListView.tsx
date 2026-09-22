@@ -551,9 +551,14 @@ export default function LeadsListView({
               const isWon = row.status?.toLowerCase() === 'won' || !!row.isWon;
               const isDigitalks = (row.managedBy || '').toLowerCase() === 'digitalks';
               if (isAdmin) {
-                return true;
+                // Admin can only add/manage payment for Digitalks managed leads
+                return isDigitalks;
               }
-              return !isDigitalks && isWon;
+              // Reseller can add/manage payment for their own "Manage by Me" won leads
+              if (isReseller) {
+                return !isDigitalks && isWon;
+              }
+              return isWon;
             },
             onClick: (row) => {
               setPaymentTarget(row);
