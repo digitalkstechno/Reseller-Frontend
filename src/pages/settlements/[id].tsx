@@ -6,6 +6,7 @@ import axios from 'axios';
 import { baseUrl, getAuthToken } from '@/config';
 import { toast } from 'react-toastify';
 import DataTable, { Column } from '@/components/DataTable';
+import Dialog from '@/components/Dialog';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -25,7 +26,9 @@ import {
   Phone,
   Percent,
   Briefcase,
-  Layers
+  Layers,
+  Receipt,
+  History
 } from 'lucide-react';
 import { exportToExcel } from '@/utills/exportHelper';
 
@@ -38,6 +41,15 @@ interface ResellerInfo {
   commissionRate?: number;
   bankDetails?: string;
   upiId?: string;
+}
+
+interface PaymentItem {
+  amount: number;
+  paymentDate?: string | Date;
+  paymentMode?: string;
+  paymentProof?: string;
+  note?: string;
+  createdAt?: string | Date;
 }
 
 interface LeadSettlementItem {
@@ -64,6 +76,7 @@ interface LeadSettlementItem {
   settlementDate?: string | null;
   settlementRef?: string;
   settlementMethod?: string;
+  payments?: PaymentItem[];
 }
 
 const formatLeadDate = (dateVal: any): string => {
@@ -98,6 +111,7 @@ export default function SettlementDetailsPage() {
   const [leads, setLeads] = useState<LeadSettlementItem[]>([]);
   const [unsettledCount, setUnsettledCount] = useState(0);
   const [settledCount, setSettledCount] = useState(0);
+  const [selectedLeadForHistory, setSelectedLeadForHistory] = useState<LeadSettlementItem | null>(null);
   const [totalPayableCommission, setTotalPayableCommission] = useState(0);
   const [totalReceivableProjectCost, setTotalReceivableProjectCost] = useState(0);
   const [netBalance, setNetBalance] = useState(0);
@@ -498,13 +512,47 @@ export default function SettlementDetailsPage() {
       }
     },
     {
-      key: 'paymentDate',
-      label: 'PAYMENT DATE',
-      render: (value) => (
-        <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
-          {formatLeadDate(value)}
-        </span>
-      )
+      key: 'paymentHistory',
+      label: 'PAYMENT HISTORY',
+      render: (_, row) => {
+        const paymentsList = row.payments && Array.isArray(row.payments) ? row.payments : [];
+        const count = paymentsList.length;
+        const totalPaid = Number(row.paidAmount) || 0;
+
+        if (count === 0 && totalPaid <= 0) {
+          return <span className="text-gray-400 font-medium text-xs">-</span>;
+        }
+
+        return (
+          <div className="flex flex-col gap-1 min-w-[140px]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedLeadForHistory(row);
+              }}
+              className="inline-flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/90 hover:bg-blue-100 text-blue-700 border border-blue-200/80 transition-all text-xs font-semibold group cursor-pointer shadow-2xs"
+              title="Click to view full payment installments history"
+            >
+              <span className="flex items-center gap-1.5">
+                <Receipt className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span>{count > 0 ? `${count} ${count === 1 ? 'Payment' : 'Installments'}` : '1 Payment'}</span>
+              </span>
+              <span className="text-[10px] text-blue-500 group-hover:text-blue-700 font-bold">View →</span>
+            </button>
+
+            {count > 0 ? (
+              <span className="text-[10px] text-gray-500 truncate block">
+                Last: {formatLeadDate(paymentsList[paymentsList.length - 1].paymentDate || paymentsList[paymentsList.length - 1].createdAt)} • ₹{Number(paymentsList[paymentsList.length - 1].amount || 0).toLocaleString('en-IN')}
+              </span>
+            ) : totalPaid > 0 ? (
+              <span className="text-[10px] text-gray-500 truncate block">
+                {formatLeadDate(row.paymentDate)} • {row.paymentMode || 'Cash'}
+              </span>
+            ) : null}
+          </div>
+        );
+      }
     }
   );
 
@@ -962,6 +1010,141 @@ export default function SettlementDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Payment History Dialog */}
+      <Dialog
+        isOpen={!!selectedLeadForHistory}
+        onClose={() => setSelectedLeadForHistory(null)}
+        title={`Payment History — ${selectedLeadForHistory?.customerName || 'Lead'}`}
+      >
+        {selectedLeadForHistory && (() => {
+          const effectivePaymentsList: PaymentItem[] =
+            selectedLeadForHistory.payments && selectedLeadForHistory.payments.length > 0
+              ? selectedLeadForHistory.payments
+              : Number(selectedLeadForHistory.paidAmount || 0) > 0
+              ? [
+                  {
+                    amount: Number(selectedLeadForHistory.paidAmount || 0),
+                    paymentDate: selectedLeadForHistory.paymentDate,
+                    paymentMode: selectedLeadForHistory.paymentMode || 'Bank Transfer',
+                    note: 'Direct / Initial Payment',
+                  },
+                ]
+              : [];
+
+          const totalPaid = effectivePaymentsList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || Number(selectedLeadForHistory.paidAmount || 0);
+          const totalRevenue = Number(selectedLeadForHistory.paymentAmount || selectedLeadForHistory.baseProjectAmount || 0);
+          const remainingBalance = Math.max(0, totalRevenue - totalPaid);
+
+          return (
+            <div className="space-y-4">
+              {/* Summary Box */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3 text-xs">
+                <div>
+                  <span className="text-gray-400 block text-[11px] font-medium">Customer</span>
+                  <span className="font-bold text-gray-800 truncate block">{selectedLeadForHistory.customerName}</span>
+                  <span className="text-[10px] text-gray-500">{selectedLeadForHistory.customerContact}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] font-medium">Project</span>
+                  <span className="font-bold text-gray-800">{selectedLeadForHistory.projectName || '-'}</span>
+                  <span className="text-[10px] text-blue-600 font-semibold block">{selectedLeadForHistory.managedBy}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] font-medium">Total Deal / Revenue</span>
+                  <span className="font-bold text-gray-800">
+                    ₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] text-amber-600 block">
+                    Bal: ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[11px] font-medium">Total Paid So Far</span>
+                  <span className="font-bold text-emerald-600 text-sm">
+                    ₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                    {remainingBalance === 0 ? 'Full Paid' : 'Partial Paid'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment list table */}
+              {effectivePaymentsList.length === 0 ? (
+                <div className="py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-semibold text-gray-600">No payment records found</p>
+                  <p className="text-xs text-gray-400 mt-0.5">₹0.00 collected for this lead</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-gray-200 shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">Date (Kab Diya)</th>
+                        <th className="py-2.5 px-3">Payment Mode</th>
+                        <th className="py-2.5 px-3">Note / Reference</th>
+                        <th className="py-2.5 px-3 text-right">Amount (Kitna Diya)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {effectivePaymentsList.map((p, idx) => (
+                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold text-gray-500">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-medium text-gray-800">
+                            {p.paymentDate
+                              ? new Date(p.paymentDate).toLocaleDateString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '-'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                              {p.paymentMode || 'Online / Cash'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-500 font-normal">
+                            {p.note || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                            ₹{(Number(p.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-50/80 border-t-2 border-gray-200 font-bold text-gray-800 text-xs">
+                        <td colSpan={4} className="py-2.5 px-3 text-right text-gray-600">
+                          Total ({effectivePaymentsList.length} {effectivePaymentsList.length === 1 ? 'Record' : 'Installments'}):
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-black text-emerald-600">
+                          ₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedLeadForHistory(null)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </Dialog>
     </div>
   );
 }
