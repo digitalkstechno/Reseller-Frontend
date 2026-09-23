@@ -476,6 +476,11 @@ export default function LeadsKanbanView({
                         columns={lostLeadsColumns}
                         loading={false}
                         searchable={false}
+                        emptyState={{
+                            variant: 'red',
+                            title: 'No lost leads found',
+                            subtitle: 'There are no lost leads matching your current filters or search.',
+                        }}
                         pagination
                         currentPage={lostPagination?.currentPage ?? 1}
                         totalPages={lostPagination?.totalPages ?? 1}
@@ -510,6 +515,11 @@ export default function LeadsKanbanView({
                         columns={wonLeadsColumns}
                         loading={false}
                         searchable={false}
+                        emptyState={{
+                            variant: 'green',
+                            title: 'No won leads found',
+                            subtitle: 'There are no won leads matching your current filters or search.',
+                        }}
                         pagination
                         currentPage={wonPagination?.currentPage ?? 1}
                         totalPages={wonPagination?.totalPages ?? 1}

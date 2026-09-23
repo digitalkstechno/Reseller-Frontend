@@ -21,6 +21,7 @@ export interface ProjectManager {
   role?: any;
   status: string;
   profileImage?: string;
+  assignedProjects?: any[];
 }
 
 interface ProjectManagerDialogProps {

@@ -197,13 +197,11 @@ export function ProjectsContent() {
   const columns: Column<Project>[] = [
     {
       key: 'dragHandle',
-      label: '#',
-      render: (_, row, idx) => (
-        <div className="flex items-center gap-1.5 text-gray-400">
-          <GripVertical className="w-4 h-4 cursor-grab text-gray-300 hover:text-gray-600" />
-          <span className="text-xs font-mono font-semibold text-gray-500">
-            {(page - 1) * limit + (idx !== undefined ? idx + 1 : 1)}
-          </span>
+      label: '',
+      className: 'w-10 px-2 text-center',
+      render: () => (
+        <div className="flex items-center justify-center text-gray-300 hover:text-gray-600 cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4" />
         </div>
       ),
     },

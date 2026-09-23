@@ -31,8 +31,8 @@ export function useLeadsData(
   activeTab: 'all' | 'my' = 'all',
   filters: Filters = {},
   viewMode: 'list' | 'kanban' = 'list',
-  kanbanSubView: 'board' | 'lost' | 'won' = 'won',
-  leadStageTab: LeadStageTab = 'won'
+  kanbanSubView: 'board' | 'lost' | 'won' = 'board',
+  leadStageTab: LeadStageTab = 'new_lead'
 ) {
   const { permissions: rawPerms } = useSelector((state: any) => state.auth);
   const [leads, setLeads] = useState<ApiLead[]>([]);

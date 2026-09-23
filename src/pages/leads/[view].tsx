@@ -50,11 +50,11 @@ export default function LeadsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
 
-  // ── Top Lead Stage Tab (All | New Lead | Won [Default] | Lost) ───────────
-  const [leadStageTab, setLeadStageTab] = useState<LeadStageTab>('won');
+  // ── Top Lead Stage Tab (All | New Lead [Default] | Won | Lost) ───────────
+  const [leadStageTab, setLeadStageTab] = useState<LeadStageTab>('new_lead');
 
   // ── Kanban sub-view — lifted here so hook knows which data to fetch ───────
-  const [kanbanSubView, setKanbanSubView] = useState<KanbanSubView>('won');
+  const [kanbanSubView, setKanbanSubView] = useState<KanbanSubView>('board');
 
   // ── Search & Filters ─────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -656,14 +656,14 @@ export default function LeadsPage() {
                 <button
                   key={tab.id}
                   onClick={() => handleStageTabChange(tab.id)}
-                  className={`relative py-1.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  className={`relative py-1.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:outline-none select-none border ${
                     isActive
                       ? tab.id === 'lost'
-                        ? 'bg-white text-red-600 shadow-xs border border-red-200/80'
+                        ? 'bg-white text-red-600 shadow-xs border-red-200/80'
                         : tab.id === 'won'
-                        ? 'bg-white text-emerald-600 shadow-xs border border-emerald-200/80'
-                        : 'bg-white text-[#3B82F6] shadow-xs border border-blue-200/80'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+                        ? 'bg-white text-emerald-600 shadow-xs border-emerald-200/80'
+                        : 'bg-white text-[#3B82F6] shadow-xs border-blue-200/80'
+                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
                   }`}
                 >
                   <span>{tab.label}</span>
@@ -744,6 +744,27 @@ export default function LeadsPage() {
               transfer: canTransfer,
               convert: canConvert,
             }}
+            emptyState={
+              leadStageTab === 'won'
+                ? {
+                    variant: 'green',
+                    title: 'No won leads found',
+                    subtitle: 'There are no won leads matching your current filters or search query.',
+                  }
+                : leadStageTab === 'lost'
+                ? {
+                    variant: 'red',
+                    title: 'No lost leads found',
+                    subtitle: 'There are no lost leads matching your current filters or search query.',
+                  }
+                : leadStageTab === 'new_lead'
+                ? {
+                    variant: 'blue',
+                    title: 'No new leads found',
+                    subtitle: 'There are no new leads matching your current filters or search query.',
+                  }
+                : undefined
+            }
             pagination={currentPagination}
             onSearchChange={setSearch}
             headerActions={undefined}

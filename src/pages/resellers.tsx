@@ -210,13 +210,89 @@ export function ResellersContent() {
       key: 'assignedProjects',
       label: 'ASSIGNED PRODUCTS',
       render: (_, row) => {
-        const activeCount = Array.isArray(row.assignedProjects)
-          ? row.assignedProjects.filter((p: any) => p.isSelected !== false).length
-          : 0;
+        const activeProjects = Array.isArray(row.assignedProjects)
+          ? row.assignedProjects.filter((p: any) => p.isSelected !== false)
+          : [];
+        const activeCount = activeProjects.length;
+
+        if (activeCount === 0) {
+          return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-50 text-gray-500 border border-gray-200">
+              0 Products
+            </span>
+          );
+        }
+
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-            {activeCount} {activeCount === 1 ? 'Product' : 'Products'}
-          </span>
+          <div className="relative inline-block group" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 hover:bg-blue-100/80 transition-all cursor-pointer shadow-2xs hover:shadow-xs focus:outline-none"
+            >
+              <span>{activeCount} {activeCount === 1 ? 'Product' : 'Products'}</span>
+              <svg className="w-3 h-3 text-blue-500 group-hover:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Hover / Click Popup Menu (Opens downwards to avoid clipping) */}
+            <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-200/90 z-50 transition-all duration-200 ease-out transform group-hover:translate-y-0 group-focus-within:translate-y-0 -translate-y-1 pointer-events-auto">
+              {/* Arrow on Top */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px] border-4 border-transparent border-b-white drop-shadow-xs pointer-events-none"></div>
+
+              {/* Header */}
+              <div className="px-3.5 py-2.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/60 border-b border-gray-100 rounded-t-2xl flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  <span className="text-xs font-bold text-gray-800">Assigned Products ({activeCount})</span>
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">Commission & Rate</span>
+              </div>
+
+              {/* Product List */}
+              <div className="p-2.5 max-h-56 overflow-y-auto divide-y divide-gray-100/80 custom-scrollbar">
+                {activeProjects.map((p: any, idx: number) => {
+                  const proj = typeof p.project === 'object' && p.project !== null ? p.project : p;
+                  const name = proj.name || p.name || p.projectName || (typeof p.project === 'string' ? p.project : `Product #${idx + 1}`);
+                  
+                  const commRate = p.commissionRate !== undefined && p.commissionRate !== null && p.commissionRate !== ''
+                    ? p.commissionRate
+                    : proj.commissionRate;
+                    
+                  const projAmt = p.projectAmount !== undefined && p.projectAmount !== null && p.projectAmount !== ''
+                    ? p.projectAmount
+                    : proj.projectAmount;
+
+                  return (
+                    <div key={idx} className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-2 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-gray-800 truncate" title={name}>{name}</p>
+                        <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                          Amount: <span className="font-semibold text-gray-800">
+                            {projAmt !== undefined && projAmt !== null && projAmt !== '' && Number(projAmt) > 0
+                              ? `₹${Number(projAmt).toLocaleString('en-IN')}`
+                              : '₹0'}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="flex-shrink-0 text-right">
+                        {commRate !== undefined && commRate !== null && commRate !== '' && Number(commRate) > 0 ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold">
+                            {commRate}% Comm.
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100 text-[11px] font-medium">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         );
       },
     },

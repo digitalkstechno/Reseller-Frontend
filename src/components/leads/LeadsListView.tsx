@@ -93,6 +93,12 @@ interface Props {
   };
   onSearchChange?: (value: string) => void;
   headerActions?: React.ReactNode;
+  emptyState?: {
+    title?: string;
+    subtitle?: string;
+    variant?: 'default' | 'green' | 'red' | 'blue' | 'orange';
+    icon?: React.ReactNode;
+  };
 }
 
 function mapLead(item: any): TableLead {
@@ -154,7 +160,8 @@ export default function LeadsListView({
   loading: loadingProp,
   pagination,
   onSearchChange,
-  headerActions
+  headerActions,
+  emptyState,
 }: Props) {
   const router = useRouter();
   const [leads, setLeads] = useState<TableLead[]>([]);
@@ -510,6 +517,7 @@ export default function LeadsListView({
         data={leads}
         columns={columns}
         loading={loading}
+        emptyState={emptyState}
         searchable={false}
         headerActions={headerActions}
         pagination

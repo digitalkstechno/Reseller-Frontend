@@ -82,6 +82,12 @@ interface DataTableProps<T> {
   onRowDrop?: (e: React.DragEvent, index: number) => void;
   draggedRowIndex?: number | null;
   dragOverRowIndex?: number | null;
+  emptyState?: {
+    title?: string;
+    subtitle?: string;
+    variant?: 'default' | 'green' | 'red' | 'blue' | 'orange';
+    icon?: React.ReactNode;
+  };
 }
 
 export default function DataTable<T extends Record<string, any>>({
@@ -127,6 +133,7 @@ export default function DataTable<T extends Record<string, any>>({
   onRowDrop,
   draggedRowIndex = null,
   dragOverRowIndex = null,
+  emptyState,
 }: DataTableProps<T>) {
   const [internalPage, setInternalPage] = useState(currentPage);
   const [internalPageSize, setInternalPageSize] = useState(pageSize);
@@ -378,27 +385,75 @@ export default function DataTable<T extends Record<string, any>>({
                   <div className="flex flex-col items-center justify-center gap-4 max-w-sm mx-auto px-4">
                     {/* Modern Large Icon with Glassmorphic / Gradient Feel */}
                     <div className="relative">
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-gradient-to-br from-blue-50/80 via-gray-50 to-slate-100 border border-gray-200/80 shadow-sm flex items-center justify-center">
-                        <svg className="w-10 h-10 md:w-12 md:h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
-                        </svg>
+                      <div className={`w-20 h-20 md:w-24 md:h-24 rounded-3xl border shadow-sm flex items-center justify-center ${
+                        emptyState?.variant === 'green'
+                          ? 'bg-gradient-to-br from-emerald-50 via-green-50/50 to-teal-50 border-emerald-200/80'
+                          : emptyState?.variant === 'red'
+                          ? 'bg-gradient-to-br from-rose-50 via-red-50/50 to-orange-50 border-red-200/80'
+                          : emptyState?.variant === 'blue'
+                          ? 'bg-gradient-to-br from-blue-50 via-sky-50/60 to-indigo-50 border-blue-200/80'
+                          : 'bg-gradient-to-br from-blue-50/80 via-gray-50 to-slate-100 border-gray-200/80'
+                      }`}>
+                        {emptyState?.icon ? (
+                          emptyState.icon
+                        ) : emptyState?.variant === 'green' ? (
+                          <svg className="w-10 h-10 md:w-12 md:h-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : emptyState?.variant === 'red' ? (
+                          <svg className="w-10 h-10 md:w-12 md:h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : emptyState?.variant === 'blue' ? (
+                          <svg className="w-10 h-10 md:w-12 md:h-12 text-[#3B82F6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                        ) : (
+                          <svg className="w-10 h-10 md:w-12 md:h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4m4-3h8" />
+                          </svg>
+                        )}
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 md:w-8 md:h-8 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-blue-600">
+                      <div className={`absolute -bottom-1 -right-1 w-7 h-7 md:w-8 md:h-8 rounded-xl bg-white border shadow-sm flex items-center justify-center ${
+                        emptyState?.variant === 'green'
+                          ? 'border-emerald-200 text-emerald-600'
+                          : emptyState?.variant === 'red'
+                          ? 'border-red-200 text-red-600'
+                          : emptyState?.variant === 'blue'
+                          ? 'border-blue-200 text-blue-600'
+                          : 'border-gray-200 text-blue-600'
+                      }`}>
                         <FiSearch className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       </div>
                     </div>
 
                     <div className="text-center space-y-1">
-                      <p className="text-base md:text-lg font-bold text-gray-800 tracking-tight">No records found</p>
+                      <p className={`text-base md:text-lg font-bold tracking-tight ${
+                        emptyState?.variant === 'green'
+                          ? 'text-emerald-800'
+                          : emptyState?.variant === 'red'
+                          ? 'text-red-800'
+                          : emptyState?.variant === 'blue'
+                          ? 'text-blue-800'
+                          : 'text-gray-800'
+                      }`}>
+                        {emptyState?.title || 'No records found'}
+                      </p>
                       <p className="text-xs md:text-sm text-gray-400 max-w-xs leading-relaxed">
-                        We couldn't find any data matching your current filters or search query.
+                        {emptyState?.subtitle || "We couldn't find any data matching your current filters or search query."}
                       </p>
                     </div>
 
                     {addButton && (
                       <button
                         onClick={addButton.onClick}
-                        className="mt-1 inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-all shadow-sm shadow-blue-500/20 cursor-pointer"
+                        className={`mt-1 inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-white px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer ${
+                          emptyState?.variant === 'green'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+                            : emptyState?.variant === 'red'
+                            ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                        }`}
                       >
                         <span className="text-base leading-none font-bold">+</span>
                         <span>{typeof (addButton as any).label === 'string' ? (addButton as any).label : 'Add record'}</span>
