@@ -146,6 +146,23 @@ export default function SettlementDetailsPage() {
   const [managedByFilter, setManagedByFilter] = useState<'Digitalks' | 'Manage by Me'>('Digitalks');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Overall Reseller Financial Aggregates
+  const [summaryStats, setSummaryStats] = useState({
+    totalAllLeads: 0,
+    totalDigitalksLeads: 0,
+    totalManageByMeLeads: 0,
+    unsettledDigitalksCount: 0,
+    unsettledManageByMeCount: 0,
+    settledDigitalksCount: 0,
+    settledManageByMeCount: 0,
+    totalRevenue: 0,
+    totalCollectedPaid: 0,
+    totalPendingAmount: 0,
+    totalEarnedCommission: 0,
+    totalPayableCommission: 0,
+    totalSettledCommission: 0,
+  });
+
   // Filters & Pagination
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -184,6 +201,7 @@ export default function SettlementDetailsPage() {
         params: {
           resellerId,
           settled: activeTab === 'settled',
+          managedBy: managedByFilter,
           page,
           limit,
           search: debouncedSearch
@@ -202,6 +220,23 @@ export default function SettlementDetailsPage() {
         setNetBalance(responseData.netBalance || 0);
         setPayableCount(responseData.payableCount || 0);
         setReceivableCount(responseData.receivableCount || 0);
+
+        setSummaryStats({
+          totalAllLeads: responseData.totalAllLeads || 0,
+          totalDigitalksLeads: responseData.totalDigitalksLeads || 0,
+          totalManageByMeLeads: responseData.totalManageByMeLeads || 0,
+          unsettledDigitalksCount: responseData.unsettledDigitalksCount || responseData.payableCount || 0,
+          unsettledManageByMeCount: responseData.unsettledManageByMeCount || responseData.receivableCount || 0,
+          settledDigitalksCount: responseData.settledDigitalksCount || 0,
+          settledManageByMeCount: responseData.settledManageByMeCount || 0,
+          totalRevenue: responseData.totalRevenue || 0,
+          totalCollectedPaid: responseData.totalCollectedPaid || 0,
+          totalPendingAmount: responseData.totalPendingAmount || 0,
+          totalEarnedCommission: responseData.totalEarnedCommission || 0,
+          totalPayableCommission: responseData.totalPayableCommission || 0,
+          totalSettledCommission: responseData.totalSettledCommission || 0,
+        });
+
         if (responseData.reseller) {
           setReseller(responseData.reseller);
         }
@@ -213,7 +248,7 @@ export default function SettlementDetailsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [resellerId, activeTab, page, limit, debouncedSearch, token]);
+  }, [resellerId, activeTab, managedByFilter, page, limit, debouncedSearch, token]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -229,12 +264,8 @@ export default function SettlementDetailsPage() {
     setPage(1);
   };
 
-  // Filtered Leads by ManagedBy filter
-  const filteredLeads = leads.filter((l) => {
-    if (managedByFilter === 'all') return true;
-    if (managedByFilter === 'Digitalks') return l.managedBy === 'Digitalks';
-    return l.managedBy !== 'Digitalks';
-  });
+  // Filtered Leads (Backend handles managedBy filtering directly)
+  const filteredLeads = leads;
 
   const digitalksCurrentPageLeads = filteredLeads.filter((l) => l.managedBy === 'Digitalks');
   const isAllCurrentPageSelected =
@@ -805,95 +836,98 @@ export default function SettlementDetailsPage() {
         </div>
       )}
 
-      {/* Financial Settlement KPI Cards (Compact & Sleek) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {/* Payable to Reseller (Digitalks Leads) */}
-        <div className="bg-white border border-gray-200 border-l-4 border-l-emerald-500 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                <ArrowDownLeft className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-xs font-bold text-gray-700">Payable to Reseller</span>
-            </div>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              {payableCount} Digitalks
-            </span>
-          </div>
-          <div className="my-1">
-            <p className="text-lg sm:text-xl font-bold text-emerald-700 tracking-tight">
-              ₹{totalPayableCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <span className="text-[10px] text-gray-500">
-            Commission company owes to reseller
-          </span>
-        </div>
+      {/* Financial Settlement KPI Cards (Total Deal Revenue, Paid Amount, Pending Balance) */}
+      {(() => {
+        const fallbackDealRevenue = leads.reduce((sum, l) => sum + (Number(l.paymentAmount) || 0), 0);
+        const fallbackCollectedPaid = leads.reduce((sum, l) => sum + (Number(l.paidAmount || (l.paymentStatus === 'Paid' ? l.paymentAmount : 0)) || 0), 0);
+        const fallbackCommEarned = leads.reduce((sum, l) => sum + (l.managedBy === 'Digitalks' ? (Number(l.earnedCommission || l.resellerProfit || 0)) : 0), 0);
+        const fallbackCommPayable = leads.reduce((sum, l) => sum + (l.managedBy === 'Digitalks' && !l.isSettled ? (Number(l.payableCommissionNow || 0)) : 0), 0);
 
-        {/* Receivable from Reseller (Manage by Me Leads) */}
-        <div className="bg-white border border-gray-200 border-l-4 border-l-rose-500 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 rounded bg-rose-50 text-rose-700 border border-rose-200/60">
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-xs font-bold text-gray-700">Receivable from Reseller</span>
-            </div>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
-              {receivableCount} Manage by Me
-            </span>
-          </div>
-          <div className="my-1">
-            <p className="text-lg sm:text-xl font-bold text-rose-700 tracking-tight">
-              ₹{totalReceivableProjectCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <span className="text-[10px] text-gray-500">
-            Project cost reseller owes to company
-          </span>
-        </div>
+        const totalDealRevenue = summaryStats.totalRevenue > 0 ? summaryStats.totalRevenue : fallbackDealRevenue;
+        const totalCollectedPaid = summaryStats.totalCollectedPaid > 0 ? summaryStats.totalCollectedPaid : fallbackCollectedPaid;
+        const totalPendingBal = summaryStats.totalPendingAmount > 0 ? summaryStats.totalPendingAmount : Math.max(0, totalDealRevenue - totalCollectedPaid);
+        const totalCommEarned = summaryStats.totalEarnedCommission > 0 ? summaryStats.totalEarnedCommission : fallbackCommEarned;
+        const totalCommPayable = summaryStats.totalPayableCommission > 0 ? summaryStats.totalPayableCommission : fallbackCommPayable;
+        const totalCount = summaryStats.totalAllLeads > 0 ? summaryStats.totalAllLeads : leads.length;
+        const digitalksCount = summaryStats.totalDigitalksLeads > 0 ? summaryStats.totalDigitalksLeads : leads.filter(l => l.managedBy === 'Digitalks').length;
+        const manageByMeCount = summaryStats.totalManageByMeLeads > 0 ? summaryStats.totalManageByMeLeads : leads.filter(l => l.managedBy !== 'Digitalks').length;
 
-        {/* Net Settlement Balance */}
-        <div className={`bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 shadow-2xs flex flex-col justify-between transition-all hover:shadow-xs ${
-          netBalance > 0
-            ? 'border-l-4 border-l-emerald-500'
-            : netBalance < 0
-            ? 'border-l-4 border-l-rose-500'
-            : 'border-l-4 border-l-blue-500'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="p-1 rounded bg-blue-50 text-blue-700 border border-blue-200/60">
-                <Scale className="w-3.5 h-3.5" />
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Card 1: Total Leads Revenue */}
+            <div className="bg-white border border-gray-200/90 border-l-4 border-l-blue-600 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:shadow-xs transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700">Total Leads Revenue</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  {totalCount} Leads
+                </span>
               </div>
-              <span className="text-xs font-bold text-gray-700">Net Settlement</span>
+              <div className="my-1.5">
+                <p className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  ₹{totalDealRevenue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-100">
+                <span>Total deal value</span>
+                <span className="font-semibold text-gray-700">{digitalksCount} Digitalks • {manageByMeCount} Manage by Me</span>
+              </div>
             </div>
-            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${
-              netBalance > 0
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : netBalance < 0
-                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                : 'bg-gray-100 text-gray-700 border-gray-200'
-            }`}>
-              {netBalance > 0 ? '🟢 Company Pays' : netBalance < 0 ? '🔴 Reseller Pays' : '⚖️ Balanced'}
-            </span>
+
+            {/* Card 2: Total Paid Amount (Collected) */}
+            <div className="bg-white border border-gray-200/90 border-l-4 border-l-emerald-500 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:shadow-xs transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700">Total Paid Amount</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Collected
+                </span>
+              </div>
+              <div className="my-1.5">
+                <p className="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight">
+                  ₹{totalCollectedPaid.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-100">
+                <span>Commission Earned</span>
+                <span className="font-bold text-emerald-700">₹{totalCommEarned.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            {/* Card 3: Pending Balance & Payable Commission */}
+            <div className="bg-white border border-gray-200/90 border-l-4 border-l-amber-500 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:shadow-xs transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700">Pending Balance</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  Remaining
+                </span>
+              </div>
+              <div className="my-1.5">
+                <p className="text-xl sm:text-2xl font-black text-amber-600 tracking-tight">
+                  ₹{totalPendingBal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-100">
+                <span>Payable Commission Now</span>
+                <span className="font-bold text-blue-700">₹{totalCommPayable.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
           </div>
-          <div className="my-1">
-            <p className={`text-lg sm:text-xl font-bold tracking-tight ${
-              netBalance > 0 ? 'text-emerald-700' : netBalance < 0 ? 'text-rose-700' : 'text-gray-900'
-            }`}>
-              ₹{Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <span className="text-[10px] text-gray-500">
-            {netBalance > 0
-              ? 'Net payout due to reseller'
-              : netBalance < 0
-              ? 'Net amount due from reseller'
-              : 'All accounts balanced (₹0.00)'}
-          </span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Tabs & DataTable Container */}
       <div className="bg-white rounded-xl border border-gray-200/80 shadow-xs flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -902,6 +936,7 @@ export default function SettlementDetailsPage() {
           {/* Status Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-4 w-full">
             <div className="flex items-center gap-6">
+              {/* Awaiting Settlement Tab */}
               <button
                 onClick={() => handleTabChange('unsettled')}
                 className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
@@ -919,10 +954,13 @@ export default function SettlementDetailsPage() {
                       : 'bg-gray-200/80 text-gray-600'
                   }`}
                 >
-                  {unsettledCount}
+                  {managedByFilter === 'Digitalks'
+                    ? (summaryStats.unsettledDigitalksCount ?? payableCount)
+                    : (summaryStats.unsettledManageByMeCount ?? receivableCount)}
                 </span>
               </button>
 
+              {/* Settled Leads Tab */}
               <button
                 onClick={() => handleTabChange('settled')}
                 className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
@@ -940,7 +978,9 @@ export default function SettlementDetailsPage() {
                       : 'bg-gray-200/80 text-gray-600'
                   }`}
                 >
-                  {settledCount}
+                  {managedByFilter === 'Digitalks'
+                    ? (summaryStats.settledDigitalksCount ?? 0)
+                    : (summaryStats.settledManageByMeCount ?? 0)}
                 </span>
               </button>
             </div>
@@ -951,6 +991,7 @@ export default function SettlementDetailsPage() {
                 onClick={() => {
                   setManagedByFilter('Digitalks');
                   setSelectedLeads([]);
+                  setPage(1);
                 }}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                   managedByFilter === 'Digitalks'
@@ -963,13 +1004,14 @@ export default function SettlementDetailsPage() {
                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5 ${
                   managedByFilter === 'Digitalks' ? 'bg-emerald-700/80 text-white' : 'bg-gray-300 text-gray-700'
                 }`}>
-                  {payableCount}
+                  {activeTab === 'unsettled' ? (summaryStats.unsettledDigitalksCount ?? payableCount) : (summaryStats.settledDigitalksCount ?? 0)}
                 </span>
               </button>
               <button
                 onClick={() => {
                   setManagedByFilter('Manage by Me');
                   setSelectedLeads([]);
+                  setPage(1);
                 }}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                   managedByFilter === 'Manage by Me'
@@ -982,7 +1024,7 @@ export default function SettlementDetailsPage() {
                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5 ${
                   managedByFilter === 'Manage by Me' ? 'bg-blue-700/80 text-white' : 'bg-gray-300 text-gray-700'
                 }`}>
-                  {receivableCount}
+                  {activeTab === 'unsettled' ? (summaryStats.unsettledManageByMeCount ?? receivableCount) : (summaryStats.settledManageByMeCount ?? 0)}
                 </span>
               </button>
             </div>
