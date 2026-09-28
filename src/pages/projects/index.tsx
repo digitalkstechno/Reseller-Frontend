@@ -296,14 +296,36 @@ export function ProjectsContent() {
       label: 'DESCRIPTION',
       render: (value, row) => {
         const rawHtml = value || row.description || '';
-        // Remove <ul>...</ul> (feature bullet points) to show actual description text
+        // Remove <ul>...</ul> (feature bullet points) and decode HTML entities
         let descOnly = rawHtml.replace(/<ul[^>]*>[\s\S]*?<\/ul>/gi, '');
-        descOnly = descOnly.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+        descOnly = descOnly
+          .replace(/<[^>]*>?/gm, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (!descOnly) return <span className="text-gray-400 text-xs">-</span>;
 
         return (
-          <span className="text-xs text-gray-600 line-clamp-2 max-w-sm block" title={descOnly}>
-            {descOnly || '-'}
-          </span>
+          <div className="relative group max-w-[280px]">
+            <span
+              className="text-xs text-gray-600 line-clamp-2 cursor-pointer group-hover:text-blue-600 transition-colors block"
+              title={descOnly}
+            >
+              {descOnly}
+            </span>
+            {descOnly.length > 30 && (
+              <div className="pointer-events-none fixed group-hover:block hidden z-[9999] max-w-sm p-3 bg-gray-900/95 text-white text-xs rounded-lg shadow-2xl backdrop-blur-xs border border-gray-700/80 -translate-y-full -translate-x-4 mb-2 animate-in fade-in zoom-in-95 duration-150">
+                <p className="leading-relaxed font-normal whitespace-pre-wrap">{descOnly}</p>
+                <div className="absolute top-full left-6 border-4 border-transparent border-t-gray-900/95" />
+              </div>
+            )}
+          </div>
         );
       },
     },
