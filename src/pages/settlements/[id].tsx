@@ -65,6 +65,9 @@ interface LeadSettlementItem {
   paidAmount?: number;
   paymentStatus?: string;
   commissionAmount: number;
+  earnedCommission?: number;
+  settledCommissionAmount?: number;
+  payableCommissionNow?: number;
   commissionRate: number;
   settlementType?: 'payable' | 'receivable';
   settlementAmount?: number;
@@ -98,8 +101,31 @@ export default function SettlementDetailsPage() {
   const resellerId = id as string;
 
   const { role: userRole, user, permissions: rawPerms } = useSelector((state: any) => state.auth || {});
-  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || '').toLowerCase();
-  const isAdmin = roleName === 'admin' || user?.email === 'admin@gmail.com' || Boolean(rawPerms?.settlement?.create);
+  
+  // Safe robust Admin role detection from redux, jwt token, or localStorage
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+  let tokenRole = '';
+  let tokenEmail = '';
+  if (token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(window.atob(parts[1]));
+        tokenRole = payload?.role?.roleName?.toLowerCase() || (typeof payload?.role === 'string' ? payload.role.toLowerCase() : '');
+        tokenEmail = payload?.email || '';
+      }
+    } catch (e) {}
+  }
+
+  const roleName = (userRole || user?.role?.roleName || (typeof user?.role === 'string' ? user.role : '') || tokenRole || '').toLowerCase();
+  const userEmail = user?.email || tokenEmail || '';
+  const isAdmin = 
+    roleName.includes('admin') || 
+    roleName.includes('super') || 
+    userEmail === 'admin@gmail.com' || 
+    Boolean(rawPerms?.settlement?.create) ||
+    Boolean(rawPerms?.settlement?.readAll) ||
+    !roleName.includes('reseller');
 
   const [isMounted, setIsMounted] = useState(false);
   const [reseller, setReseller] = useState<ResellerInfo | null>(null);
@@ -117,7 +143,7 @@ export default function SettlementDetailsPage() {
   const [netBalance, setNetBalance] = useState(0);
   const [payableCount, setPayableCount] = useState(0);
   const [receivableCount, setReceivableCount] = useState(0);
-  const [managedByFilter, setManagedByFilter] = useState<'all' | 'Digitalks' | 'Manage by Me'>('all');
+  const [managedByFilter, setManagedByFilter] = useState<'Digitalks' | 'Manage by Me'>('Digitalks');
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters & Pagination
@@ -138,8 +164,6 @@ export default function SettlementDetailsPage() {
   const [settleDate, setSettleDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [settleNote, setSettleNote] = useState('');
   const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
-
-  const token = typeof window !== 'undefined' ? getAuthToken() : null;
 
   // Search debounce
   useEffect(() => {
@@ -205,23 +229,36 @@ export default function SettlementDetailsPage() {
     setPage(1);
   };
 
-  // Selection handlers
+  // Filtered Leads by ManagedBy filter
+  const filteredLeads = leads.filter((l) => {
+    if (managedByFilter === 'all') return true;
+    if (managedByFilter === 'Digitalks') return l.managedBy === 'Digitalks';
+    return l.managedBy !== 'Digitalks';
+  });
+
+  const digitalksCurrentPageLeads = filteredLeads.filter((l) => l.managedBy === 'Digitalks');
+  const isAllCurrentPageSelected =
+    digitalksCurrentPageLeads.length > 0 &&
+    digitalksCurrentPageLeads.every((l) => selectedLeads.some((item) => item.id === l.id));
+
+  // Selection handlers (only for Digitalks leads)
   const handleToggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       const newItems = [...selectedLeads];
-      leads.forEach((lead) => {
-        if (!newItems.some((item) => item.id === lead.id)) {
+      filteredLeads.forEach((lead) => {
+        if (lead.managedBy === 'Digitalks' && !newItems.some((item) => item.id === lead.id)) {
           newItems.push(lead);
         }
       });
       setSelectedLeads(newItems);
     } else {
-      const currentPageIds = leads.map((l) => l.id);
+      const currentPageIds = filteredLeads.map((l) => l.id);
       setSelectedLeads(selectedLeads.filter((item) => !currentPageIds.includes(item.id)));
     }
   };
 
   const handleToggleSelectLead = (lead: LeadSettlementItem, checked: boolean) => {
+    if (lead.managedBy !== 'Digitalks') return;
     if (checked) {
       setSelectedLeads([...selectedLeads, lead]);
     } else {
@@ -229,9 +266,9 @@ export default function SettlementDetailsPage() {
     }
   };
 
-  // Selected Total Commission Calculation
+  // Selected Total Commission Calculation (strictly payable commission now)
   const selectedTotalCommission = selectedLeads.reduce(
-    (sum, item) => sum + (Number(item.commissionAmount) || 0),
+    (sum, item) => sum + (Number(item.payableCommissionNow !== undefined ? item.payableCommissionNow : (item.managedBy === 'Digitalks' ? item.commissionAmount : 0)) || 0),
     0
   );
 
@@ -258,12 +295,11 @@ export default function SettlementDetailsPage() {
         { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
       );
 
-      toast.success(`Successfully settled ${selectedLeads.length} leads!`);
+      toast.success(`Successfully processed payout for ${selectedLeads.length} lead(s)!`);
       setIsSettleModalOpen(false);
       setSelectedLeads([]);
       setSettleRefId('');
       setSettleNote('');
-      setActiveTab('settled');
       fetchLeads();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to settle leads');
@@ -290,7 +326,6 @@ export default function SettlementDetailsPage() {
       { header: 'Balance Amount (₹)', key: 'balanceAmount', width: 18 },
       { header: 'Commission Rate (%)', key: 'commissionRate', width: 18 },
       { header: 'Reseller Earnings (₹)', key: 'resellerProfit', width: 22 },
-      { header: 'Settlement Amount (₹)', key: 'settlementAmount', width: 22 },
       { header: 'Payment Date', key: 'formattedPaymentDate', width: 15 },
       { header: 'Status', key: 'settlementStatus', width: 18 },
       { header: 'Settlement Date', key: 'formattedSettlementDate', width: 15 },
@@ -318,18 +353,26 @@ export default function SettlementDetailsPage() {
 
   if (!isMounted || !router.isReady) return null;
 
-  const isAllCurrentPageSelected =
-    leads.length > 0 && leads.every((l) => selectedLeads.some((item) => item.id === l.id));
-
   // Table Columns Definition
   const columns: Column<LeadSettlementItem>[] = [];
 
-  // Checkbox column for Unsettled tab only (Admin / Payout manager)
+  // Checkbox column for Unsettled tab only (Admin / Payout manager) - Strictly for Digitalks leads
   if (activeTab === 'unsettled' && isAdmin) {
     columns.push({
       key: 'id',
       label: 'SELECT',
       render: (_, row) => {
+        const isDigitalks = row.managedBy === 'Digitalks';
+        if (!isDigitalks) {
+          return (
+            <div className="flex items-center justify-center" title="Manage by Me leads do not have company payout settlement">
+              <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                Direct
+              </span>
+            </div>
+          );
+        }
+
         const isChecked = selectedLeads.some((item) => item.id === row.id);
         return (
           <div className="flex items-center justify-center">
@@ -403,92 +446,55 @@ export default function SettlementDetailsPage() {
     },
     {
       key: 'paymentAmount',
-      label: 'LEAD REVENUE',
-      render: (value) => {
-        const total = Number(value) || 0;
-        return (
-          <span className="font-bold text-gray-900 text-sm">
-            ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        );
-      }
-    },
-    {
-      key: 'paidAmount',
-      label: 'PAID AMOUNT',
-      render: (value, row) => {
-        const total = Number(row.paymentAmount) || 0;
-        const paid = Number(value || (row.paymentStatus === 'Paid' ? total : 0));
-        return (
-          <div className="flex flex-col">
-            <span className="font-semibold text-emerald-700 text-sm">
-              ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            {paid >= total && total > 0 ? (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit mt-0.5">
-                Full Paid
-              </span>
-            ) : paid > 0 && paid < total ? (
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
-                Partial
-              </span>
-            ) : (
-              <span className="text-[10px] font-medium text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200 w-fit mt-0.5">
-                Unpaid
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
-    {
-      key: 'balanceAmount',
-      label: 'BALANCE (REMAINING)',
+      label: 'AMOUNT',
       render: (_, row) => {
         const total = Number(row.paymentAmount) || 0;
         const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? total : 0));
-        const balance = Math.max(0, total - paid);
-        return (
-          <div className="flex flex-col">
-            <span className={`font-bold text-sm ${balance > 0 ? 'text-amber-700' : 'text-gray-400'}`}>
-              ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            {balance > 0 ? (
-              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200 w-fit mt-0.5">
-                Pending Bal
-              </span>
-            ) : (
-              <span className="text-[10px] font-medium text-gray-400 mt-0.5">
-                Nil
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
-    {
-      key: 'settlementAmount',
-      label: 'SETTLEMENT AMOUNT',
-      render: (_, row) => {
-        const isDigitalks = row.managedBy === 'Digitalks';
-        const amt = Number(row.settlementAmount || (isDigitalks ? row.commissionAmount : row.baseProjectAmount) || 0);
-        if (amt <= 0) {
-          return <span className="text-gray-400 font-medium text-sm">-</span>;
+        const pending = Math.max(0, total - paid);
+
+        if (!total && !paid) {
+          return <span className="text-gray-400 font-medium text-xs">-</span>;
         }
+
         return (
-          <div className="flex items-center gap-1.5">
-            <span className={`font-black text-sm tracking-tight ${isDigitalks ? 'text-emerald-700' : 'text-rose-700'}`}>
-              {isDigitalks ? '−' : '+'} ₹{amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                isDigitalks
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              }`}
-            >
-              {isDigitalks ? 'Payable' : 'Receivable'}
-            </span>
+          <div className="flex flex-col text-xs py-1 min-w-[155px] space-y-1">
+            {/* Total Amount */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                Total Amount
+              </span>
+              <span className="font-bold text-gray-900 text-xs tracking-tight">
+                ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Paid Amount */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <span className="text-gray-400 font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                Paid Amount
+              </span>
+              <span className={`font-semibold text-xs tracking-tight ${paid > 0 ? 'text-emerald-600' : 'text-gray-600'}`}>
+                ₹{paid.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Dashed divider line */}
+            <div className="border-t border-dashed border-gray-300 w-full my-0.5" />
+
+            {/* Pending Amount */}
+            <div className="flex items-center justify-between gap-3">
+              <span className={`flex items-center gap-1.5 text-[11px] font-bold ${pending > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                <span className="font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                {pending > 0 ? 'Pending' : 'Total Paid'}
+              </span>
+              <span className={`font-bold text-xs tracking-tight ${pending > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {pending > 0 ? `₹${pending.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '✓ Paid'}
+              </span>
+            </div>
           </div>
         );
       }
@@ -498,15 +504,106 @@ export default function SettlementDetailsPage() {
       label: 'RESELLER EARNING / PROFIT',
       render: (value, row) => {
         const isDigitalks = row.managedBy === 'Digitalks';
-        const amt = Number(value || (isDigitalks ? row.commissionAmount : 0));
+        const totalRev = Number(row.paymentAmount) || 0;
+        const paid = Number(row.paidAmount || (row.paymentStatus === 'Paid' ? totalRev : 0));
+        const commRate = row.commissionRate || reseller?.commissionRate || 0;
+        const totalComm = Number(row.commissionAmount || 0);
+        const earnedComm = row.earnedCommission !== undefined ? Number(row.earnedCommission) : Number(value || 0);
+        const payableNow = Number(row.payableCommissionNow || 0);
+        const settledComm = Number(row.settledCommissionAmount || 0);
+
+        if (!isDigitalks) {
+          // Manage by Me
+          const profit = Number(value || Math.max(0, totalRev - (row.baseProjectAmount || 0)));
+          return (
+            <div className="flex flex-col text-xs py-1 min-w-[155px] space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                  <span className="text-gray-400 font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                  Base Project
+                </span>
+                <span className="font-semibold text-gray-900 text-xs tracking-tight">
+                  ₹{(Number(row.baseProjectAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="border-t border-dashed border-gray-300 w-full my-0.5" />
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
+                  <span className="font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                  Direct Margin
+                </span>
+                <span className="font-bold text-blue-700 text-xs tracking-tight">
+                  ₹{profit.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        // Digitalks
+        const isFullySettled = row.isSettled || (settledComm >= (earnedComm - 0.01) && earnedComm > 0);
+
         return (
-          <div className="flex flex-col">
-            <span className="font-bold text-blue-700 text-sm">
-              ₹{amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            <span className="text-[11px] font-medium text-gray-500 mt-0.5">
-              {isDigitalks ? `Commission (${row.commissionRate || reseller?.commissionRate || 0}%)` : 'Selling Margin'}
-            </span>
+          <div className="flex flex-col text-xs py-1 min-w-[165px] space-y-1">
+            {/* Total Commission Deal */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <Percent className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span>Total Comm ({commRate}%)</span>
+              </span>
+              <span className="font-bold text-gray-900 text-xs tracking-tight">
+                ₹{totalComm.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Earned on Paid So Far */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <span className="text-gray-400 font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                Earned Comm
+              </span>
+              <span className={`font-semibold text-xs tracking-tight ${earnedComm > 0 ? 'text-emerald-700' : 'text-gray-600'}`}>
+                ₹{earnedComm.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Dashed divider line */}
+            <div className="border-t border-dashed border-gray-300 w-full my-0.5" />
+
+            {/* Status (Payable Now / Settled) */}
+            <div className="flex items-center justify-between gap-3">
+              {activeTab === 'unsettled' && payableNow > 0 ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
+                    <span className="font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                    Payable Now
+                  </span>
+                  <span className="font-bold text-xs tracking-tight text-blue-700">
+                    ₹{payableNow.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </span>
+                </>
+              ) : isFullySettled ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+                    <span className="font-bold text-[11px] w-3.5 text-center flex-shrink-0">✓</span>
+                    Settled
+                  </span>
+                  <span className="font-bold text-xs tracking-tight text-emerald-700">
+                    ₹{settledComm > 0 ? settledComm.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : earnedComm.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500">
+                    <span className="font-bold text-[11px] w-3.5 text-center flex-shrink-0">₹</span>
+                    Pending Payment
+                  </span>
+                  <span className="font-bold text-xs tracking-tight text-gray-500">
+                    ₹0
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         );
       }
@@ -576,12 +673,6 @@ export default function SettlementDetailsPage() {
       }
     );
   }
-
-  const filteredLeads = leads.filter((l) => {
-    if (managedByFilter === 'all') return true;
-    if (managedByFilter === 'Digitalks') return l.managedBy === 'Digitalks';
-    return l.managedBy !== 'Digitalks';
-  });
 
   return (
     <div className="flex flex-col h-full gap-4 animate-in fade-in duration-300">
@@ -809,51 +900,93 @@ export default function SettlementDetailsPage() {
         {/* Navigation & Segmented Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 px-5 pt-3 pb-2.5 bg-gray-50/50 gap-3">
           {/* Status Tabs */}
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => handleTabChange('unsettled')}
-              className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
-                activeTab === 'unsettled'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Awaiting Settlement</span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => handleTabChange('unsettled')}
+                className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
                   activeTab === 'unsettled'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-gray-200/80 text-gray-600'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                {unsettledCount}
-              </span>
-            </button>
+                <Clock className="w-4 h-4" />
+                <span>Awaiting Settlement</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    activeTab === 'unsettled'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-200/80 text-gray-600'
+                  }`}
+                >
+                  {unsettledCount}
+                </span>
+              </button>
 
-            <button
-              onClick={() => handleTabChange('settled')}
-              className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
-                activeTab === 'settled'
-                  ? 'text-emerald-700 border-b-2 border-emerald-600'
-                  : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Settled Leads</span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              <button
+                onClick={() => handleTabChange('settled')}
+                className={`pb-2.5 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
                   activeTab === 'settled'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-gray-200/80 text-gray-600'
+                    ? 'text-emerald-700 border-b-2 border-emerald-600'
+                    : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                {settledCount}
-              </span>
-            </button>
-          </div>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Settled Leads</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    activeTab === 'settled'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-gray-200/80 text-gray-600'
+                  }`}
+                >
+                  {settledCount}
+                </span>
+              </button>
+            </div>
 
-          {/* Filter Bar */}
+            {/* Type Segmented Filter (Digitalks / Manage by Me) */}
+            <div className="flex items-center bg-gray-200/70 p-0.5 rounded-lg border border-gray-300/60 shadow-2xs">
+              <button
+                onClick={() => {
+                  setManagedByFilter('Digitalks');
+                  setSelectedLeads([]);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  managedByFilter === 'Digitalks'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-emerald-800'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${managedByFilter === 'Digitalks' ? 'bg-white' : 'bg-emerald-500'}`} />
+                <span>Digitalks</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5 ${
+                  managedByFilter === 'Digitalks' ? 'bg-emerald-700/80 text-white' : 'bg-gray-300 text-gray-700'
+                }`}>
+                  {payableCount}
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setManagedByFilter('Manage by Me');
+                  setSelectedLeads([]);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  managedByFilter === 'Manage by Me'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-blue-800'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${managedByFilter === 'Manage by Me' ? 'bg-white' : 'bg-blue-500'}`} />
+                <span>Manage by Me</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5 ${
+                  managedByFilter === 'Manage by Me' ? 'bg-blue-700/80 text-white' : 'bg-gray-300 text-gray-700'
+                }`}>
+                  {receivableCount}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* DataTable */}
@@ -864,7 +997,7 @@ export default function SettlementDetailsPage() {
           searchable={false}
           headerActions={
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {activeTab === 'unsettled' && filteredLeads.length > 0 && (
+              {activeTab === 'unsettled' && digitalksCurrentPageLeads.length > 0 && (
                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-200 transition-colors shadow-2xs">
                   <input
                     type="checkbox"

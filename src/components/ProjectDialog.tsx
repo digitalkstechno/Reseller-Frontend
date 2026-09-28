@@ -624,7 +624,7 @@ export default function ProjectDialog({
                       className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
                     />
                     <span className="text-xs font-bold text-gray-800 truncate">
-                      {formik.values.labelCustomization ? 'Enabled' : 'Disabled'}
+                      {formik.values.labelCustomization ? 'Yes' : 'No'}
                     </span>
                   </label>
                 </div>

@@ -344,32 +344,13 @@ export function ProjectsContent() {
       render: (value) =>
         value ? (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-            Enabled
+            Yes
           </span>
         ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500">
             No
           </span>
         ),
-    },
-    {
-      key: 'themeColor',
-      label: 'COLOR',
-      render: (value) => {
-        const color = value || '#2563EB';
-        return (
-          <div className="flex items-center gap-1.5">
-            <span 
-              className="w-4 h-4 rounded-full border border-gray-200 shadow-2xs flex-shrink-0"
-              style={{ backgroundColor: color }}
-              title={color}
-            />
-            <span className="text-[11px] font-mono text-gray-500 uppercase">
-              {color}
-            </span>
-          </div>
-        );
-      },
     },
     {
       key: 'status',

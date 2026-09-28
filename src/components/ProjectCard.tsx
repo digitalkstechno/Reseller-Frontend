@@ -183,7 +183,6 @@ export default function ProjectCard({
         {hasCommission && (
           <div className="absolute top-0 left-0 w-28 h-28 overflow-hidden z-20 pointer-events-none">
             <div className="absolute top-[18px] -left-[38px] w-[140px] transform -rotate-45 bg-[#059669] text-white text-[10px] font-extrabold uppercase py-1 text-center shadow-md tracking-wider flex items-center justify-center gap-1 border-y border-white/20">
-              <Percent className="w-2.5 h-2.5 text-white stroke-[3]" />
               <span>{project.commissionRate}% COMM.</span>
             </div>
           </div>
