@@ -685,27 +685,9 @@ export default function LeadsPage() {
             })}
           </div>
 
-          {/* ── Action Toolbar (Search, Filter, View Mode, Add Lead) ── */}
+          {/* ── Action Toolbar (Search, Filter, Add Lead) ── */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3 ml-auto py-1">
             {headerActions}
-
-            {/* Desktop View toggle */}
-            <div className="flex relative items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80 h-10 w-fit">
-              <button
-                onClick={() => switchView('list')}
-                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
-                title="List View"
-              >
-                <ListCollapse className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => switchView('kanban')}
-                className={`relative z-10 cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-[#3B82F6] text-white shadow-sm font-semibold' : 'text-gray-600 hover:bg-gray-200/70 hover:text-gray-900'}`}
-                title="Kanban View"
-              >
-                <Kanban className="h-4 w-4" />
-              </button>
-            </div>
 
             {/* Add Lead button */}
             {canCreate && (
