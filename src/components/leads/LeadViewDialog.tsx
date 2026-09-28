@@ -47,7 +47,33 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
 
   useEffect(() => {
     if (lead) {
-      setEditStatus(lead.leadStatus?._id || '');
+      // Resolve status ID whether leadStatus is object, string ID, or string name
+      let resolvedStatusId = '';
+      if (typeof lead.leadStatus === 'object' && lead.leadStatus !== null) {
+        resolvedStatusId = lead.leadStatus._id || '';
+      } else if (typeof (lead as any).status === 'object' && (lead as any).status !== null) {
+        resolvedStatusId = (lead as any).status._id || '';
+      } else if (typeof lead.leadStatus === 'string' && lead.leadStatus) {
+        const rawStatus = lead.leadStatus.trim();
+        const matchById = statuses.find(s => s._id === rawStatus);
+        if (matchById) {
+          resolvedStatusId = matchById._id;
+        } else {
+          const matchByName = statuses.find(s => s.name?.toLowerCase() === rawStatus.toLowerCase());
+          resolvedStatusId = matchByName ? matchByName._id : rawStatus;
+        }
+      } else if (typeof (lead as any).status === 'string' && (lead as any).status) {
+        const rawStatus = (lead as any).status.trim();
+        const matchById = statuses.find(s => s._id === rawStatus);
+        if (matchById) {
+          resolvedStatusId = matchById._id;
+        } else {
+          const matchByName = statuses.find(s => s.name?.toLowerCase() === rawStatus.toLowerCase());
+          resolvedStatusId = matchByName ? matchByName._id : rawStatus;
+        }
+      }
+
+      setEditStatus(resolvedStatusId);
       setEditNextDate('');
       setEditNextTime('');
       setLocalFollowUps(lead.followUps || []);
@@ -59,7 +85,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
       setLocalFollowUps([]);
       setFollowupNote('');
     }
-  }, [lead]);
+  }, [lead, statuses]);
 
   const filteredFollowUps = useMemo(() => {
     if (!followUpSearch.trim()) return localFollowUps;

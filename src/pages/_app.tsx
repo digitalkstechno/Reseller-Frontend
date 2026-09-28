@@ -3,7 +3,7 @@ import { Provider, useSelector } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor, RootState } from "@/store";
 import type { AppProps } from "next/app";
-import { Poppins } from "next/font/google";
+import { Noto_Sans } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useState, useEffect } from "react";
@@ -13,7 +13,7 @@ import Header from "@/components/Header";
 import axios from "axios";
 import { clearAuthToken } from "@/config";
 
-const poppins = Poppins({
+const notoSans = Noto_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
@@ -111,7 +111,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <AuthGuard isLoginPage={isLoginPage}>
-          <div className={poppins.className}>
+          <div className={notoSans.className}>
             <div className="flex min-h-screen bg-white">
               {!isLoginPage && (
                 <Sidebar
