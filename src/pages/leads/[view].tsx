@@ -546,41 +546,6 @@ export default function LeadsPage() {
     );
   }
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex h-full flex-col gap-4 relative overflow-hidden">
-        <div className="rounded-md border border-gray-200 bg-white px-6 py-4 transition-all duration-300">
-          <div className="flex flex-wrap items-center gap-3">
-            <div>
-              <div className="h-8 w-24 bg-gray-200 rounded-md animate-pulse" />
-            </div>
-            <div className="flex items-center gap-3 ml-auto">
-              <div className="h-10 w-24 bg-gray-200 rounded-md animate-pulse" />
-              <div className="h-10 w-20 bg-gray-200 rounded-md animate-pulse" />
-              <div className="h-10 w-32 bg-gray-200 rounded-md animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-hidden">
-          {viewMode === 'list' ? (
-            <div className="bg-white rounded-md border border-gray-200 p-4">
-              <PageSkeleton />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <KanbanColumnSkeleton key={i} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-
   const currentLeads = leadStageTab === 'won' ? wonLeads : leadStageTab === 'lost' ? lostLeads : leadsList;
   const currentPagination = leadStageTab === 'won' ? wonPagination : leadStageTab === 'lost' ? lostPagination : listPagination;
 
@@ -595,27 +560,27 @@ export default function LeadsPage() {
     }
   };
 
-  const getTabCount = (tabId: LeadStageTab) => {
+  const getTabCount = (tabId: LeadStageTab): number | null => {
     if (tabId === 'all') {
       if (counts?.totalLeads !== undefined && counts?.totalLeads !== null) return counts.totalLeads;
       if (Array.isArray(counts?.statusWiseCounts)) {
         return (counts.statusWiseCounts as any[]).reduce((sum, s) => sum + (s.count || 0), 0);
       }
-      return listPagination?.totalItems ?? 0;
+      return listPagination?.totalItems ?? (counts ? 0 : null);
     }
     if (tabId === 'won') {
       if (Array.isArray(counts?.statusWiseCounts)) {
         const found = (counts.statusWiseCounts as any[]).find((s: any) => s.statusName?.match(/^won$/i));
         if (found) return found.count;
       }
-      return counts?.totalWon ?? (wonPagination?.totalItems || wonLeads?.length || 0);
+      return counts?.totalWon ?? (wonPagination?.totalItems || wonLeads?.length || (counts ? 0 : null));
     }
     if (tabId === 'lost') {
       if (Array.isArray(counts?.statusWiseCounts)) {
         const found = (counts.statusWiseCounts as any[]).find((s: any) => s.statusName?.match(/^lost$/i));
         if (found) return found.count;
       }
-      return counts?.totalLost ?? (lostPagination?.totalItems || lostLeads?.length || 0);
+      return counts?.totalLost ?? (lostPagination?.totalItems || lostLeads?.length || (counts ? 0 : null));
     }
     if (tabId === 'new_lead') {
       if (Array.isArray(counts?.statusWiseCounts)) {
@@ -625,11 +590,11 @@ export default function LeadsPage() {
         if (found) return found.count;
       }
       if (newLeadStatus && counts?.statusCounts) {
-        return counts.statusCounts[newLeadStatus._id] ?? 0;
+        return counts.statusCounts[newLeadStatus._id] ?? (counts ? 0 : null);
       }
-      return 0;
+      return counts ? 0 : null;
     }
-    return 0;
+    return null;
   };
 
   const stageTabs: { id: LeadStageTab; label: string }[] = [
@@ -668,7 +633,7 @@ export default function LeadsPage() {
                 >
                   <span>{tab.label}</span>
                   <span
-                    className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                    className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors min-w-[20px] inline-flex items-center justify-center ${
                       isActive
                         ? tab.id === 'lost'
                           ? 'bg-red-50 text-red-700'
@@ -678,7 +643,11 @@ export default function LeadsPage() {
                         : 'bg-gray-200/80 text-gray-600'
                     }`}
                   >
-                    {countVal}
+                    {countVal !== null && countVal !== undefined ? (
+                      countVal
+                    ) : (
+                      <span className="inline-block w-3.5 h-2.5 bg-gray-300 rounded animate-pulse" />
+                    )}
                   </span>
                 </button>
               );

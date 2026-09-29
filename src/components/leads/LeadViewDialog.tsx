@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import Dialog, { CenterDialog } from '@/components/Dialog';
 import { baseUrl, getAuthToken } from '@/config';
 import { ApiLead, ApiStatus } from './types';
-import { Eye, Download, FileText, Image, File, FileSpreadsheet, Search, Trash2, Edit3, Clock } from 'lucide-react';
+import { Eye, Download, FileText, Image, File, FileSpreadsheet, Search, Trash2, Edit3, Clock, Check } from 'lucide-react';
 import { formatContactNumber } from "@/utills/utill";
 import { getFileIcon } from '@/utills/utill';
 import { formatIndianCurrency } from '@/utills/formatters';
@@ -55,7 +55,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
         resolvedStatusId = (lead as any).status._id || '';
       } else if (typeof lead.leadStatus === 'string' && lead.leadStatus) {
         const rawStatus = lead.leadStatus.trim();
-        const matchById = statuses.find(s => s._id === rawStatus);
+        const matchById = statuses.find(s => String(s._id) === rawStatus);
         if (matchById) {
           resolvedStatusId = matchById._id;
         } else {
@@ -64,12 +64,26 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
         }
       } else if (typeof (lead as any).status === 'string' && (lead as any).status) {
         const rawStatus = (lead as any).status.trim();
-        const matchById = statuses.find(s => s._id === rawStatus);
+        const matchById = statuses.find(s => String(s._id) === rawStatus);
         if (matchById) {
           resolvedStatusId = matchById._id;
         } else {
           const matchByName = statuses.find(s => s.name?.toLowerCase() === rawStatus.toLowerCase());
           resolvedStatusId = matchByName ? matchByName._id : rawStatus;
+        }
+      }
+
+      // If still not resolved or empty, fallback to isWon/isLost or 'New Lead'
+      if (!resolvedStatusId && statuses.length > 0) {
+        if (lead.isWon || (lead as any).status?.name?.toLowerCase() === 'won' || ((lead as any).status || '').toString().toLowerCase() === 'won') {
+          const won = statuses.find(s => s.name?.toLowerCase() === 'won');
+          if (won) resolvedStatusId = won._id;
+        } else if (lead.isLost || (lead as any).status?.name?.toLowerCase() === 'lost' || ((lead as any).status || '').toString().toLowerCase() === 'lost') {
+          const lost = statuses.find(s => s.name?.toLowerCase() === 'lost');
+          if (lost) resolvedStatusId = lost._id;
+        } else {
+          const newLead = statuses.find(s => /^new(\s*lead)?$/i.test(s.name)) || statuses[0];
+          if (newLead) resolvedStatusId = newLead._id;
         }
       }
 
@@ -479,7 +493,7 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
 
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Status</span>
+                <span className="text-sm font-semibold text-gray-800">Status</span>
                 {isWon && !isAdmin ? (
                   <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     Won Lead (Status Locked)
@@ -490,23 +504,47 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                   </span>
                 ) : null}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {statuses.map((s) => {
                   const isStatusDisabled = !isAdmin && (isWon || (isReseller && isDigitalks));
+                  const isSelected =
+                    (editStatus && (
+                      editStatus === s._id ||
+                      String(editStatus).toLowerCase() === String(s._id).toLowerCase() ||
+                      String(editStatus).toLowerCase() === String(s.name).toLowerCase()
+                    )) ||
+                    (!editStatus && (
+                      (lead?.isWon && s.name.toLowerCase() === 'won') ||
+                      (lead?.isLost && s.name.toLowerCase() === 'lost') ||
+                      (!lead?.isWon && !lead?.isLost && (s.name.toLowerCase() === 'new lead' || s.name.toLowerCase().includes('new')))
+                    ));
+
+                  const statusLower = s.name.toLowerCase();
+                  let activeClasses = 'bg-[#3B82F6] text-white shadow-md ring-2 ring-blue-400/40 border-blue-600 font-bold';
+                  if (statusLower === 'won') {
+                    activeClasses = 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400/40 border-emerald-600 font-bold';
+                  } else if (statusLower === 'lost') {
+                    activeClasses = 'bg-rose-600 text-white shadow-md ring-2 ring-rose-400/40 border-rose-600 font-bold';
+                  } else if (statusLower.includes('new')) {
+                    activeClasses = 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/40 border-blue-600 font-bold';
+                  }
+
                   return (
                     <button
                       key={s._id}
+                      type="button"
                       disabled={isStatusDisabled}
                       onClick={() => setEditStatus(s._id)}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                        editStatus === s._id
-                          ? 'bg-[#3B82F6] text-white shadow'
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-150 border ${
+                        isSelected
+                          ? activeClasses
                           : isStatusDisabled
-                          ? 'border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                          : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer'
+                          ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 cursor-pointer shadow-2xs'
                       }`}
                     >
-                      {s.name}
+                      {isSelected && <Check className="w-4 h-4 stroke-[2.5]" />}
+                      <span>{s.name}</span>
                     </button>
                   );
                 })}

@@ -27,6 +27,15 @@ type Filters = {
 
 export type LeadStageTab = 'all' | 'new_lead' | 'won' | 'lost';
 
+const getInitialCounts = (tab: string): LeadCountSummary | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(`cached_lead_counts_${tab}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
 export function useLeadsData(
   activeTab: 'all' | 'my' = 'all',
   filters: Filters = {},
@@ -43,7 +52,7 @@ export function useLeadsData(
   const [statuses, setStatuses] = useState<ApiStatus[]>([]);
   const [staffMembers, setStaffMembers] = useState<ApiUser[]>([]);
 
-  const [counts, setCounts] = useState<LeadCountSummary | null>(null);
+  const [counts, setCounts] = useState<LeadCountSummary | null>(() => getInitialCounts(activeTab));
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState({
     create: false, update: false, delete: false, readAll: false, readOwn: false,
@@ -324,7 +333,13 @@ export function useLeadsData(
           to: f.to || undefined,
         },
       });
-      setCounts(res.data?.data || null);
+      const data = res.data?.data || null;
+      if (data) {
+        setCounts(data);
+        try {
+          sessionStorage.setItem(`cached_lead_counts_${tab}`, JSON.stringify(data));
+        } catch {}
+      }
     } catch (e: any) {
       if (axios.isCancel(e) || e?.name === 'CanceledError') return;
       console.error('fetchCounts error:', e);
