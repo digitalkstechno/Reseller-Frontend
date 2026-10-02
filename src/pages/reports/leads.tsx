@@ -80,17 +80,29 @@ export default function LeadsReport() {
       if (paymentStatus) params.paymentStatus = paymentStatus;
       if (debouncedSearch) params.search = debouncedSearch;
 
-      const userRole = role?.toLowerCase() || user?.role?.roleName?.toLowerCase() || '';
-      const url = userRole === 'admin' ? baseUrl.getAllLeads : baseUrl.myLeads;
+      const getRoleStr = (r: any): string => {
+        if (!r) return '';
+        if (typeof r === 'string') return r;
+        if (typeof r === 'object') return r.roleName || r.name || r.role || '';
+        return String(r);
+      };
+
+      const rawRoleStr = getRoleStr(role) || getRoleStr(user?.role) || '';
+      const userRoleStr = rawRoleStr.toLowerCase().trim();
+      const isAdminUser = Boolean(userRoleStr && (/admin/i.test(userRoleStr) || /super/i.test(userRoleStr))) || Boolean(user?.email && /admin/i.test(user.email));
+
+      const url = isAdminUser ? baseUrl.getAllLeads : baseUrl.myLeads;
 
       const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
 
-      setData(res.data?.data || []);
-      setTotalRecords(res.data?.count || res.data?.data?.length || 0);
-      setTotalPages(res.data?.totalPages || 1);
+      const fetchedData = res.data?.data || [];
+      setData(fetchedData);
+      const totalRecs = res.data?.pagination?.totalRecords || res.data?.count || fetchedData.length || 0;
+      setTotalRecords(totalRecs);
+      setTotalPages(res.data?.pagination?.totalPages || res.data?.totalPages || Math.ceil(totalRecs / limit) || 1);
     } catch (error) {
       console.error('Failed to fetch leads report:', error);
       toast.error('Failed to load report data');

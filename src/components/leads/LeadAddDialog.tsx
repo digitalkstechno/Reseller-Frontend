@@ -315,8 +315,8 @@ export default function LeadAddDialog({
           (initialData as any).paymentAmount != null
             ? String((initialData as any).paymentAmount)
             : (initialData as any).projectAmount != null
-            ? String((initialData as any).projectAmount)
-            : '',
+              ? String((initialData as any).projectAmount)
+              : '',
         leadStatus: resolvedStatusId,
         leadSource:
           typeof (initialData as any).leadSource === 'object'
@@ -356,12 +356,18 @@ export default function LeadAddDialog({
 
   const handleProjectSelect = (projectId: string) => {
     formik.setFieldValue('project', projectId);
+    if (projectId) {
+      formik.setFieldError('project', undefined);
+    }
     const selectedProj = projects.find(
       (p) => String(p._id) === String(projectId) || p.name === projectId
     );
     const projAmt = (selectedProj as any)?.projectAmount ?? (selectedProj as any)?.amount ?? (selectedProj as any)?.customProjectAmount;
     if (projAmt !== undefined && projAmt !== null && projAmt !== '' && Number(projAmt) > 0) {
       formik.setFieldValue('paymentAmount', String(projAmt));
+      if (formik.errors.paymentAmount) {
+        formik.setFieldError('paymentAmount', undefined);
+      }
     }
   };
 
@@ -401,8 +407,8 @@ export default function LeadAddDialog({
             {formik.isSubmitting
               ? 'Saving...'
               : mode === 'edit'
-              ? 'Update Lead'
-              : 'Save Lead'}
+                ? 'Update Lead'
+                : 'Save Lead'}
           </button>
         </div>
       }
@@ -477,9 +483,8 @@ export default function LeadAddDialog({
               const showPaymentAmount = isAdmin || formik.values.managedBy !== 'Digitalks';
               return (
                 <div
-                  className={`md:col-span-2 grid grid-cols-1 ${
-                    showPaymentAmount ? 'md:grid-cols-3' : 'md:grid-cols-2'
-                  } gap-4`}
+                  className={`md:col-span-2 grid grid-cols-1 ${showPaymentAmount ? 'md:grid-cols-3' : 'md:grid-cols-2'
+                    } gap-4`}
                 >
                   <FormSelect
                     label="Managed By"
@@ -563,8 +568,8 @@ export default function LeadAddDialog({
                 isWonLead
                   ? 'Status cannot be changed for Won leads'
                   : (!isAdmin && formik.values.managedBy === 'Digitalks'
-                      ? 'Lead status for Digitalks managed leads can only be updated by Admin'
-                      : undefined)
+                    ? 'Lead status for Digitalks managed leads can only be updated by Admin'
+                    : undefined)
               }
             />
 
@@ -606,11 +611,10 @@ export default function LeadAddDialog({
               )}
             </label>
             <div
-              className={`rounded-xl border overflow-hidden ${
-                formik.touched.description && formik.errors.description
-                  ? 'border-red-500'
-                  : 'border-gray-300'
-              }`}
+              className={`rounded-xl border overflow-hidden ${formik.touched.description && formik.errors.description
+                ? 'border-red-500'
+                : 'border-gray-300'
+                }`}
             >
               <DefaultEditor
                 value={formik.values.description}

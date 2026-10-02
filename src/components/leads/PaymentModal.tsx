@@ -120,8 +120,17 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
       newErrors.dealAmount = 'Please enter total deal amount';
     }
 
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+    const incomingVal = Number(amount);
+    const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    if (!amount || isNaN(incomingVal) || incomingVal <= 0) {
       newErrors.amount = 'Please enter a valid payment amount';
+    } else if (totalAmount > 0 && round2(incomingVal) > round2(pendingAmount)) {
+      if (round2(pendingAmount) <= 0) {
+        newErrors.amount = 'Total amount has already been fully paid';
+      } else {
+        newErrors.amount = `Payment amount cannot exceed pending amount (${formatAmountDecimals(pendingAmount)})`;
+      }
     }
 
     if (!paymentDate) {
@@ -349,6 +358,7 @@ export default function PaymentModal({ isOpen, onClose, lead, onSuccess }: Payme
                   <input
                     type="number"
                     min="1"
+                    max={pendingAmount > 0 ? pendingAmount : undefined}
                     value={amount}
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     onKeyDown={(e) => {

@@ -120,11 +120,19 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
     }
   }, [authUser, authRole]);
 
-  const userRole = (authRole || staffInfo?.role?.roleName || authUser?.role?.roleName || authUser?.role || '').toLowerCase();
-  const isAdmin = /admin/i.test(userRole) || Boolean(authUser?.email && /admin/i.test(authUser.email));
+  const getRoleStr = (r: any): string => {
+    if (!r) return '';
+    if (typeof r === 'string') return r;
+    if (typeof r === 'object') return r.roleName || r.name || r.role || '';
+    return String(r);
+  };
+
+  const rawRoleStr = getRoleStr(authRole) || getRoleStr(authUser?.role) || getRoleStr(staffInfo?.role) || '';
+  const userRole = rawRoleStr.toLowerCase().trim();
+  const isAdmin = Boolean(userRole && (/admin/i.test(userRole) || /super/i.test(userRole))) || Boolean(authUser?.email && /admin/i.test(authUser.email));
   const isPM = userRole === 'project_manager' || userRole === 'projectmanager' || userRole.includes('project');
   const isReseller = userRole === 'reseller' || (!isAdmin && !isPM);
-  const isDigitalks = (lead as any)?.managedBy === 'Digitalks';
+  const isDigitalks = /^digitalks$/i.test((lead as any)?.managedBy || '');
   const isWon = ((typeof lead?.leadStatus === 'string' ? lead.leadStatus : lead?.leadStatus?.name) || '').toLowerCase() === 'won' || (lead as any)?.status?.name?.toLowerCase() === 'won' || lead?.isWon;
 
   const handleSave = async () => {
@@ -156,13 +164,25 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
 
   const handleAddFollowup = async () => {
     if (!lead || !editNextDate || !followupNote) return;
+    if (isAdmin && !isDigitalks) {
+      toast.error('Admin can only add follow-ups for Digitalks leads');
+      return;
+    }
+    if (!isAdmin && isDigitalks) {
+      toast.error("Resellers can only add follow-ups for 'Manage by Me' leads");
+      return;
+    }
     setAddingFollowup(true);
+
+    const targetDate = editNextDate;
+    const targetTime = editNextTime;
+    const targetNote = followupNote;
 
     // Create temporary follow-up object with optimistic update
     const tempFollowUp: FollowUp = {
-      date: editNextDate,
-      time: editNextTime,
-      note: followupNote,
+      date: targetDate,
+      time: targetTime,
+      note: targetNote,
       staff: staffInfo ? {
         _id: staffInfo._id,
         fullName: staffInfo.fullName || 'Current User'
@@ -181,9 +201,9 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
 
     try {
       const newFollowup = {
-        date: editNextDate,
-        time: editNextTime,
-        note: followupNote,
+        date: targetDate,
+        time: targetTime,
+        note: targetNote,
         staff: staffInfo ? {
           _id: staffInfo._id,
           fullName: staffInfo.fullName || 'Current User'
@@ -197,16 +217,17 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
         `${baseUrl.updateLead}/${lead._id}`,
         {
           followUps: updatedFollowUps,
-          nextFollowupDate: editNextDate,
-          nextFollowupTime: editNextTime,
+          nextFollowupDate: targetDate,
+          nextFollowupTime: targetTime,
           lastFollowUp: new Date().toISOString().split('T')[0]
         },
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );
 
       // Update with actual data from server
-      if (response.data?.data?.followUps) {
-        setLocalFollowUps(response.data.data.followUps);
+      const returnedFollowUps = response.data?.data?.followUps || response.data?.followUps;
+      if (Array.isArray(returnedFollowUps)) {
+        setLocalFollowUps(returnedFollowUps);
       }
 
       toast.success('Follow-up recorded successfully');
@@ -278,25 +299,25 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
             {onEdit && lead && (
               (isAdmin && isDigitalks) || (!isAdmin && !isWon && !isPM && isReseller && !isDigitalks)
             ) && (
-              <button
-                onClick={() => onEdit(lead)}
-                className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-[#3B82F6] hover:bg-blue-100 cursor-pointer transition-colors"
-              >
-                <Edit3 className="h-4 w-4" />
-                Edit Full Lead
-              </button>
-            )}
+                <button
+                  onClick={() => onEdit(lead)}
+                  className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-[#3B82F6] hover:bg-blue-100 cursor-pointer transition-colors"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit Full Lead
+                </button>
+              )}
             {(
               isAdmin || (!isWon && !isPM && isReseller && !isDigitalks)
             ) && (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50 cursor-pointer shadow-sm transition-colors"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            )}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50 cursor-pointer shadow-sm transition-colors"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              )}
           </>
         }
       >
@@ -440,18 +461,18 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                                   '-'
                                 )}
                               </td>
-                            <td className="py-2.5 px-3">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                {p.paymentMode || 'Cash'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-gray-500">{p.note || '-'}</td>
-                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
-                              {formatIndianCurrency(p.amount)}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              <td className="py-2.5 px-3">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                  {p.paymentMode || 'Cash'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-gray-500">{p.note || '-'}</td>
+                              <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                                {formatIndianCurrency(p.amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                         <tr>
@@ -535,13 +556,12 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
                       type="button"
                       disabled={isStatusDisabled}
                       onClick={() => setEditStatus(s._id)}
-                      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-150 border ${
-                        isSelected
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-150 border ${isSelected
                           ? activeClasses
                           : isStatusDisabled
-                          ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 cursor-pointer shadow-2xs'
-                      }`}
+                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 cursor-pointer shadow-2xs'
+                        }`}
                     >
                       {isSelected && <Check className="w-4 h-4 stroke-[2.5]" />}
                       <span>{s.name}</span>
@@ -561,131 +581,140 @@ export default function LeadViewDialog({ lead, statuses, onClose, onRefresh, onE
               </div>
 
               {/* Add New Follow-up Section */}
-              <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Follow-up</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500">Date</label>
-                    <DatePicker
-                      value={editNextDate}
-                      onChange={(val) => setEditNextDate(val)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500">Time</label>
-                    <TimePicker
-                      value={editNextTime}
-                      onChange={(val) => setEditNextTime(val)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Note / Summary</label>
-                  <textarea
-                    value={followupNote}
-                    onChange={(e) => setFollowupNote(e.target.value)}
-                    placeholder="Describe the interaction..."
-                    rows={3}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none"
-                  />
-                </div>
-                <button
-                  onClick={handleAddFollowup}
-                  disabled={!editNextDate || !followupNote || addingFollowup}
-                  className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  {addingFollowup ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Recording...
-                    </span>
-                  ) : 'Save Follow-up'}
-                </button>
-              </div>
-
-                {/* Follow-up Table */}
-                {localFollowUps && localFollowUps.length > 0 ? (
-                  <div className="rounded-xl border border-gray-200 bg-white">
-                    {/* Search Bar */}
-                    <div className="border-b border-gray-200 px-4 py-3">
-                      <div className="relative max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Search follow-ups..."
-                          value={followUpSearch}
-                          onChange={(e) => setFollowUpSearch(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100 hover:border-gray-300"
-                        />
-                      </div>
-                      {followUpSearch && (
-                        <p className="mt-2 text-xs text-gray-500">
-                          Showing {filteredFollowUps.length} of {localFollowUps.length} records
-                        </p>
-                      )}
+              {(isAdmin ? isDigitalks : !isDigitalks) ? (
+                <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Follow-up</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500">Date</label>
+                      <DatePicker
+                        value={editNextDate}
+                        onChange={(val) => setEditNextDate(val)}
+                      />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500">Time</label>
+                      <TimePicker
+                        value={editNextTime}
+                        onChange={(val) => setEditNextTime(val)}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <label className="text-xs font-medium text-gray-500">Note / Summary</label>
+                    <textarea
+                      value={followupNote}
+                      onChange={(e) => setFollowupNote(e.target.value)}
+                      placeholder="Describe the interaction..."
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddFollowup}
+                    disabled={!editNextDate || !followupNote || addingFollowup}
+                    className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    {addingFollowup ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Recording...
+                      </span>
+                    ) : 'Save Follow-up'}
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-medium">
+                  {isAdmin
+                    ? "Managed by 'Manage by Me' — Admin can only add follow-ups for Digitalks leads."
+                    : "Managed by Digitalks — Resellers can only add follow-ups for 'Manage by Me' leads."
+                  }
+                </div>
+              )}
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr className="bg-gray-100 border-b border-gray-200">
-                            <th className="px-4 py-3 font-semibold text-gray-600">Date & Time</th>
-                            <th className="px-4 py-3 font-semibold text-gray-600">Note</th>
-                            <th className="px-4 py-3 font-semibold text-gray-600">Staff</th>
+              {/* Follow-up Table */}
+              {localFollowUps && localFollowUps.length > 0 ? (
+                <div className="rounded-xl border border-gray-200 bg-white">
+                  {/* Search Bar */}
+                  <div className="border-b border-gray-200 px-4 py-3">
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search follow-ups..."
+                        value={followUpSearch}
+                        onChange={(e) => setFollowUpSearch(e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100 hover:border-gray-300"
+                      />
+                    </div>
+                    {followUpSearch && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Showing {filteredFollowUps.length} of {localFollowUps.length} records
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-200">
+                          <th className="px-4 py-3 font-semibold text-gray-600">Date & Time</th>
+                          <th className="px-4 py-3 font-semibold text-gray-600">Note</th>
+                          <th className="px-4 py-3 font-semibold text-gray-600">Staff</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {[...(followUpSearch ? filteredFollowUps : localFollowUps)].reverse().map((f, i) => (
+                          <tr key={f._id || i} className={`hover:bg-gray-50/50 transition-colors ${f._id?.startsWith('temp_') ? 'animate-pulse bg-blue-50/30' : ''}`}>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="font-medium text-gray-900">
+                                {f.date ? new Date(f.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                              </div>
+                              {f.time && (
+                                <div className="text-xs text-gray-500">{f.time}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 max-w-xs overflow-hidden">
+                              <p className="text-gray-700 break-words leading-relaxed">{f.note}</p>
+                              {f._id?.startsWith('temp_') && (
+                                <span className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600">
+                                  <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Saving...
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                  {f.staff?.fullName?.charAt(0) || staffInfo?.fullName?.charAt(0) || 'U'}
+                                </div>
+                                <span className="text-gray-600">{f.staff?.fullName || staffInfo?.fullName || 'Current User'}</span>
+                              </div>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {[...(followUpSearch ? filteredFollowUps : localFollowUps)].reverse().map((f, i) => (
-                            <tr key={f._id || i} className={`hover:bg-gray-50/50 transition-colors ${f._id?.startsWith('temp_') ? 'animate-pulse bg-blue-50/30' : ''}`}>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="font-medium text-gray-900">
-                                  {f.date ? new Date(f.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
-                                </div>
-                                {f.time && (
-                                  <div className="text-xs text-gray-500">{f.time}</div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 max-w-xs overflow-hidden">
-                                <p className="text-gray-700 break-words leading-relaxed">{f.note}</p>
-                                {f._id?.startsWith('temp_') && (
-                                  <span className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600">
-                                    <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Saving...
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                    {f.staff?.fullName?.charAt(0) || staffInfo?.fullName?.charAt(0) || 'U'}
-                                  </div>
-                                  <span className="text-gray-600">{f.staff?.fullName || staffInfo?.fullName || 'Current User'}</span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {followUpSearch && filteredFollowUps.length === 0 && (
-                        <div className="py-8 text-center text-gray-500">
-                          <p className="text-sm">No follow-ups match your search.</p>
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
+                    {followUpSearch && filteredFollowUps.length === 0 && (
+                      <div className="py-8 text-center text-gray-500">
+                        <p className="text-sm">No follow-ups match your search.</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="py-8 text-center bg-white rounded-xl border border-gray-100 border-dashed">
-                    <p className="text-gray-400">No follow-up history available yet.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center bg-white rounded-xl border border-gray-100 border-dashed">
+                  <p className="text-gray-400">No follow-up history available yet.</p>
+                </div>
+              )}
+            </div>
 
 
             {/* Note */}
